@@ -1,0 +1,42 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2012
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "sgfed2", "sgfed\sgfed2.csproj", "{6BACE799-0527-4D8E-A6CF-9AA7D5799A18}"
+EndProject
+Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "sgfpy", "sgfpy\sgfpy.pyproj", "{ABA13007-7E66-481C-8E01-4C178E75E985}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Debug|Mixed Platforms = Debug|Mixed Platforms
+		Debug|x86 = Debug|x86
+		Release|Any CPU = Release|Any CPU
+		Release|Mixed Platforms = Release|Mixed Platforms
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{6BACE799-0527-4D8E-A6CF-9AA7D5799A18}.Debug|Any CPU.ActiveCfg = Debug|x86
+		{6BACE799-0527-4D8E-A6CF-9AA7D5799A18}.Debug|Mixed Platforms.ActiveCfg = Debug|x86
+		{6BACE799-0527-4D8E-A6CF-9AA7D5799A18}.Debug|Mixed Platforms.Build.0 = Debug|x86
+		{6BACE799-0527-4D8E-A6CF-9AA7D5799A18}.Debug|x86.ActiveCfg = Debug|x86
+		{6BACE799-0527-4D8E-A6CF-9AA7D5799A18}.Debug|x86.Build.0 = Debug|x86
+		{6BACE799-0527-4D8E-A6CF-9AA7D5799A18}.Release|Any CPU.ActiveCfg = Release|x86
+		{6BACE799-0527-4D8E-A6CF-9AA7D5799A18}.Release|Mixed Platforms.ActiveCfg = Release|x86
+		{6BACE799-0527-4D8E-A6CF-9AA7D5799A18}.Release|Mixed Platforms.Build.0 = Release|x86
+		{6BACE799-0527-4D8E-A6CF-9AA7D5799A18}.Release|x86.ActiveCfg = Release|x86
+		{6BACE799-0527-4D8E-A6CF-9AA7D5799A18}.Release|x86.Build.0 = Release|x86
+		{ABA13007-7E66-481C-8E01-4C178E75E985}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ABA13007-7E66-481C-8E01-4C178E75E985}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ABA13007-7E66-481C-8E01-4C178E75E985}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
+		{ABA13007-7E66-481C-8E01-4C178E75E985}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
+		{ABA13007-7E66-481C-8E01-4C178E75E985}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{ABA13007-7E66-481C-8E01-4C178E75E985}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ABA13007-7E66-481C-8E01-4C178E75E985}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ABA13007-7E66-481C-8E01-4C178E75E985}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
+		{ABA13007-7E66-481C-8E01-4C178E75E985}.Release|Mixed Platforms.Build.0 = Release|Any CPU
+		{ABA13007-7E66-481C-8E01-4C178E75E985}.Release|x86.ActiveCfg = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
