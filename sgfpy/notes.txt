@@ -1,0 +1,333 @@
+
+general todo:
+ * handle pass move
+ * formalize exceptions, handle them up in the UI layer, keep program running
+ * handle MA property for X marks
+ * provide command to see game info from root node, and allow editing.
+ * handle setup moves AW/AB and change color props ... others?
+ *
+
+cs code:
+ * fully integrate tree view (add move, move branch, cut/paste, re-use graphics objects when redrawing)
+ * maybe mark nodes with comments
+ * maybe highlight next node to show active branch
+ * support clicking in tree view to goto to move
+ *
+
+pycode todo:
+ * throw out old tree view and port code from C# project
+ *
+
+
+Architectural references ...
+General notes:
+  * There is a bit of tension between some things being public vs. internal due to thinking
+    of some of the types as being re-usable a la a platform or perhaps for extensions.
+  * I have chosen to use static classes with "stateless" helpers where in python the natural
+    style would be to use a global helper instead of an instance method.
+  * The static classes are public if some helpers are used across files since they then feel
+    more like a general platform helper, and members are marked 'internal' if they are meant
+    only for the current file or class they extend.  Yes, 'internal' in C# is program-wide
+    access, so all members could be used anywhere, but 'public' marks those meant to be used
+    anywhere.
+Files:
+    sgfpy -> imports game, imports sgfparser to call parse_file, imports Adornments, 
+             and has functions that take Moves or refers to game.board for size, etc.
+		      It is primarily the UI.
+    game -> imports goboard and sgfparser, refers to main_win from game constructor,
+            and has write_game to map game/goboard model to parsed/file model.
+		     It is in a sense the controller.
+    goboard -> knows about parsed model for mapping coordinates from goboard.py model to file model
+               It is just model, with one or two cookie properties for the UI or game to use.
+    sgfparser -> parses games and produces strings for writing parsed games back to file
+
+Types:
+    MainWindow
+       Refers to helpers in MainWindowAux.
+       Refers to Game, GameAux.
+       Refers to Move.
+    MainWindowAux
+       Refers to Move, GoBoard.
+       Refers to Game, GameAux.
+    Game
+       Refers to MainWindow to control UI.
+       Refers to GoBoard, GoBoardAux, Move to update model.
+       Refers to ParsedGame to update model as advanced through parsed game tree.
+       Refers to Adornments to update view model.
+    GameAux
+       Refers to GoBoard, GoBoardAux, Move to update model.
+       Refers to ParsedGame, ParsedNode to update model as advanced through parsed game tree
+          and to generated a parsed representation for printing.
+       Refers to Adornments to update view model.
+    GoBoard
+       Refers to Move.
+    GoBoardAux
+       Pure model.
+    Move
+       Refers to GoBoardAux for NoIndex constant.
+    Adornments
+       Refers to Move to hold model refs.
+    ParsedGame
+       Refers to ParsedNode
+    ParsedNode
+       Pure model.
+    ParserAux
+       Refers to Lexer.
+       Refers to ParsedGame, ParsedNode
+
+
+C# port path:
+ * just drew grid and main ui
+ * click to draw stone and alternate colors
+ * click to draw stone and detect conflict locations
+ * click stones with current move adornment working
+ * forw/rev moves
+ * home/end game
+ * branching
+ * branch combo selection change handling
+ * check for dead stones and restore on rewind
+ * do lots of renaming to fix up method_names
+ * input handling (comments, focus, arrows, etc.)
+ * comments
+ * add handicap stones
+ * adornments input events
+ * start new game
+ * write files
+ * write reverse file
+ * save game
+ * public fields to props, decide public/internal statics, fix members public/internal
+ *
+ * REMAINING WORK ...
+ * clean up comments and pythonic names
+
+
+some dino C# code comments:
+ * const pascal case
+ * private fields with leading underscore
+
+testing notes (or basic features list):   WAY OUT OF DATE AND MANY MANY TESTS BEHIND
+ * add moves
+ * can't play where stone is already
+ * back up and replay
+ * can branch and choose branches
+ * when adding move that already exists in branch list, just choose it, don't add new one
+ * can branch initial state
+ * can add sq and tri adornments to any board locations
+ * adornments come and go as rewind and replay
+ * adornments work on initial board
+ * WAY OUT OF DATE FROM FEATURES :-(
+
+------------------------------------------------
+
+
+
+ID   FF   Description     property type    property value
+--  ----  --------------  ---------------  ---------------------------------
+*AB  1234  Add Black       setup            list of stone
+AP  ---4  Application     root             composed simpletext : simpletext       ;; [CGoban:3]
+*AW  1234  Add White       setup            list of stone
+*B   1234  Black           move             move
+BL  1234  Black time left move             real
+BR  1234  Black rank      game-info        simpletext
+BT  --34  Black team      game-info        simpletext
+*C   1234  Comment         -                text
+CA  ---4  Charset         root             simpletext                              ;; [UTF-8]
+CP  --34  Copyright       game-info        simpletext
+DT  1234  Date            game-info        simpletext
+EV  1234  Event           game-info        simpletext
+FF  -234  Fileformat      root             number (range: 1-4)
+*GC  1234  Game comment    game-info        text
+GM  1234  Game            root             number (range: 1-5,7-16)
+*HA  1234  Handicap        game-info (Go)   number
+*KM  1234  Komi            game-info (Go)   real                                   ;; [0.00]
+*LB  --34  Label           -                list of composed point : simpletext    ;; [dd:A] or LB[dd:A][ee:B][ff:C]
+MA  --34  Mark with X     -                list of point
+*PB  1234  Player Black    game-info        simpletext
+PL  1234  Player to play  setup            color                              ;; if switch start color (c-s-left): PL[W]
+*PW  1234  Player White    game-info        simpletext
+RE  1234  Result          game-info        simpletext
+RU  --34  Rules           game-info        simpletext                              ;; [Japanese]
+SE  ---4  Markup          - (LOA)          point
+*SQ  ---4  Square          -                list of point
+ST  ---4  Style           root             number (range: 0-3)                     ;; [2]
+*SZ  1234  Size            root             (number | composed number : number)
+TM  1234  Timelimit       game-info        real
+*TR  --34  Triangle        -                list of point                           ;; [dd] or TR[dd][ee][ff]
+*W   1234  White           move             move
+WL  1234  White time left move             real
+WR  1234  White rank      game-info        simpletext
+WT  --34  White team      game-info        simpletext
+
+
+
+----------------------------------- snipped or old code ---------------------
+
+### SGFEd is the WPF Application object.  It serves as the main UI and
+### ultimately holds all that you see as the app.  The end of this module
+### creates and runs the app.
+###
+#class SGFEd (Application):
+#
+#    def __init__(self):
+#        Application.__init__(self)
+#        self.MainWindow = XamlReader.Load(FileStream('sgfpy.xaml', FileMode.Open)) #LoadXaml("MainWindowPy.xaml")
+#        #self.MainWindow.Title = "SGFEd -- <file>"
+#        self.MainWindow.Width = 1050
+#        self.MainWindow.Height = 700
+#        self._prev_setup_size = None
+#        self.game = game.create_default_game(self)
+#        global app_inst
+#        app_inst = self
+#        self.connect_events()
+#        self.MainWindow.Show()
+    
+
+    #def connect_events (self):
+    #    self.FindName("prevButton").Click +=     (prevButton_left_down)
+    #    self.FindName("homeButton").Click += RoutedEventHandler(homeButton_left_down)
+    #    self.FindName("nextButton").Click += RoutedEventHandler(nextButton_left_down)
+    #    self.FindName("endButton").Click += RoutedEventHandler(endButton_left_down)
+    #    self.FindName("newButton").Click += RoutedEventHandler(newButton_left_down)
+    #    self.KeyDown += mainWin_keydown
+    #    self.TextInput += mainWin_textinput
+
+
+    #def enable_branch_combo (self, move, selection):
+    #    self.branchLabel.Content = str(len(move.branches)) + " branches:"
+    #    combo = main_win.branchCombo
+    #    combo.IsEnabled = True
+    #    combo.Items.Add("main")
+    #    for i in xrange(1, len(move.branches)):
+    #        combo.Items.Add(str(i))
+    #    combo.SelectedIndex = selection
+    #
+    #def clear_branch_combo (self):
+    #    #MessageBox.Show(str(main_win.branchCombo.Items[main_win.branchCombo.SelectedIndex]))
+    #    main_win.branchLabel.Content = "No Branches:"
+    #    main_win.branchCombo.Items.Clear()
+    #    #for i in xrange(main_win.branchCombo.Items.Count):
+    #    #    main_win.branchCombo.Items.RemoveAt(0)
+    #    main_win.branchCombo.IsEnabled = False
+
+#def activatecombo ():
+#    main_win.branchLabel.Content = str(testcount) + " branches:"
+#    combo = main_win.branchCombo
+#    combo.IsEnabled = True
+#    for i in xrange(1, testcount + 1):
+#        #item = ComboBoxItem()
+#        #item.Content = str(i)
+#        combo.Items.Add(str(i)) #item)
+#    combo.SelectedIndex = 0
+#
+#def clearcombo ():
+#    MessageBox.Show(str(main_win.branchCombo.Items[main_win.branchCombo.SelectedIndex]))
+#    main_win.branchLabel.Content = "No Branches:"
+#    main_win.branchCombo.Items.Clear()
+#    #for i in xrange(main_win.branchCombo.Items.Count):
+#    #    main_win.branchCombo.Items.RemoveAt(0)
+#    main_win.branchCombo.IsEnabled = False
+        
+
+### stones_mouse_left_down takes the stonesGrid that sourced the input event and
+### a MouseButtonEventArgs.  It places a go stone on the go board.
+###
+#def stones_mouse_left_down (stones_grid,  e):
+#    col, row = grid_pixels_to_cell(stones_grid, e.GetPosition(stones_grid).X, e.GetPosition(stones_grid).Y)
+#    ## cell x,y is col, row from top left, and board is row, col.
+#    if Keyboard.Modifiers == ModifierKeys.Shift:
+#        add_new_adornment(stones_grid, main_win.game.add_adornment(row, col, Adornments.square))
+#    elif Keyboard.Modifiers == ModifierKeys.Control:
+#        add_new_adornment(stones_grid, main_win.game.add_adornment(row, col, Adornments.triangle))
+#    else:
+#        move = main_win.game.make_move(row, col)
+#        if move is not None:
+#            add_stone(stones_grid, row, col, move.color)
+#            ## Must remove current adornment before adding it elsewhere.
+#            if move.previous is not None and Adornments.current_move_adornment in move.previous.adornments:
+#                ## Move may not have current adornment since it may have been captured and already
+#                ## removed by game.make_move.
+#                remove_current_stone_adornment(stones_grid, move.previous)
+#            add_current_stone_adornment(stones_grid, move)
+#            ## Remove previous move's adornments
+#            if move.previous is not None:
+#                remove_adornments(stones_grid, move.previous.adornments)
+#            else:
+#                remove_adornments(stones_grid, main_win.game.setup_adornments)
+#                
+
+
+Making lines and stones grids ....
+
+
+### The xaml looks like this (followed by the WPF code that is equivalent):
+###   <Grid ShowGridLines="False" Background="#FFD7B264" Grid.RowSpan="2" HorizontalAlignment="Stretch" Margin="2" Name="boardGrid"
+###         VerticalAlignment="Stretch" Width="{Binding ActualHeight, RelativeSource={RelativeSource Self}}" >
+### g.ShowGridLines = False
+### g.Background = SolidColorBrush(Color.FromArgb(0xff, 0xd7, 0xb2, 0x64))
+### Grid.SetRow(g, 0)
+### Grid.SetColumn(g, 0)
+### Grid.SetRowSpan(g, 2)
+### g.HorizontalAlignment = HorizontalAlignment.Stretch
+### g.VerticalAlignment = VerticalAlignment.Stretch
+### g.Margin = Thickness(2)
+### g.Name = "boardGrid"
+### b = Binding("ActualHeight")
+### b.RelativeSource = RelativeSource.Self 
+### g.SetBinding(WidthProperty, b)
+###
+
+
+### The xaml looks like this (followed by the WPF code that is equivalent):
+### <Grid ShowGridLines="False" Background="Transparent" Grid.RowSpan="2" HorizontalAlignment="Stretch"
+###       Margin="2" Name="stonesGrid" VerticalAlignment="Stretch"
+###       Width="{Binding ActualHeight, RelativeSource={RelativeSource Self}}">
+### g.ShowGridLines = False
+### g.Background = SolidColorBrush(Colors.Transparent)
+### Grid.SetRow(g, 0)
+### Grid.SetColumn(g, 0)
+### Grid.SetRowSpan(g, 2)
+### g.HorizontalAlignment = HorizontalAlignment.Stretch
+### g.VerticalAlignment = VerticalAlignment.Stretch
+### g.Margin = Thickness(2)
+### g.Name = "stonesGrid"
+### b = Binding("ActualHeight")
+### b.RelativeSource = RelativeSource.Self
+### g.SetBinding(WidthProperty, b)
+###
+
+
+
+###
+### Input and Focus Experiments
+###
+
+    ## if lift ctrl while msg box is showing, never msg's "ctrl"
+
+
+    #MessageBox.Show("mainwin focusable: " + str(main_win.Focusable) + 
+    #                " kbd focused: " + str(main_win.IsKeyboardFocused) + 
+    #                " visible: " + str(main_win.IsVisible))
+    #MessageBox.Show("keydown  " + str(main_win.commentBox.IsKeyboardFocused))
+    #MessageBox.Show("keydown: " + str(e.Key) + " " + str(e.SystemKey))
+    #MessageBox.Show(str(Keyboard.FocusedElement))
+    #isLeft = (e.Key == Key.Left or (e.Key == Key.System and e.SystemKey == Key.LeftAlt))
+    #isAlt = Keyboard.Modifiers == ModifierKeys.Alt
+    #iscomment = main_win.commentBox.IsKeyboardFocused
+    #MessageBox.Show(str(isLeft) + str(isAlt) + str(iscomment))
+    #if isLeft and isAlt and iscomment:
+    #    Keyboard.Focus(main_win.stonesGrid)
+    #    MessageBox.Show(str(Keyboard.FocusedElement))
+    #MessageBox.Show("stones focusable: " + str(main_win.stonesGrid.Focusable) + 
+    #                " kbd focused: " + str(main_win.stonesGrid.IsKeyboardFocused) + 
+    #                " visible: " + str(main_win.stonesGrid.IsVisible))
+    #if Keyboard.Modifiers == ModifierKeys.Control:
+    #    MessageBox.Show("ctrl")
+    #if Keyboard.Modifiers == ModifierKeys.Control | ModifierKeys.Shift:
+    #    MessageBox.Show("ctrl-shift")
+
+
+## only comes with text, so shift works, but ctrl does not, arrow does not, ...
+#def mainWin_textinput (win, e):
+#    #MessageBox.Show(e.Text)
+#    pass
+

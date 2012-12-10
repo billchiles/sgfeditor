@@ -1,0 +1,106 @@
+﻿<Window 
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="SGF Editor -- unsaved Move 0" Height="350" Width="525" Background="#C7419082"
+        KeyDown="mainWin_keydown">
+    
+    <!-- Define the main UI Grid: buttons upper right, edit box below, go board down the left side ... -->
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="115" />
+            <RowDefinition Height="196*" />
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="320*" />
+            <ColumnDefinition Width="183*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Define the comment box and tree control with splitter and scroll bars ... -->
+        <Grid Grid.Column="1" Grid.Row="1" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" >
+            <Grid.RowDefinitions>
+                <RowDefinition  />
+                <RowDefinition Height="Auto"/>
+                <RowDefinition />
+            </Grid.RowDefinitions>
+            <!-- margin is "left, top, right, bottom"-->
+            <TextBox Grid.Row="0" HorizontalAlignment="Stretch" Margin="2,2,2,1" Name="commentBox" 
+                     VerticalAlignment="Stretch" TextWrapping="Wrap" AcceptsReturn="True"
+                     ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto"
+                     ScrollViewer.CanContentScroll="True"/>
+            <GridSplitter Grid.Row="1" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Height="2" Margin="2"
+                          Background="CornSilk"/>
+            <TreeView Grid.Row="2" ScrollViewer.HorizontalScrollBarVisibility="Auto" Name="gameTreeView" Margin="2,1,2,2"
+                          ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.CanContentScroll="True">
+                <!--<TreeViewItem Header="Cold Drinks" IsExpanded="True">
+                    <TreeViewItem Header="Coke"></TreeViewItem>
+                    <StackPanel Orientation="Horizontal">
+                        <Ellipse Width="10" Height="10" Fill="Black" Margin="0,0,10,0" />
+                        <TextBlock Text="Coffee"></TextBlock>
+                    </StackPanel>
+                    <Grid Height="25" Width="25" Margin="0,2,0,2">
+                        <Ellipse  Fill="White"  Stroke="Black" HorizontalAlignment="Stretch"
+                                    VerticalAlignment="Stretch"/>
+                        <Label Content="3" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                FontWeight="Bold" FontSize="12"/>
+                    </Grid>
+                    <Grid Height="25" Width="25" Margin="0,2,0,2">
+                        <Ellipse Fill="Black" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
+                        <Label Content="4" HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Foreground="White" FontWeight="Bold" FontSize="12"/>
+                    </Grid>
+                    <TreeViewItem Header="Milk"></TreeViewItem>
+                    <TreeViewItem Header="Iced Tea"></TreeViewItem>
+                    <TreeViewItem Header="Mango Shake"></TreeViewItem>
+                    </TreeViewItem>-->
+            </TreeView>
+        </Grid>
+
+        
+
+        <!-- Define the Grid for the control buttons in the upper right ... -->
+        <Grid Grid.Column="1" Height="100" HorizontalAlignment="Stretch" Margin="2,2,2,2" Name="buttonsGrid" VerticalAlignment="Stretch">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="42*" />
+                <ColumnDefinition Width="43*" />
+                <ColumnDefinition Width="44*" />
+                <ColumnDefinition Width="39*" />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="24*" />
+                <RowDefinition Height="47*" />
+                <RowDefinition Height="29*" />
+            </Grid.RowDefinitions>
+
+            <!-- Need to learn how to make a File menu ... -->
+            <Button Content="New" Grid.Row="0" Height="22" HorizontalAlignment="Stretch" Margin="1" Name="newButton" VerticalAlignment="Top" Width="42" Click="newButton_left_down"/>
+            <Button Content="Open" Grid.Row="0" Grid.Column="1" Height="22" HorizontalAlignment="Stretch" Margin="1" Name="openButton" VerticalAlignment="Top" Width="42" Click="openButton_left_down"/>
+            <Button Content="Save" Grid.Row="0" Grid.Column="2" Height="22" HorizontalAlignment="Stretch" Margin="1" Name="saveButton" VerticalAlignment="Top" Width="42" Click="saveButton_left_down"/>
+            <Button Content="Help" Grid.Row="0" Grid.Column="3" Height="22" HorizontalAlignment="Stretch" Margin="1" Name="helpButton" VerticalAlignment="Top" Width="42" Click="helpButton_left_down"/>
+
+            <Button Content="&lt;&lt;" Grid.Row="2" Grid.Column="0" Height="22" HorizontalAlignment="Stretch" Margin="1" Name="homeButton" VerticalAlignment="Top" IsEnabled="False" Click="homeButton_left_down"/>
+            <Button Content="&lt;" Grid.Row="2" Grid.Column="1" Height="22" HorizontalAlignment="Stretch" Margin="1" Name="prevButton" VerticalAlignment="Top"  IsEnabled="False" Click="prevButton_left_down"/>
+            <Button Content="&gt;" Grid.Row="2" Grid.Column="2" Height="22" HorizontalAlignment="Stretch" Margin="1" Name="nextButton" VerticalAlignment="Top"  IsEnabled="False" Click="nextButton_left_down"/>
+            <Button Content="&gt;&gt;" Grid.Row="2" Grid.Column="3" Height="22" HorizontalAlignment="Stretch" Margin="1" Name="endButton" VerticalAlignment="Top"  IsEnabled="False" Click="endButton_left_down"/>
+            
+            <Label Content="No Branches:" Grid.Column="2" Grid.Row="1" Height="28" HorizontalAlignment="Stretch" Margin="1" VerticalAlignment="Top" Name="branchLabel" Foreground="White"/>
+            <ComboBox Grid.Column="2" Grid.Row="1"  Height="23" HorizontalAlignment="Stretch" Margin="1" VerticalAlignment="Bottom" Width="120" Name="branchCombo" IsEditable="False" IsReadOnly="True" IsEnabled="False"
+                      SelectionChanged="branchCombo_SelectionChanged"/>
+            
+        </Grid> <!-- control buttons -->
+
+        <!-- Define the grid to hold board lines, which is filled in programmatically depending on the go board size ... -->
+        <Grid ShowGridLines="False" Background="#FFD7B264" Grid.RowSpan="2" HorizontalAlignment="Stretch" Margin="2" Name="boardGrid" Width="{Binding ActualHeight, RelativeSource={RelativeSource Self}}"
+              VerticalAlignment="Stretch"  >
+            <!-- Width="{Binding ActualHeight, RelativeSource={RelativeSource Self}}"-->
+        </Grid>
+
+        <!-- Define the grid to hold go stones, whose rows and columns are filled in programmatically ... -->
+        <Grid ShowGridLines="False" Background="Transparent" Grid.RowSpan="2" HorizontalAlignment="Stretch"
+              Margin="2" Name="stonesGrid" VerticalAlignment="Stretch" MouseLeftButtonDown="stones_mouse_left_down"
+              Width="{Binding ActualHeight, RelativeSource={RelativeSource Self}}" >
+            <!--Width="{Binding ActualHeight, RelativeSource={RelativeSource Self}}"-->
+        </Grid>
+
+    </Grid> <!-- main grid for buttons, board, comments -->
+    
+</Window>
