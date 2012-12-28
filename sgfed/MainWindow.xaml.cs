@@ -28,6 +28,7 @@ using System.Windows.Shapes; // Rectangle, Ellipse, Polygon
 //using System.Windows.FrameworkElement; //WidthProperty ... actually don't need this in C#
 using Microsoft.Win32; //OpenFileDialog, SaveFileDialog
 using System.IO; // FileFormatException
+using System.Diagnostics; // debug.assert
 
 
 
@@ -144,7 +145,7 @@ F1 produces this help.
                 // If opening game file, next/end set to true by game code.
                 this.nextButton.IsEnabled = false;
                 this.endButton.IsEnabled = false;
-                MainWindowAux.stones = new Ellipse[Game.MAX_BOARD_SIZE, Game.MAX_BOARD_SIZE];
+                MainWindowAux.stones = new Ellipse[Game.MaxBoardSize, Game.MaxBoardSize];
                 this.AddHandicapStones(new_game);
             }
             else
@@ -157,8 +158,9 @@ F1 produces this help.
         //// adding to the MainWindow's Grid.  The returned Grid contains lines for the Go board.
         ////
         private Grid SetupLinesGrid (int size) {
-            if (size < Game.MIN_BOARD_SIZE || size > Game.MAX_BOARD_SIZE)
-                throw new ArgumentException("Board size, " + size.ToString() + ", must be between 9 and 19 inclusively.");
+            Debug.Assert(size >= Game.MinBoardSize && size <= Game.MaxBoardSize,
+                         "Board size must be between " + Game.MinBoardSize + 
+                         " and " + Game.MaxBoardSize + " inclusively.");
             // <Grid ShowGridLines="False" Background="#FFD7B264" Grid.RowSpan="2" HorizontalAlignment="Stretch" Margin="2"
             //       Name="boardGrid" VerticalAlignment="Stretch" 
             //       Width="{Binding ActualHeight, RelativeSource={RelativeSource Self}}" >
@@ -166,7 +168,7 @@ F1 produces this help.
             MainWindowAux.DefineLinesColumns(g, size);
             MainWindowAux.DefineLinesRows(g, size);
             MainWindowAux.PlaceLines(g, size);
-            if (size == Game.MAX_BOARD_SIZE) {
+            if (size == Game.MaxBoardSize) {
                 MainWindowAux.AddHandicapPoint(g, 4, 4);
                 MainWindowAux.AddHandicapPoint(g, 4, 10);
                 MainWindowAux.AddHandicapPoint(g, 4, 16);
@@ -367,10 +369,9 @@ F1 produces this help.
                 this.Title = "SGFEd -- " + filebase + ";  Move " + num.ToString() + pass_str;
             else {
                 var tail = title.IndexOf("Move ");
+                Debug.Assert(tail != -1, "Title doesn't have move in it?!");
                 if (tail != -1)
                     this.Title = title.Substring(0, tail + 5) + num.ToString() + pass_str;
-                else
-                    throw new Exception("Title doesn't have move in it?!");
             }
         }
 
@@ -399,6 +400,8 @@ F1 produces this help.
                     MessageBox.Show(err.Message + err.StackTrace);
                 }
                 catch (Exception err) {
+                    // No code paths should throw from incomplete, unrecoverable state.
+                    // For example, game state should be intact (other than IsDirty) for continuing.
                     MessageBox.Show(err.Message + err.StackTrace);
                 }
             }
@@ -410,16 +413,6 @@ F1 produces this help.
         ////
         private void CheckDirtySave () {
             this.Game.SaveCurrentComment();
-            //if (this.game.CurrentMove != null &&
-            //      this.game.CurrentMove.comments != this.commentBox.Text) {
-            //    this.game.dirty = true;
-            //    this.game.CurrentMove.comments = this.commentBox.Text;
-            //}
-            //if (this.game.CurrentMove == null &&
-            //      this.game.comments != this.commentBox.Text) {
-            //    this.game.dirty = true;
-            //    this.game.comments = this.commentBox.Text;
-            //}
             if (this.Game.Dirty &&
                  MessageBox.Show("Game is unsaved, save it?",
                                  "Confirm saving file", MessageBoxButton.YesNo) ==
@@ -588,7 +581,7 @@ F1 produces this help.
             }
             // Cutting a sub tree
             else if ((e.Key == Key.Delete || (e.Key == Key.X && Keyboard.Modifiers == ModifierKeys.Control)) &&
-                     (!this.commentBox.IsKeyboardFocused) &&
+                     (! this.commentBox.IsKeyboardFocused) &&
                      win.Game.CanUnwindMove() &&
                      MessageBox.Show("Cut current move from game tree?",
                                      "Confirm cutting move", MessageBoxButton.YesNo) ==
@@ -1013,7 +1006,7 @@ F1 produces this help.
         /// support cell-based operations, like mapping input event pixel indexes to
         /// cells.
         ///
-        internal static Ellipse[,] stones = new Ellipse[Game.MAX_BOARD_SIZE, Game.MAX_BOARD_SIZE];
+        internal static Ellipse[,] stones = new Ellipse[Game.MaxBoardSize, Game.MaxBoardSize];
 
 
         //// add_stone takes a Grid and row, column that index the go board one based
@@ -1042,8 +1035,7 @@ F1 produces this help.
         ////
         internal static void RemoveStone (Grid g, Move move) {
             var stone = stones[move.Row - 1, move.Column - 1];
-            if (stone == null)
-                throw new Exception("Shouldn't be removing stone if there isn't one.");
+            Debug.Assert(stone != null, "Shouldn't be removing stone if there isn't one.");
             g.Children.Remove(stone);
             stones[move.Row - 1, move.Column - 1] = null;
             // Must remove current adornment before other adornments (or just call
@@ -1158,18 +1150,19 @@ F1 produces this help.
         internal static void AddNewAdornment(Grid stones_grid, Adornments adornment, Game game_inst,
                                                bool render = true) { 
             UIElement gridOrViewbox;
+            Debug.Assert(adornment.Kind == AdornmentKind.Square || adornment.Kind == AdornmentKind.Triangle ||
+                         adornment.Kind == AdornmentKind.Letter,
+                         "Eh?! Unsupported AdornmentKind value?");
             if (adornment.Kind == AdornmentKind.Square)
                 gridOrViewbox = MakeSquareAdornment(stones_grid, adornment.Row, adornment.Column,
                                              game_inst, render);
             else if (adornment.Kind == AdornmentKind.Triangle)
                 gridOrViewbox = MakeTriangleAdornment(stones_grid, adornment.Row, adornment.Column,
                                                game_inst, render);
-            else if (adornment.Kind == AdornmentKind.Letter)
+            else //if (adornment.Kind == AdornmentKind.Letter)
                 // grid in this case is really a viewbow.
                 gridOrViewbox = MakeLetterAdornment(stones_grid, adornment.Row, adornment.Column,
                                              adornment.Letter, game_inst, render);
-            else
-                throw new Exception("Eh?! Unsupported AdornmentKind value?");
             adornment.Cookie = gridOrViewbox;
         }
 
@@ -1388,8 +1381,8 @@ F1 produces this help.
                 g.Children.Add(stone);
             }
             // Get move number label
-            if (model.Kind == TreeViewNodeKind.LineBend)
-                throw new Exception("Eh?!  Shouldn't be making tree view item grid for line bends.");
+            Debug.Assert(model.Kind != TreeViewNodeKind.LineBend,
+                         "Eh?!  Shouldn't be making tree view item grid for line bends.");
             var label = new Label();
             if (model.Kind == TreeViewNodeKind.StartBoard)
                 label.Content = "S";

@@ -11,15 +11,16 @@ using System.Windows; // Label (need to coerce type to fetch label cookie)
 using System.Windows.Controls; // MessageBox
 using System.IO; // StreamWriter
 using System.Text; // StringBuilder
+using System.Diagnostics; // Debug.Assert
 
 
 namespace SgfEd {
 
 
     public class Game {
-        public const int MAX_BOARD_SIZE = 19;
-        public const int MIN_BOARD_SIZE = 9;
-        public const string DEFAULT_KOMI = "6.5";
+        public const int MaxBoardSize = 19;
+        public const int MinBoardSize = 9;
+        public const string DefaultKomi = "6.5";
 
         private Color nextColor = Colors.Black;
 
@@ -32,11 +33,10 @@ namespace SgfEd {
         // _state helps with enabling and disabling buttons.
         public GameState State { get; set; }
         // first_move holds the first move which links to subsequent moves.
-        // when displaying the intial board state of a started game, this is
-        // the current move.
+        // When displaying the intial board state of a started game, this is
+        // the next move.
         public Move FirstMove { get; set; }
-        public Move Next { get {return this.FirstMove;}}
-        // of these.  This is None until there's more than one first move.
+        // Branches is null until there's more than one first move.
         public List<Move> Branches { get; set; }
         // The following hold any markup for the initial board state
         public List<Adornments> SetupAdornments { get; set; }
@@ -71,6 +71,9 @@ namespace SgfEd {
 
 
         public Game(MainWindow main_win, int size, int handicap, string komi, List<Move> handicap_stones = null) {
+            if (size != 19)
+                // Change this eventually to check min size and max size.
+                throw new Exception("Only support 19x19 games for now.");
             this.CurrentMove = null;
             this.mainWin = main_win;
             this.Board = new GoBoard(size);
@@ -116,6 +119,11 @@ namespace SgfEd {
                         this.HandicapMoves.Add(m);
                         this.Board.AddStone(m);
                     };
+                    // Handicap stones accumulate from two in opposing corners, to a third
+                    // one in a third corner, to four corners, then a fifth in the center.
+                    // Six handicap stones is three along two sides, and seven has one in
+                    // the center.  Eight handicaps is one in each corner and one in the
+                    // middle of each side.  Nine has adds one in the center.
                     if (handicap >= 2) {
                         make_move(4, 16);
                         make_move(16, 4);
@@ -124,26 +132,31 @@ namespace SgfEd {
                         make_move(16, 16);
                     if (handicap >= 4)
                         make_move(4, 4);
+                    // There is only a center stone for 5, 7, and 9 handicaps.
                     if (handicap == 5)
                         make_move(10, 10);
                     if (handicap >= 6)
                         make_move(10, 4);
                     make_move(10, 16);
+                    // There is only a center stone for 5, 7, and 9 handicaps.
                     if (handicap == 7)
                         make_move(10, 10);
                     if (handicap >= 8) {
                         make_move(4, 10);
                         make_move(16, 10);
                     }
+                    // There is only a center stone for 5, 7, and 9 handicaps.
                     if (handicap == 9)
                         make_move(10, 10);
                 }
-                else if (handicap_stones.Count != handicap)
-                    throw new Exception("Handicap number is not equal to all " +
-                                        "black stones in parsed root node.");
-                else
+
+                else {
+                    Debug.Assert(handicap_stones.Count == handicap,
+                                 "Handicap number is not equal to all " +
+                                 "black stones in parsed root node.");
                     foreach (var m in handicap_stones)
                         this.Board.AddStone(m);
+                }
             }
         }
 
@@ -223,20 +236,17 @@ namespace SgfEd {
         }
 
         //// CheckSelfCaptureNoKill returns true if move removes the last liberty of
-        //// its group without killing an opponent group.  It needs to temporarily add
-        //// the move to the board, then remove it.  Try catch may be over kill here, but ....
+        //// its group without killing an opponent group.  This function needs to 
+        //// temporarily add the move to the board, then remove it, but we don't need
+        //// a try..finally since any error is unexpected and unrecoverable.
         ////
-        private bool CheckSelfCaptureNoKill (Move move) {
-            try {
-                this.Board.AddStone(move);
-                var noKill = ! this.CheckForKill(move).Any(); // ensure it executes.
-                return ! this.FindLiberty(move.Row, move.Column, move.Color) && noKill;
-            }
-            finally {
-                this.Board.RemoveStone(move);
-            }
+        private bool CheckSelfCaptureNoKill(Move move) {
+            this.Board.AddStone(move);
+            var noKill = ! this.CheckForKill(move).Any(); // .Any ensures it executes.
+            var noLibertyAndNoKill = ! this.FindLiberty(move.Row, move.Column, move.Color) && noKill;
+            this.Board.RemoveStone(move);
+            return noLibertyAndNoKill;
         }
-        
         
         //// _make_branching_move sets up cur_move to have more than one next move,
         //// that is, branches.  If the new move, move, is at the same location as
@@ -422,11 +432,13 @@ namespace SgfEd {
         //// that was current before rewinding.
         ////
         public Move UnwindMove () {
-            if (this.State == GameState.NotStarted)
-                throw new Exception("Previous button should be disabled if game not started.");
+            // These debug.asserts could arguably be throw's if we think of this function
+            // as platform/library.
+            Debug.Assert(this.State != GameState.NotStarted,
+                         "Previous button should be disabled if game not started.");
             var current = this.CurrentMove;
-            if (current == null)
-                throw new Exception("Previous button should be disabled if no current move.");
+            Debug.Assert(current != null,
+                         "Previous button should be disabled if no current move.");
             if (! current.IsPass)
                 this.Board.RemoveStone(current);
             this.AddStones(current.DeadStones);
@@ -464,11 +476,13 @@ namespace SgfEd {
         //// started, but throws an exception to ensure code is consistent on that.
         ////
         public void GotoStart () {
-            if (this.State == GameState.NotStarted)
-                throw new Exception("Home button should be disabled if game not started.");
+            // These debug.asserts could arguably be throw's if we think of this function
+            // as platform/library.
+            Debug.Assert(this.State != GameState.NotStarted,
+                         "Home button should be disabled if game not started.");
             var current = this.CurrentMove;
-            if (current == null)
-                throw new Exception("Home button should be disabled if no current move.");
+            Debug.Assert(current != null,
+                         "Home button should be disabled if no current move.");
             this.SaveAndUpdateComments(current, null);
             this.Board.GotoStart();
             this.mainWin.ResetToStart(current);
@@ -496,32 +510,24 @@ namespace SgfEd {
         //// before rewinding.
         ////
         public Move ReplayMove () {
-            if (this.State == GameState.NotStarted)
-                throw new Exception("Next button should be disabled if game not started.");
+            // These debug.asserts could arguably be throw's if we think of this function
+            // as platform/library.
+            Debug.Assert(this.State != GameState.NotStarted,
+                         "Next button should be disabled if game not started.");
             // advance this.current_move to the next move.
             var fixupMove = this.CurrentMove; // save for catch block
             if (this.CurrentMove == null)
                 this.CurrentMove = this.FirstMove;
-            else if (this.CurrentMove.Next == null)
-                throw new Exception("Next button should be disabled if no next move.");
-            else
+            else {
+                Debug.Assert(this.CurrentMove.Next != null,
+                             "Next button should be disabled if no next move.");
                 this.CurrentMove = this.CurrentMove.Next;
+            }
             if (this.ReplayMoveUpdateModel(this.CurrentMove) == null) {
+                // Attempted to replay (pasted) move that conflicted with existing move on board.
                 this.CurrentMove = fixupMove;
                 return null;
             }
-            //try {
-            //    this.ReplayMoveUpdateModel(this.CurrentMove);
-            //}
-            //catch (Exception err) {
-            //    // Replaying pasted move that would display at currently existing move.
-            //    if (err.Message.Contains("stone at location")) {
-            //        this.CurrentMove = fixupMove;
-            //        return null;
-            //    }
-            //    else
-            //        throw err;
-            //}
             this.SaveAndUpdateComments(this.CurrentMove.Previous, this.CurrentMove);
             if (this.CurrentMove.Next == null) {
                 this.mainWin.nextButton.IsEnabled = false;
@@ -548,8 +554,10 @@ namespace SgfEd {
         //// started, this throws an error.
         ////
         public void GotoLastMove () {
-            if (this.State == GameState.NotStarted)
-                throw new Exception("End button should be disabled if game not started.");
+            // This debug.assert could arguably be a throw if we think of this function
+            // as platform/library.
+            Debug.Assert(this.State != GameState.NotStarted,
+                         "End button should be disabled if game not started.");
             var current = this.CurrentMove;
             var save_orig_current = current;
             Move next;
@@ -760,8 +768,10 @@ namespace SgfEd {
         ////
         public void CutMove() {
             var cut_move = this.CurrentMove;
-            if (cut_move == null)
-                throw new Exception("Must cut current move, so cannot be initial board state.");
+            // This debug.assert could arguably be a throw if we think of this function
+            // as platform/library.
+            Debug.Assert(cut_move != null,
+                         "Must cut current move, so cannot be initial board state.");
             // unwind move with all UI updates and game model updates (and saves comments)
             this.mainWin.prevButtonLeftDown(null, null);
             var prev_move = this.CurrentMove;
@@ -860,17 +870,13 @@ namespace SgfEd {
         //// information (marked up and comments).
         ////
         public void PasteMove() {
-            if (this.cutMove == null)
-                throw new Exception("No cut sub tree to paste.");
-            if (this.cutMove.Color == this.CurrentMove.Color) {
+            // These debug.asserts could arguably be throw's if we think of this function
+            // as platform/library.
+            Debug.Assert(this.cutMove != null, "There is no cut sub tree to paste.");
+            if (this.cutMove.Color != this.nextColor) {
                 MessageBox.Show("Cannot paste cut move that is same color as current move.");
                 return;
             }
-            //if (GameAux._check_for_conincident_moves(this.board, this._cut_move)) {
-            //    MessageBox.Show("Cannot paste cut moves because some occur " +
-            //                    "where the board already has moves.");
-            //    return;
-            //}
             var cur_move = this.CurrentMove;
             if (cur_move != null)
                 GameAux.PasteNextMove(cur_move, this.cutMove);
@@ -887,8 +893,8 @@ namespace SgfEd {
                         GameAux.PasteNextParsedNode(this.ParsedGame.Nodes, this.cutMove.ParsedNode);
                 }
                 else {
-                    if (this.State != GameState.NotStarted)
-                        throw new Exception("Internal error: no first move and game not started?!");
+                    Debug.Assert(this.State == GameState.NotStarted,
+                                 "Internal error: no first move and game not started?!");
                     // not branching initial board state
                     this.FirstMove = this.cutMove;
                     this.FirstMove.Number = 1;
@@ -921,13 +927,11 @@ namespace SgfEd {
                 if (adornment == null) return null;
                 this.SetupAdornments.Add(adornment);
             }
-            else if (move != null) {
+            else { //if (move != null) {
                 adornment = this.AddAdornmentMakeAdornment(move.Adornments, row, col, kind, data);
                 if (adornment == null) return null;
                 move.AddAdornment(adornment);
             }
-            else
-                throw new Exception("Should never get here.");
             return adornment;
         }
 
@@ -961,13 +965,14 @@ namespace SgfEd {
         ////
         public Adornments GetAdornment (int row, int col, AdornmentKind kind) {
             var move = this.CurrentMove;
-            List<Adornments> adornments = null;
-            if (this.State == GameState.NotStarted || move == null)
-                adornments = this.SetupAdornments;
-            else if (move != null)
-                adornments = move.Adornments;
-            else
-                throw new Exception("Should never get here.");
+            List<Adornments> adornments = 
+                (this.State == GameState.NotStarted || move == null) ? this.SetupAdornments : move.Adornments;
+            //if (this.State == GameState.NotStarted || move == null)
+            //    adornments = this.SetupAdornments;
+            //else if (move != null)
+            //    adornments = move.Adornments;
+            //else
+            //    throw new Exception("Should never get here.");
             foreach (var a in adornments)
                 if (a.Kind == kind && a.Row == row && a.Column == col)
                     return a;
@@ -981,13 +986,14 @@ namespace SgfEd {
         ////
         public void RemoveAdornment(Adornments a) { 
             var move = this.CurrentMove;
-            List<Adornments> adornments;
-            if (this.State == GameState.NotStarted || move == null)
-                adornments = this.SetupAdornments;
-            else if (move != null)
-                adornments = move.Adornments;
-            else
-                throw new Exception("Should never get here.");
+            List<Adornments> adornments =
+                (this.State == GameState.NotStarted || move == null) ? this.SetupAdornments : move.Adornments;
+            //if (this.State == GameState.NotStarted || move == null)
+            //    adornments = this.SetupAdornments;
+            //else if (move != null)
+            //    adornments = move.Adornments;
+            //else
+            //    throw new Exception("Should never get here.");
             adornments.Remove(a);
         }
 
@@ -1074,8 +1080,8 @@ namespace SgfEd {
         //// the result.
         ////
         private void MoveBranch (List<Move> branches, int cur_index, int delta) {
-            if (delta != 1 && delta != -1)
-                throw new Exception("Branch moving delta must be 1 or -1 for now.");
+            Debug.Assert(delta == 1 || delta == -1,
+                         "Branch moving delta must be 1 or -1 for now.");
             Action swap = () => {
                 var tmp = branches[cur_index];
                 branches[cur_index] = branches[cur_index + delta];
@@ -1096,8 +1102,6 @@ namespace SgfEd {
                 }
                 else
                     MessageBox.Show("This branch is the last branch.");
-            else
-                throw new Exception("Must call _move_branch with non-zero delta.");
         }
 
 
@@ -1110,9 +1114,10 @@ namespace SgfEd {
         //// output.
         ////
         public void WriteGame (string filename = null) {
+            // This debug.assert could arguably be a throw if we think of this function
+            // as platform/library.
             if (filename == null) {
-                if (this.Filename == null)
-                    throw new Exception("Need filename to write file.");
+                Debug.Assert(this.Filename != null, "Need filename to write file.");
                 filename = this.Filename;
             }
             var pg = GameAux.ParsedGameFromGame(this);
@@ -1322,12 +1327,12 @@ namespace SgfEd {
                                                          : node.Properties;
             var props = node.Properties;
             // Color
+            Debug.Assert(move.Color == Colors.Black || move.Color == Colors.White,
+                         "Move color must be B or W?!");
             if (move.Color == Colors.Black)
                 props["B"] = new List<string>() { GoBoardAux.GetParsedCoordinates(move, flipped) };
             else if (move.Color == Colors.White)
                 props["W"] = new List<string>() { GoBoardAux.GetParsedCoordinates(move, flipped) };
-            else
-                throw new Exception("Should have only B or W moves.");
             // Comments
             if (move.Comments != "")
                 props["C"] = new List<string>() {move.Comments};
@@ -1414,12 +1419,12 @@ namespace SgfEd {
             new_node.Properties = CopyProperties(node.Properties);
             var props = new_node.Properties;
             // Color
+            Debug.Assert(props.ContainsKey("B") || props.ContainsKey("W"),
+                         "Move color must be B or W?!");
             if (props.ContainsKey("B"))
                 props["B"] = FlipCoordinates(props["B"]);
             else if (props.ContainsKey("W"))
                 props["W"] = FlipCoordinates(props["W"]);
-            else
-                throw new Exception ("Should have only B or W moves.");
             // Adornments
             if (props.ContainsKey("TR"))
                 props["TR"] = FlipCoordinates(props["TR"]);
@@ -1459,7 +1464,7 @@ namespace SgfEd {
 
 
         public static Game CreateDefaultGame(MainWindow main_win) {
-            return new Game(main_win, Game.MAX_BOARD_SIZE, 0, Game.DEFAULT_KOMI);
+            return new Game(main_win, Game.MaxBoardSize, 0, Game.DefaultKomi);
         }
 
 
@@ -1491,6 +1496,8 @@ namespace SgfEd {
                 handicap = int.Parse(props["HA"][0]);
                 if (! props.ContainsKey("AB"))
                     throw new Exception("If parsed game has handicap, then need handicap stones.");
+                if (props["AB"].Count != handicap)
+                    throw new Exception("Parsed game's handicap count (HA) does not match stones (AB).");
                 all_black = props["AB"].Select((coords) => 
                                 {var tmp = GoBoardAux.ParsedToModelCoordinates(coords);
                                  var row = tmp.Item1;
@@ -1508,21 +1515,19 @@ namespace SgfEd {
                 throw new Exception("Don't support multiple white stones at root.");
             // Board size
             var size = 19;
-            //if (!props.ContainsKey("SZ"))
-            //    throw new Exception("No board size property?!");
             if (props.ContainsKey("SZ"))
                 size = int.Parse(props["SZ"][0]);
             else
                 MessageBox.Show("No SZ, size, property in .sgf.  Default is 19x19");
             if (size != 19)
-                MessageBox.Show("Only work with size 19 currently, got " + size.ToString());
-                //throw new Exception("Only work with size 19 currently, got " + size.ToString());
+                //MessageBox.Show("Only work with size 19 currently, got " + size.ToString());
+                throw new Exception("Only work with size 19 currently, got " + size.ToString());
             // Komi
             string komi;
             if (props.ContainsKey("KM"))
                 komi = props["KM"][0];
             else
-                komi = handicap == 0 ? Game.DEFAULT_KOMI : "0.5";
+                komi = handicap == 0 ? Game.DefaultKomi : "0.5";
             // Creating new game cleans up current game
             var g = new Game(main_win, size, handicap, komi, all_black);
             // Player names
@@ -1830,6 +1835,9 @@ namespace SgfEd {
         //// always chain Next to Branches[0] if there are branches.  We always want the top branch.
         ////
         private static dynamic LayoutGameTreeNext (dynamic pn) {
+            // Can't dynamically invoke Assert for some reason, and C# doesn't bind only matching
+            // method at compile time.
+            //Debug.Assert(pn.GetType() != typeof(Game));
             if (pn.Branches != null)
                 return pn.Branches[0];
             else
@@ -1968,8 +1976,8 @@ namespace SgfEd {
         private static void StoreTreeViewNode (TreeViewLayoutData layoutData, int tree_depth, TreeViewNode model) {
             if (model.Row >= GameAux.TreeViewGridRows || tree_depth >= GameAux.TreeViewGridColumns)
                 GameAux.GrowTreeView(layoutData);
-            if (layoutData.TreeGrid[model.Row, tree_depth] != null)
-                throw new Exception("Eh?!  This tree view location should be empty.");
+            Debug.Assert(layoutData.TreeGrid[model.Row, tree_depth] == null,
+                         "Eh?!  This tree view location should be empty.");
             layoutData.TreeGrid[model.Row, tree_depth] = model;
         }
 

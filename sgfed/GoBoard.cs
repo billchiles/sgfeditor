@@ -8,19 +8,18 @@ using System.Windows;
 //using System.Linq;
 //using System.Text;
 using System.Windows.Media; // Color, Colors
+using System.Diagnostics; // Debug.Assert
 
 
 namespace SgfEd {
 
     public class GoBoard {
-
         public int Size { get; set; }
         private Move[,] moves = null;
 
         public GoBoard(int size) {
             this.Size = size;
-            this.moves = new Move[Game.MAX_BOARD_SIZE, Game.MAX_BOARD_SIZE];
-
+            this.moves = new Move[size, size];
         }
 
 
@@ -28,8 +27,10 @@ namespace SgfEd {
         //// row, col are one-based, as we talk about go boards.
         ////
         public Move AddStone (Move move) {
-            if (this.moves[move.Row - 1, move.Column - 1] != null)
-                throw new Exception("Ensure board has no stone at location.");
+            // This debug.assert could arguably be a throw if we think of this function
+            // as platform/library.
+            Debug.Assert(this.moves[move.Row - 1, move.Column - 1] == null,
+                         "Ensure board has no stone at location.");
             this.moves[move.Row - 1, move.Column - 1] = move;
             return move;
         }
@@ -298,10 +299,12 @@ namespace SgfEd {
         //// GetCurrentMove reserves or locks the current move adornment.
         ////
         public static void GetCurrentMove (Move move, UIElement cookie) {
-            if (Adornments.CurrentMoveAdornment.Move != null)
-                throw new Exception("Already have current move adornment at row, col: " +
-                            Adornments.CurrentMoveAdornment.Move.Row.ToString() + ", " +
-                            Adornments.CurrentMoveAdornment.Move.Column.ToString() + ".");
+            // This debug.assert could arguably be a throw if we think of this function
+            // as platform/library.
+            Debug.Assert(Adornments.CurrentMoveAdornment.Move == null,
+                         "Already have current move adornment at row, col: "); // +
+                //Adornments.CurrentMoveAdornment.Move.Row.ToString() + ", " +
+                //Adornments.CurrentMoveAdornment.Move.Column.ToString() + ".");
             Adornments.CurrentMoveAdornment.Move = move;
             Adornments.CurrentMoveAdornment.Cookie = cookie;
             move.AddAdornment(Adornments.CurrentMoveAdornment);
@@ -313,8 +316,9 @@ namespace SgfEd {
         public static void ReleaseCurrentMove()
         {
             var move = Adornments.CurrentMoveAdornment.Move;
-            if (move == null)
-                throw new Exception("Do not have current move adornment.");
+            // This debug.assert could arguably be a throw if we think of this function
+            // as platform/library.
+            Debug.Assert(move != null, "Do not have current move adornment.");
             move.Adornments.Remove(Adornments.CurrentMoveAdornment);
             Adornments.CurrentMoveAdornment.Move = null;
             Adornments.CurrentMoveAdornment.Cookie = null;
