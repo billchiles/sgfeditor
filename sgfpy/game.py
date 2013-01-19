@@ -754,10 +754,9 @@ class Game (object):
     def paste_move (self):
         if self._cut_move is None:
             raise Exception("No cut sub tree to paste.")
-        #if _check_for_coincident_moves(self.board, self._cut_move):
-        #    MessageBox.Show("Cannot paste cut moves because some occur " + 
-        #                    "where the board already has moves.")
-        #    return
+        if self._cut_move.color != self.next_color:
+            MessageBox.Show("Cannot paste cut move that is same color as current move.");
+            return;
         cur_move = self.current_move
         if cur_move is not None:
             _paste_next_move(cur_move, self._cut_move)
