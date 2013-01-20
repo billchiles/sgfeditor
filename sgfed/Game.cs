@@ -324,34 +324,28 @@ namespace SgfEd {
         //// try to build list as we go to simplify code.  Worse case we recurse all
         //// the stones twice, but it doesn't impact observed performance.
         ////
-        //// We do not need to clear visited between each outer 'if' check.  If we
-        //// start descending on a different stone in a different outer 'if' and
-        //// encounter a stone, S, that we've visited before, then searching that
-        //// stone previously must have returned false.  That is, searching all the
-        //// stones connected to S found no liberties before, and the current outer
-        //// 'if' must be searching the same group.  The new stone is going to
-        //// return false again, so no reason to clear visited.
+        //// We do not create a visited matrix to pass to each FindLiberty call since
+        //// we do not know whether a previously visited location resulted in finding
+        //// a liberty or collecting dead stones.
         ////
         private List<Move> CheckForKill (Move move) {
             var row = move.Row;
             var col = move.Column;
-            // default for bool is false.
-            // Consider later if this is too much consing per move.
-            var visited = new bool [this.Board.Size, this.Board.Size];
             var opp_color = GameAux.OppositeMoveColor(move.Color);
+            var visited = new bool[this.Board.Size, this.Board.Size];
             var dead_stones = new List<Move>();
             if (this.Board.HasStoneColorLeft(row, col, opp_color) && 
-                ! this.FindLiberty(row, col - 1, opp_color, visited))
-                this.CollectStones(row, col - 1, opp_color, dead_stones);
+                ! this.FindLiberty(row, col - 1, opp_color))
+                this.CollectStones(row, col - 1, opp_color, dead_stones, visited);
             if (this.Board.HasStoneColorUp(row, col, opp_color) && 
-                ! this.FindLiberty(row - 1, col, opp_color, visited))
-                this.CollectStones(row - 1, col, opp_color, dead_stones);
+                ! this.FindLiberty(row - 1, col, opp_color))
+                this.CollectStones(row - 1, col, opp_color, dead_stones, visited);
             if (this.Board.HasStoneColorRight(row, col, opp_color) && 
-                ! this.FindLiberty(row, col + 1, opp_color, visited))
-                this.CollectStones(row, col + 1, opp_color, dead_stones);
+                ! this.FindLiberty(row, col + 1, opp_color))
+                this.CollectStones(row, col + 1, opp_color, dead_stones, visited);
             if (this.Board.HasStoneColorDown(row, col, opp_color) && 
-                ! this.FindLiberty(row + 1, col, opp_color, visited))
-                this.CollectStones(row + 1, col, opp_color, dead_stones);
+                ! this.FindLiberty(row + 1, col, opp_color))
+                this.CollectStones(row + 1, col, opp_color, dead_stones, visited);
             move.DeadStones = dead_stones;
             return dead_stones;
         }
@@ -404,12 +398,12 @@ namespace SgfEd {
         //// from the board.
         ////
         private void CollectStones (int row, int col, Color color, List<Move> dead_stones,
-                                    bool [,] visited = null) {
-            if (visited == null)
-                // Consider later if this is too much consing per move.
-                // We cons once for self kill check, once for CheckForKill, once here per move.
-                visited = new bool[this.Board.Size, this.Board.Size];
-            dead_stones.Add(this.Board.MoveAt(row, col));
+                                    bool [,] visited ) {
+            Debug.Assert(visited != null, "Must call CollectStones with initial matrix of null values.");
+            if (! visited[row - 1, col - 1])
+                dead_stones.Add(this.Board.MoveAt(row, col));
+            else
+                return;
             visited[row - 1, col - 1] = true;
             if (this.Board.HasStoneColorLeft(row, col, color) && ! visited[row - 1, col - 2])
                 this.CollectStones(row, col - 1, color, dead_stones, visited);
