@@ -1,40 +1,58 @@
-﻿//// This is the __main__ kicker file that implements the GUI for an SGF
-//// editor.  The equivalent file in the IronPython implementation is sgfed.py.
-////
-//// This file has the MainWindow class that derives from Window in the standard WPF pattern.
-//// It also has a MainWindowAux file that includes what would be top-level helpers in python,
-//// but we use a static class to contain the helpers in C#.
-////
-
-using System;
+﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
-using System.Text;
-// System.Windows: Application, Window, HorizontalAlignment, VerticalAlignment, Thickness
-// GridLength, GridUnitType, MessageBox, Point, RoutedEventHandler
-// MessageBoxButton, MessageBoxResult, Rect, Size, FontWeights, FrameworkElement
-using System.Windows;
-// System.Windows.Controls import Grid, ColumnDefinition, RowDefinition, Label, Viewbox
-// ComboBox, ComboBoxItem
-using System.Windows.Controls;
-using System.Windows.Data; // Binding, RelativeSource
-using System.Windows.Documents;
-// System.Windows.Input: MouseButtonEventHandler, Key, Keyboard, ModifierKeys
-using System.Windows.Input;
-using System.Windows.Media; // SolidColorBrush, Colors, Color
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes; // Rectangle, Ellipse, Polygon
-//using System.Windows.FrameworkElement; //WidthProperty ... actually don't need this in C#
-using Microsoft.Win32; //OpenFileDialog, SaveFileDialog
-using System.IO; // FileFormatException
-using System.Diagnostics; // debug.assert
+using Windows.Foundation;
+using Windows.Foundation.Collections;
+using Windows.UI.Xaml;
+using Windows.UI.Xaml.Controls;
+using Windows.UI.Xaml.Controls.Primitives;
+using Windows.UI.Xaml.Data;
+using Windows.UI.Xaml.Input;
+using Windows.UI.Xaml.Media;
+using Windows.UI.Xaml.Navigation;
+using Windows.UI.Xaml.Shapes; // Rectangle
+using Windows.UI; // Color
+using Windows.UI.Popups; // MessageDialog
+using Windows.UI.Core; // CoreWindow, PointerEventArgs
+using Windows.System; // VirtualKeyModifiers
+using Windows.Storage.Pickers;  // FileOpenPicker
+using Windows.Storage; // FileIO
+using System.Threading.Tasks; // Task<T>
+using System.Diagnostics; // Debug.Assert
 
 
+namespace SgfEdwin8 {
 
-namespace SgfEd {
+    ////
+    //// What VS generated for me ...
+    ////
 
-    public partial class MainWindow : Window {
+    // The Blank Page item template is documented at http://go.microsoft.com/fwlink/?LinkId=234238
+    //
+    //public sealed partial class MainPage : Page
+    //{
+    //    public MainPage()
+    //    {
+    //        this.InitializeComponent();
+    //    }
+
+    //    /// <summary>
+    //    /// Invoked when this page is about to be displayed in a Frame.
+    //    /// </summary>
+    //    /// <param name="e">Event data that describes how this page was reached.  The Parameter
+    //    /// property is typically used to configure the page.</param>
+    //    protected override void OnNavigatedTo(NavigationEventArgs e)
+    //    {
+    //    }
+    //}
+
+
+    ////
+    //// MainWindow class
+    ////
+
+    public sealed partial class MainWindow : Page {
 
         private const string help_string = @"
 SGFEd can read and write .sgf files, edit game trees, etc.
@@ -95,29 +113,33 @@ F1 produces this help.
         public Game Game { get; set; }
 
 
-        public MainWindow() {
-            InitializeComponent();
-            this.Height = 700;
-            this.Width = 1050;
+        public MainWindow () {
+            this.InitializeComponent();
+            this.SetValue(ScrollViewer.HorizontalScrollBarVisibilityProperty, ScrollBarVisibility.Disabled);
+            this.SetValue(ScrollViewer.VerticalScrollBarVisibilityProperty, ScrollBarVisibility.Disabled);
+            // Setting size is meaningless on win8.
+            //this.Height = 700;
+            //this.Width = 1050;
+            //
             // Add lines grid and stone hit testing grid to MainWindow root grid ...
-            var root = (Grid)this.Content;
+            // THIS NOW HAPPENS IN SetupBoardDisplay CALLED FROM 'new GAME'
+            //var root = (Grid)this.Content;
             //SetupLinesGrid(Game.MAX_BOARD_SIZE);
             //this.SetupStonesGrid(Game.MAX_BOARD_SIZE);
-
             //root.Children.Add(CreateStonesGrid(Game.MAX_BOARD_SIZE));
-
             this.prevSetupSize = 0;
             this.Game = GameAux.CreateDefaultGame(this);
-
+            // fixing win8 -- tried this to always get it invoked, but the event is simply not raising
+            //this.AddHandler(UIElement.KeyDownEvent, (KeyEventHandler)this.mainWin_keydown, true);
         } // Constructor
 
-        
+
         //// setup_board_display sets up the lines and stones hit grids.  Game uses
         //// this to call back on the main UI when constructing a Game.  This also
         //// handles when the game gets reset to a new game from a file or starting
         //// fresh new game.
         ////
-        public void SetupBoardDisplay(Game new_game) {
+        public void SetupBoardDisplay (Game new_game) {
             if (this.prevSetupSize == 0) {
                 // First time setup.
                 this.SetupLinesGrid(new_game.Board.Size);
@@ -133,7 +155,7 @@ F1 produces this help.
                 if (cur_move != null)
                     MainWindowAux.RemoveCurrentStoneAdornment(g, cur_move);
                 // Remove stones and adornments, so don't just loop over stones.
-                foreach (var elt in g.Children.OfType<UIElement>().Where((o) => !(o is Label)).ToList()) {
+                foreach (var elt in g.Children.OfType<UIElement>().Where((o) => !(o is TextBlock)).ToList()) {
                     // Only labels in stones grid should be row/col labels
                     // because adornments are inside ViewBoxes.
                     g.Children.Remove(elt);
@@ -150,21 +172,24 @@ F1 produces this help.
             }
             else
                 throw new Exception("Haven't implemented changing board size for new games.");
-            this.InitializeTreeView();
         }
-
 
         //// SetupLinesGrid takes an int for the board size (as int) and returns a WPF Grid object for
         //// adding to the MainWindow's Grid.  The returned Grid contains lines for the Go board.
         ////
         private Grid SetupLinesGrid (int size) {
             Debug.Assert(size >= Game.MinBoardSize && size <= Game.MaxBoardSize,
-                         "Board size must be between " + Game.MinBoardSize + 
+                         "Board size must be between " + Game.MinBoardSize +
                          " and " + Game.MaxBoardSize + " inclusively.");
             // <Grid ShowGridLines="False" Background="#FFD7B264" Grid.RowSpan="2" HorizontalAlignment="Stretch" Margin="2"
             //       Name="boardGrid" VerticalAlignment="Stretch" 
             //       Width="{Binding ActualHeight, RelativeSource={RelativeSource Self}}" >
-            var g = this.boardGrid;
+            //
+            //var g = this.boardGrid;
+            // On win8, need user control for setting stones focus, and win8 tooling doesn't set this.boardGrid.
+            var g = (Grid)this.inputFocus.FindName("boardGrid");
+            this.boardGrid = g;
+            //Grid g = ((Grid)this.inputFocus.Content).Children[0] as Grid;
             MainWindowAux.DefineLinesColumns(g, size);
             MainWindowAux.DefineLinesRows(g, size);
             MainWindowAux.PlaceLines(g, size);
@@ -185,8 +210,12 @@ F1 produces this help.
         /// SetupStonesGrid takes an int for the size of the go board and sets up
         /// this.stonesGrid to which we add stones and hit test mouse clicks.
         ///
-        private void SetupStonesGrid(int size) {
-            var g = this.stonesGrid;
+        private void SetupStonesGrid (int size) {
+            //var g = this.stonesGrid;
+            // On win8, need user control for setting stones focus, and win8 tooling doesn't set this.stonesGrid.
+            var g = (Grid)this.inputFocus.FindName("stonesGrid");
+            this.stonesGrid = g;
+            //Grid g = ((Grid)this.inputFocus.Content).Children[1] as Grid;
             // Define rows and columns
             for (int i = 0; i < size + 2; i++) {
                 var col_def = new ColumnDefinition();
@@ -204,40 +233,139 @@ F1 produces this help.
         //// Input Handling
         //// 
 
-        private void helpButtonLeftDown(object sender, RoutedEventArgs e) {
-            MessageBox.Show(help_string, "SGFEd Help");
+        // Attempted hack around winRT's internals stealing focus to hidden root ScrollViewer.
+        //
+        //protected override void OnNavigatedTo (NavigationEventArgs e) {
+        //    MainWindow mainWin = e.Parameter as MainWindow;
+        //    // These don't work because mainwin's frame is always null (here and in constructor)
+        //    //mainWin.Frame.KeyDown += this.mainWin_keydown;
+        //    //mainWin.Frame.AddHandler(UIElement.KeyDownEvent, (KeyEventHandler)this.mainWin_keydown, true);
+        //}
+
+        // Another attempted hack around for winRT stealing focus to hidden root ScrollViewer ...
+        // OnLostFocus installed this handler on the ScrollViewer at the top of the UI tree to try to
+        // keep focus down on the user control so that mainwin_keydown gets called.
+        //
+        // This doesn't work because an infinite loop occurs with the scrollviewer getting focus,
+        // then the sf_GotFocus handler putting it back on stones, then scrollviewer getting focus again.
+        //
+        //void sv_GotFocus (object sender, RoutedEventArgs e) {
+        //    this.FocusOnStones();
+        //}
+        //private bool hackDone = false;
+
+        // This is what OnLostFocus printed when focus was appropriately down in my UI elements,
+        // specifically when hitting esc with focus in the comment box.
+        //
+        //Lost focus. source: Windows.UI.Xaml.Controls.TextBox, new focus: SgfEdWin8.FocusableInputControl
+        //SgfEdWin8.FocusableInputControl
+        // => Windows.UI.Xaml.Controls.Grid
+        // => SgfEdWin8.MainWindow
+        // => Windows.UI.Xaml.Controls.ContentPresenter
+        // => Windows.UI.Xaml.Controls.Border
+        // => Windows.UI.Xaml.Controls.Frame
+        // => Windows.UI.Xaml.Controls.Border
+        // => Windows.UI.Xaml.Controls.ScrollContentPresenter
+        // => Windows.UI.Xaml.Controls.Grid
+        // => Windows.UI.Xaml.Controls.Border
+        // => Windows.UI.Xaml.Controls.ScrollViewer
+        //
+        // This is what OnLostFocus printed when focus was snatched by internal winRT code.
+        // Focus is all the way on hidden root UI element, so winmain_keydown never gets called,
+        // even if installed manually with AddHandler to always get invoked, even for handled input.
+        //
+        //Lost focus. source: SgfEdWin8.FocusableInputControl, new focus: Windows.UI.Xaml.Controls.ScrollViewer
+        //Windows.UI.Xaml.Controls.ScrollViewer
+
+        //// OnLostFocus works around winRT bug that steals focus to a hidden root ScrollViewer,
+        //// disabling MainWindow's mainwin_keydown handler.  Can't just call FocusOnStones because
+        //// if commentBox gets focus, want it to be there, and it turns out all the command buttons
+        //// quit working too since this somehow runs first, puts focus on stones, then button never
+        //// gets click event.
+        ////
+        private ScrollViewer hiddenRootScroller = null;
+        protected override void OnLostFocus (RoutedEventArgs e) {
+            if (hiddenRootScroller == null) {
+                var d = FocusManager.GetFocusedElement() as DependencyObject;
+                while (d.GetType() != typeof(ScrollViewer)) {
+                    d = VisualTreeHelper.GetParent(d);
+                }
+                hiddenRootScroller = d as ScrollViewer;
+            }
+            if (FocusManager.GetFocusedElement() == hiddenRootScroller)
+                this.FocusOnStones();
+
+            // Diagnostic output that helped show FocusOnStones wasn't working because something
+            // deep in winRT was stealing focus to a hidden root ScrollViewer, which mean mainwin_keydown
+            // was never called.
+            //
+            //System.Diagnostics.Debug.WriteLine(string.Format("\n\nLost focus. source: {0}, new focus: {1}", e.OriginalSource,
+            //                                                 FocusManager.GetFocusedElement()));
+            //base.OnLostFocus(e);
+            //DependencyObject d = FocusManager.GetFocusedElement() as DependencyObject;
+            //string output = string.Empty;
+            //while (d != null) {
+            //    if (output.Length > 0) {
+            //        output = string.Concat(output, "\n => ");
+            //    }
+            //    output += d.ToString();
+            //    d = VisualTreeHelper.GetParent(d);
+            //}
+            //System.Diagnostics.Debug.WriteLine(output);
+
+            // This was a hack around attempt to put focus handler on the root ScrollViewer that put focus on stones.
+            // This doesn't work because an infinite loop occurs with the scrollviewer getting focus,
+            // then the sf_GotFocus handler putting it back on stones, then scrollviewer getting focus again.
+            //
+            //if (!hackDone) {
+            //    d = FocusManager.GetFocusedElement() as DependencyObject;
+            //    while (d.GetType() != typeof(Windows.UI.Xaml.Controls.ScrollViewer)) {
+            //        d = VisualTreeHelper.GetParent(d);
+            //    }
+            //    var sv = d as Windows.UI.Xaml.Controls.ScrollViewer;
+            //    sv.GotFocus += sv_GotFocus;
+            //    hackDone = true;
+            //}
+        }
+
+
+        private void helpButtonLeftDown (object sender, RoutedEventArgs e) {
+            //MessageDialog.Show(help_string, "SGFEd Help");
         }
 
         //// StonesMouseLeftDown handles creating a move or adding adornments
         //// to the current move.
         ////
-        private void StonesMouseLeftDown(object sender, MouseButtonEventArgs e) {
+        private async void StonesPointerPressed (object sender, PointerRoutedEventArgs e) {
             var g = (Grid)sender;
-            var cell = MainWindowAux.GridPixelsToCell(g, e.GetPosition(g).X, e.GetPosition(g).Y);
-            //MessageBox.Show(cell.X.ToString() + ", " + cell.Y.ToString());
-            // cell x,y is col, row from top left, and board is row, col.
-            if (Keyboard.Modifiers == ModifierKeys.Shift)
-                MainWindowAux.AddOrRemoveAdornment(this.stonesGrid, (int)cell.Y, (int)cell.X, AdornmentKind.Square,
-                                                      this.Game);
-            else if (Keyboard.Modifiers == ModifierKeys.Control)
-                MainWindowAux.AddOrRemoveAdornment(this.stonesGrid, (int)cell.Y, (int)cell.X, AdornmentKind.Triangle,
-                                                      this.Game);
-            else if (Keyboard.Modifiers == ModifierKeys.Alt)
-                MainWindowAux.AddOrRemoveAdornment(this.stonesGrid, (int)cell.Y, (int)cell.X, AdornmentKind.Letter,
-                                                      this.Game);
-            else {
-                var move = this.Game.MakeMove((int)cell.Y, (int)cell.X);
-                if (move != null)
-                    this.AdvanceToStone(move);
+            if (e.GetCurrentPoint(g).Properties.IsLeftButtonPressed) {
+                var cell = MainWindowAux.GridPixelsToCell(g, e.GetCurrentPoint(g).Position.X, 
+                                                          e.GetCurrentPoint(g).Position.Y);
+                //MessageDialog.Show(cell.X.ToString() + ", " + cell.Y.ToString());
+                // cell x,y is col, row from top left, and board is row, col.
+                if (this.IsKeyPressed(VirtualKey.Shift))
+                    await MainWindowAux.AddOrRemoveAdornment(this.stonesGrid, (int)cell.Y, (int)cell.X, 
+                                                             AdornmentKind.Square, this.Game);
+                else if (this.IsKeyPressed(VirtualKey.Control))
+                    await MainWindowAux.AddOrRemoveAdornment(this.stonesGrid, (int)cell.Y, (int)cell.X, 
+                                                             AdornmentKind.Triangle, this.Game);
+                else if (this.IsKeyPressed(VirtualKey.Menu))
+                    await MainWindowAux.AddOrRemoveAdornment(this.stonesGrid, (int)cell.Y, (int)cell.X, 
+                                                             AdornmentKind.Letter, this.Game);
+                else {
+                    var move = await this.Game.MakeMove((int)cell.Y, (int)cell.X);
+                    if (move != null)
+                        this.AdvanceToStone(move);
+                }
+                this.FocusOnStones();
             }
-            this.FocusOnStones();
         }
 
         //// passButton_left_down handles creating a passing move.  Also,
         //// mainwin_keydown calls this to handle c-p.
         ////
-        private void passButton_left_down(object sender, RoutedEventArgs e) {
-            MessageBox.Show("Need to implement passing move.");
+        private async void passButton_left_down (object sender, RoutedEventArgs e) {
+            await GameAux.Message("Need to implement passing move.");
         }
 
         //// prevButton_left_down handles the rewind one move button.  Also,
@@ -246,24 +374,22 @@ F1 produces this help.
         //// adornment.  This function assumes the game is started, and there's a
         //// move to rewind.
         ////
-        public void prevButtonLeftDown(object self, RoutedEventArgs e) {
+        public void prevButtonLeftDown (object self, RoutedEventArgs e) {
             var move = this.Game.UnwindMove();
             //remove_stone(main_win.FindName("stonesGrid"), move)
-            if (! move.IsPass)
+            if (!move.IsPass)
                 MainWindowAux.RemoveStone(this.stonesGrid, move);
             if (move.Previous != null)
                 this.AddCurrentAdornments(move.Previous);
             else
                 MainWindowAux.RestoreAdornments(this.stonesGrid, this.Game.SetupAdornments);
+            //self._update_tree_view(move.Previous);
             if (this.Game.CurrentMove != null) {
                 var m = this.Game.CurrentMove;
-                this.UpdateTreeView(m);
                 this.UpdateTitle(m.Number, m.IsPass);
             }
-            else {
-                this.UpdateTreeView(null);
+            else
                 this.UpdateTitle(0);
-            }
             this.FocusOnStones();
         }
 
@@ -273,14 +399,18 @@ F1 produces this help.
         //// adornment.  This function assumes the game has started, and there's
         //// a next move to replay.
         ////
-        public void nextButtonLeftDown(object next_button, RoutedEventArgs e) {
+        public async void nextButtonLeftDown(object next_button, RoutedEventArgs e) {
+            await DoNextButton();
+        }
+        // Need this to re-use this functionality where we need to use 'await'.  Can't
+        // 'await' nextButtonLeftDown since it must be 'async void'.
+        public async Task DoNextButton () {
             var move = this.Game.ReplayMove();
             if (move == null) {
-                MessageBox.Show("Can't play branch further due to conflicting stones on the board.");
+                await GameAux.Message("Can't play branch further due to conflicting stones on the board.");
                 return;
             }
             this.AdvanceToStone(move);
-            this.UpdateTreeView(move);
             this.FocusOnStones();
         }
 
@@ -288,7 +418,7 @@ F1 produces this help.
         //// function signals an error if the game has not started, or no move has
         //// been played.
         ////
-        private void homeButtonLeftDown(object home_button, RoutedEventArgs e) {
+        private void homeButtonLeftDown (object home_button, RoutedEventArgs e) {
             this.Game.GotoStart();
             this.UpdateTitle(0);
             this.FocusOnStones();
@@ -298,8 +428,8 @@ F1 produces this help.
         //// selected branches in each move.  This function signals an error if the
         //// game has not started, or no move has been played.
         ////
-        private void endButtonLeftDown(object end_button, RoutedEventArgs e) {
-            this.Game.GotoLastMove();
+        private async void endButtonLeftDown (object end_button, RoutedEventArgs e) {
+            await this.Game.GotoLastMove();
             this.FocusOnStones();
         }
 
@@ -317,15 +447,16 @@ F1 produces this help.
 
 
         //// _advance_to_stone displays move, which as already been added to the
-        //// board and readied for rendering.  We add the stone with no current adornment because
-        //// that function does the basic work, and then immediately add the adornment.
+        //// board and readied for rendering.  We add the stone with no current
+        //// adornment and then immediately add the adornment because some places in
+        //// the code need to just add the stone to the display with no adornments.
         ////
         private void AdvanceToStone (Move move) {
             this.AddNextStoneNoCurrent(move);
             this.AddCurrentAdornments(move);
             this.UpdateTitle(move.Number, move.IsPass);
         }
-        
+
         //// add_next_stone_no_current adds a stone to the stones grid for move,
         //// removes previous moves current move marker, and removes previous moves
         //// adornments.  This is used for advancing to a stone for replay move or
@@ -333,7 +464,7 @@ F1 produces this help.
         //// adornments for pre-existing moves).  The Game class also uses this.
         ////
         public void AddNextStoneNoCurrent (Move move) {
-            if (! move.IsPass)
+            if (!move.IsPass)
                 //add_stone(main_win.FindName("stonesGrid"), m.row, m.column, m.color)
                 MainWindowAux.AddStone(this.stonesGrid, move.Row, move.Column, move.Color);
             // Must remove current adornment before adding it elsewhere.
@@ -363,67 +494,84 @@ F1 produces this help.
         //// there by default originally.  Game also uses this.
         ////
         public void UpdateTitle (int num, bool is_pass = false, string filebase = null) {
-            var title = this.Title;
-            var pass_str = is_pass ? " Pass" : "";
-            if (filebase != null)
-                this.Title = "SGFEd -- " + filebase + ";  Move " + num.ToString() + pass_str;
-            else {
-                var tail = title.IndexOf("Move ");
-                Debug.Assert(tail != -1, "Title doesn't have move in it?!");
-                if (tail != -1)
-                    this.Title = title.Substring(0, tail + 5) + num.ToString() + pass_str;
-            }
+            //var title = this.Title;
+            //var pass_str = is_pass ? " Pass" : "";
+            //if (filebase != null)
+            //    this.Title = "SGFEd -- " + filebase + ";  Move " + num.ToString() + pass_str;
+            //else {
+            //    var tail = title.IndexOf("Move ");
+            //Debug.Assert(tail != -1, "Title doesn't have move in it?!");
+            //    if (tail != -1)
+            //        this.Title = title.Substring(0, tail + 5) + num.ToString() + pass_str;
+            //}
         }
 
 
         //// openButton_left_down prompts to save current game if dirty and then
         //// prompts for a .sgf file to open.
         ////
-        private void openButton_left_down(object open_button, RoutedEventArgs e) {
-            this.CheckDirtySave();
-            var dlg = new OpenFileDialog();
-            dlg.FileName = "game01"; // Default file name
-            dlg.DefaultExt = ".sgf"; // Default file extension
-            dlg.Filter = "SGF files (.sgf)|*.sgf"; // Filter files by extension
-            var result = dlg.ShowDialog(); // None, True, or False
-            // Not sure why result is nullable, nothing in docs, does not distinguish cancel from red X.
-            if (result.HasValue && result.Value) {
+        private async void openButton_left_down(object open_button, RoutedEventArgs e) {
+            await DoOpenButton();
+        }
+        // Need this to re-use this functionality where we need to use 'await'.  Can't
+        // 'await' openButtonLeftDown since it must be 'async void'.
+        private async Task DoOpenButton () {
+            await this.CheckDirtySave();
+            var fp = new FileOpenPicker();
+            fp.FileTypeFilter.Add(".sgf");
+            fp.FileTypeFilter.Add(".txt");
+            // This randomly throws HRESULT: 0x80070005 (E_ACCESSDENIED))
+            // UnauthorizedAccessException, seems to be when comment box has focus.
+            StorageFile sf;
+            try {
+                sf = await fp.PickSingleFileAsync();
+            }
+            catch (UnauthorizedAccessException einfo) {
+                GameAux.Message(einfo.Message);
+                return;
+            }
+            if (sf != null) {
                 try {
-                    var pg = ParserAux.ParseFile(dlg.FileName);
-                    this.Game = GameAux.CreateParsedGame(pg, this);
-                    this.Game.Filename = dlg.FileName;
-                    this.Game.Filebase = dlg.FileName.Substring(dlg.FileName.LastIndexOf('\\') + 1);
+                    // fixing win8 -- set flag to disable UI due to await on parsing
+                    var pg = await ParserAux.ParseFile(sf);
+                    this.Game = await GameAux.CreateParsedGame(pg, this);
+                    this.Game.Storage = sf;
+                    var name = sf.Name;
+                    this.Game.Filename = name;
+                    this.Game.Filebase = name.Substring(name.LastIndexOf('\\') + 1);
                     this.UpdateTitle(0, false, this.Game.Filebase);
                 }
-                catch (FileFormatException err) {
+                catch (IOException err) {
                     // Essentially handles unexpected EOF or malformed property values.
-                    MessageBox.Show(err.Message + err.StackTrace);
+                    GameAux.Message(err.Message + err.StackTrace);
                 }
                 catch (Exception err) {
-                    // No code paths should throw from incomplete, unrecoverable state.
+                    // No code paths should throw from incomplete, unrecoverable state, so should be fine to continue.
                     // For example, game state should be intact (other than IsDirty) for continuing.
-                    MessageBox.Show(err.Message + err.StackTrace);
+                    GameAux.Message(err.Message + err.StackTrace);
                 }
             }
             this.FocusOnStones();
         }
 
+
         //// _check_dirty_save prompts whether to save the game if it is dirty.  If
         //// saving, then it uses the game filename, or prompts for one if it is None.
         ////
-        private void CheckDirtySave () {
+        private async Task CheckDirtySave () {
             this.Game.SaveCurrentComment();
             if (this.Game.Dirty &&
-                 MessageBox.Show("Game is unsaved, save it?",
-                                 "Confirm saving file", MessageBoxButton.YesNo) ==
-                    MessageBoxResult.Yes) {
-                string f;
-                if (this.Game.Filename != null)
-                    f = this.Game.Filename;
-                else
-                    f = MainWindowAux.GetSaveFilename();
-                if (f != null)
-                    this.Game.WriteGame(f);
+                    await GameAux.Message("Game is unsaved, save it?", "Confirm saving file",
+                                    new List<string>() {"Yes", "No"}) == GameAux.YesMessage) {
+                StorageFile sf;
+                if (this.Game.Storage != null) {
+                    sf = this.Game.Storage;
+                }
+                else {
+                    sf = await MainWindowAux.GetSaveFilename();
+                }
+                if (sf != null)
+                    await this.Game.WriteGame(sf);
             }
         }
 
@@ -431,54 +579,101 @@ F1 produces this help.
         //// newButton_left_down starts a new game after checking to save the
         //// current game if it is dirty.
         ////
-        private void newButton_left_down(object new_button, RoutedEventArgs e) {
-            this.CheckDirtySave();
-            var dlg = new NewGameDialog();
-            dlg.Owner = this;
-            dlg.ShowDialog();
-            // Not sure why result is nullable, nothing in docs, does not distinguish cancel from red X.
-            if (dlg.DialogResult.HasValue && dlg.DialogResult.Value) {
-                var g = new Game(this, int.Parse(dlg.sizeText.Text), int.Parse(dlg.handicapText.Text), dlg.komiText.Text);
-                if (dlg.blackText.Text != "")
-                    g.PlayerBlack = dlg.blackText.Text;
-                if (dlg.whiteText.Text != "")
-                    g.PlayerWhite = dlg.whiteText.Text;
+        private async void newButton_left_down(object new_button, RoutedEventArgs e) {
+            await DoNewButton();
+        }
+        // Need this to re-use this functionality where we need to use 'await'.  Can't
+        // 'await' newButtonLeftDown since it must be 'async void'.
+        private async Task DoNewButton () {
+            //await GameAux.Message("After solving World Peace, I'll figure out input dialogs in winRT.  " +
+            //                      "For now, create an .sgf file with this line and use the Open command:\n" +
+            //                      "    ;GM[1]FF[4]SZ[19]KM[6.5]PW[WhiteName]PB[BlackName])\n" +
+            //                      "For handicaps, change KM to 0.0 and add stones before the close paren:\n" +
+            //                      "   2: AB[pd][dp]\n" +
+            //                      "   3: AB[pd][dp][pp]\n" +
+            //                      "   4: AB[pd][dp][pp][dd]\n" +
+            //                      "   5: AB[pd][dp][pp][dd][jj]" +
+            //                      "   6: AB[pd][dp][pp][dd][dj][pj]");
+            await this.CheckDirtySave();
+            this.Frame.Navigate(typeof(NewGameDialog), this);
+            while (! this.NewDiaogDone)
+                await Task.Delay(500);
+            if (this.NewDialogInfo != null) {
+                var white = this.NewDialogInfo.Item1;
+                var black = this.NewDialogInfo.Item2;
+                var size = this.NewDialogInfo.Item3;
+                var handicap = this.NewDialogInfo.Item4;
+                var komi = this.NewDialogInfo.Item5;
+                var g = new Game(this, int.Parse(size), int.Parse(handicap), komi);
+                if (black != "")
+                    g.PlayerBlack = black;
+                if (white != "")
+                    g.PlayerWhite = white;
                 this.Game = g;
                 this.UpdateTitle(0, false, "unsaved");
             }
-    
         }
-        
-        
+        // white name, black name, size, handicap, komi ...
+        public bool NewDiaogDone = false;
+        public Tuple<string, string, string, string, string> NewDialogInfo = null;
+
         //// saveButton_left_down saves if game has a file name and is dirty.  If
         //// there's a filename, but the file is up to date, then ask to save-as to
         //// a new name.  Kind of lame to not have explicit save-as button, but work
         //// for now.
         ////
-        private void saveButton_left_down(object save_button, RoutedEventArgs e) {
+        private async void saveButton_left_down(object save_button, RoutedEventArgs e) {
+            await DoSaveButton();
+        }
+        // Need this to re-use this functionality where we need to use 'await'.  Can't
+        // 'await' saveButtonLeftDown since it must be 'async void'.
+        private async Task DoSaveButton () {
             if (this.Game.Filename != null) {
                 // See if UI has comment edits and persist to model.
                 this.Game.SaveCurrentComment();
                 if (this.Game.Dirty)
-                    this.Game.WriteGame();
-                else if (MessageBox.Show("Game is already saved.  " +
-                                         "Do you want to save it to a new name?",
-                                         "Confirm save-as", MessageBoxButton.YesNo) ==
-                         MessageBoxResult.Yes)
-                    this.SaveAs();
+                    await this.Game.WriteGame();
+                else if (await GameAux.Message("Game is already saved.  " +
+                                               "Do you want to save it to a new name?",
+                                               "Confirm save-as", new List<string>() { "Yes", "No" }) ==
+                         GameAux.YesMessage)
+                    await this.SaveAs();
             }
             else
-                this.SaveAs();
+                await this.SaveAs();
         }
 
-        private void SaveAs () {
-            var f = MainWindowAux.GetSaveFilename();
-            if (f != null) {
+        private async Task SaveAs () {
+            var sf = await MainWindowAux.GetSaveFilename();
+            if (sf != null) {
                 this.Game.SaveCurrentComment(); // Persist UI edits to model.
-                this.Game.WriteGame(f);
+                await this.Game.WriteGame(sf);
             }
         }
 
+
+        //// Looks like win8 is old school and have to manage state of key presses.
+        //// These fields and mainWin_keyup manage whether modifier keys are down
+        //// when processing keyboard or mouse input.
+        ////
+        //// ACTUALLY, SEE mainWin_keyup, figured out how to check withut managing state.
+        ////
+        //private bool CtrlKeyPressed = false;
+        //private bool ShiftKeyPressed = false;
+        //private bool AltKeyPressed = false;
+
+        //private void mainWin_keyup (object sender, KeyRoutedEventArgs e) {
+        //    if (e.Key == VirtualKey.Control) this.CtrlKeyPressed = false;
+        //    if (e.Key == VirtualKey.Shift) this.ShiftKeyPressed = false;
+        //    if (e.Key == VirtualKey.Menu) this.AltKeyPressed = false;
+        //}
+
+        //// IsKeyPressed takes a modifier key and determins if it is down during input handling.
+        ////
+        private bool IsKeyPressed (VirtualKey key) {
+            var x = (CoreWindow.GetForCurrentThread().GetKeyState(key) & CoreVirtualKeyStates.Down) != 0;
+            return x;
+        }
 
         //// mainWin_keydown dispatches arrow keys for rewinding, replaying, and
         //// choosing branches.  These events always come, catching arrows,
@@ -488,254 +683,140 @@ F1 produces this help.
         //// selection, working with update_branch_combo to ensure stones grid keeps
         //// focus.
         ////
-        private void mainWin_keydown (object sender, KeyEventArgs e) {
-            var win = (MainWindow)sender;
-            if (e.Key == Key.Escape) {
+        private async void mainWin_keydown (object sender, KeyRoutedEventArgs e) {
+            // Diagnostics used to figure out winRT's internals were stealing focus to root ScrollViewer.
+            //System.Diagnostics.Debug.WriteLine("Keyboard from " + sender + ", source: " + e.OriginalSource);
+
+            // Turns out don't need to manage state of modifier keys.  See IsKeyPressed.
+            //if (e.Key == VirtualKey.Control) {
+            //    this.CtrlKeyPressed = true;
+            //    return;
+            //} else if (e.Key == VirtualKey.Shift) {
+            //    this.ShiftKeyPressed = true;
+            //    return;
+            //} else if (e.Key == VirtualKey.Menu) {
+            //    this.AltKeyPressed = true;
+            //    return;
+            //}
+            MainWindow win;
+            if (sender.GetType() == typeof(MainWindow))
+                win = (MainWindow)sender;
+            else
+                win = this;
+            //var win = (MainWindow)sender;
+            if (e.Key == VirtualKey.Escape) {
                 win.FocusOnStones();
                 e.Handled = true;
                 return;
             }
             // Previous move
-            if (e.Key == Key.Left && (! this.commentBox.IsKeyboardFocused) && win.Game.CanUnwindMove()) {
+            if (e.Key == VirtualKey.Left && (this.commentBox.FocusState != FocusState.Keyboard && win.Game.CanUnwindMove())) {
                 this.prevButtonLeftDown(null, null);
                 e.Handled = true;
             }
             // Next move
-            else if (e.Key == Key.Right) {
-                if (this.commentBox.IsKeyboardFocused)
+            else if (e.Key == VirtualKey.Right) {
+                if (this.commentBox.FocusState == FocusState.Keyboard)
                     return;
                 if (win.Game.CanReplayMove())
-                    this.nextButtonLeftDown(null, null);
+                    await this.DoNextButton();
                 e.Handled = true;
             }
             // Initial board state
-            else if (e.Key == Key.Home && (! this.commentBox.IsKeyboardFocused) && win.Game.CanUnwindMove()) {
+            else if (e.Key == VirtualKey.Home && (this.commentBox.FocusState != FocusState.Keyboard) && win.Game.CanUnwindMove()) {
                 this.homeButtonLeftDown(null, null);
                 e.Handled = true;
             }
             // Last move
-            else if (e.Key == Key.End && (! this.commentBox.IsKeyboardFocused) && win.Game.CanReplayMove()) {
-                this.Game.GotoLastMove();
+            else if (e.Key == VirtualKey.End && (this.commentBox.FocusState != FocusState.Keyboard) && win.Game.CanReplayMove()) {
+                await this.Game.GotoLastMove();
                 e.Handled = true;
             }
             // Move branch down
-            else if (e.Key == Key.Down && Keyboard.Modifiers == ModifierKeys.Control &&
-                     (! this.commentBox.IsKeyboardFocused)) {
-                this.Game.MoveBranchDown();
+            else if (e.Key == VirtualKey.Down && this.IsKeyPressed(VirtualKey.Control) &&
+                     (this.commentBox.FocusState != FocusState.Keyboard)) {
+                await this.Game.MoveBranchDown();
                 e.Handled = true;
             }
             // Move branch up
-            else if (e.Key == Key.Up && Keyboard.Modifiers == ModifierKeys.Control &&
-                     (! this.commentBox.IsKeyboardFocused)) {
-                this.Game.MoveBranchUp();
+            else if (e.Key == VirtualKey.Up && this.IsKeyPressed(VirtualKey.Control) &&
+                     (this.commentBox.FocusState != FocusState.Keyboard)) {
+                await this.Game.MoveBranchUp();
                 e.Handled = true;
             }
             // Display next branch
-            else if (e.Key == Key.Down && this.branchCombo.Items.Count > 0 &&
-                     (! this.commentBox.IsKeyboardFocused)) {
+            else if (e.Key == VirtualKey.Down && this.branchCombo.Items.Count > 0 &&
+                     (this.commentBox.FocusState != FocusState.Keyboard)) {
                 MainWindowAux.SetCurrentBranchDown(this.branchCombo, this.Game);
                 e.Handled = true;
             }
             // Display previous branch
-            else if (e.Key == Key.Up && this.branchCombo.Items.Count > 0 &&
-                     (! this.commentBox.IsKeyboardFocused)) {
+            else if (e.Key == VirtualKey.Up && this.branchCombo.Items.Count > 0 &&
+                     (this.commentBox.FocusState != FocusState.Keyboard)) {
                 MainWindowAux.SetCurrentBranchUp(this.branchCombo, this.Game);
                 e.Handled = true;
             }
             // Opening a file
-            else if (e.Key == Key.O && Keyboard.Modifiers == ModifierKeys.Control) {
-                this.openButton_left_down(this.openButton, null);
-                e.Handled = true;
-            }
-            // Testing Game Tree Layout
-            else if (e.Key == Key.T && Keyboard.Modifiers == ModifierKeys.Control) {
-                this.DrawGameTree();
+            else if (e.Key == VirtualKey.O && //this.CtrlKeyPressed) 
+                     this.IsKeyPressed(VirtualKey.Control)) {
+                await this.DoOpenButton();
                 e.Handled = true;
             }
             // Explicit Save As
-            else if (e.Key == Key.S && Keyboard.Modifiers == (ModifierKeys.Control | ModifierKeys.Alt)) {
-                this.SaveAs();
+            else if (e.Key == VirtualKey.S && 
+                     this.IsKeyPressed(VirtualKey.Control) && this.IsKeyPressed(VirtualKey.Menu)) {
+                await this.SaveAs();
                 this.FocusOnStones();
                 e.Handled = true;
             }
             // Saving
-            else if (e.Key == Key.S && Keyboard.Modifiers == ModifierKeys.Control) {
-                this.saveButton_left_down(this.saveButton, null);
+            else if (e.Key == VirtualKey.S && this.IsKeyPressed(VirtualKey.Control)) {
+                await this.DoSaveButton();
                 this.FocusOnStones();
                 e.Handled = true;
             }
             // Save flipped game for opponent's view
-            else if (e.Key == Key.F &&
-                     Keyboard.Modifiers == (ModifierKeys.Control | ModifierKeys.Alt) &&
-                     !this.commentBox.IsKeyboardFocused) {
-                var f = MainWindowAux.GetSaveFilename("Save Flipped File");
-                if (f != null)
-                    this.Game.WriteFlippedGame(f);
+            else if (e.Key == VirtualKey.F &&
+                     this.IsKeyPressed(VirtualKey.Control) && this.IsKeyPressed(VirtualKey.Menu) &&
+                     this.commentBox.FocusState != FocusState.Keyboard) {
+                var sf = await MainWindowAux.GetSaveFilename("Save Flipped File");
+                if (sf != null)
+                    await this.Game.WriteFlippedGame(sf);
                 this.FocusOnStones();
                 e.Handled = true;
             }
             // New file
-            else if (e.Key == Key.N && Keyboard.Modifiers == ModifierKeys.Control) {
-                this.newButton_left_down(this.newButton, null);
+            else if (e.Key == VirtualKey.N && this.IsKeyPressed(VirtualKey.Control)) {
+                await this.DoNewButton();
                 e.Handled = true;
             }
             // Cutting a sub tree
-            else if ((e.Key == Key.Delete || (e.Key == Key.X && Keyboard.Modifiers == ModifierKeys.Control)) &&
-                     (! this.commentBox.IsKeyboardFocused) &&
+            else if ((e.Key == VirtualKey.Delete || (e.Key == VirtualKey.X && this.IsKeyPressed(VirtualKey.Control))) &&
+                     (this.commentBox.FocusState != FocusState.Keyboard) &&
                      win.Game.CanUnwindMove() &&
-                     MessageBox.Show("Cut current move from game tree?",
-                                     "Confirm cutting move", MessageBoxButton.YesNo) ==
-                         MessageBoxResult.Yes) {
+                     await GameAux.Message("Cut current move from game tree?",
+                                           "Confirm cutting move", new List<string>() {"Yes", "No"}) ==
+                         GameAux.YesMessage) {
                 win.Game.CutMove();
                 e.Handled = true;
             }
             // Pasting a sub tree
-            else if (e.Key == Key.V && Keyboard.Modifiers == ModifierKeys.Control &&
-                     !this.commentBox.IsKeyboardFocused) {
+            else if (e.Key == VirtualKey.V && this.IsKeyPressed(VirtualKey.Control) &&
+                     this.commentBox.FocusState != FocusState.Keyboard) {
                 if (win.Game.CanPaste())
-                    win.Game.PasteMove();
+                    await win.Game.PasteMove();
                 else
-                    MessageBox.Show("No cut move to paste at this time.");
+                    await GameAux.Message("No cut move to paste at this time.");
                 e.Handled = true;
             }
             // Help
-            else if (e.Key == Key.F1) {
-                MessageBox.Show(help_string, "SGFEd Help");
+            else if (e.Key == VirtualKey.F1) {
+                await GameAux.Message(help_string, "SGFEd Help");
                 e.Handled = true;
             }
         } // mainWin_keydown
 
 
-        ////
-        //// Tree View of Game Tree
-        ////
-
-
-        //// treeViewMoveMap maps Moves and ParsedNodes to TreeViewNodes.  This aids in moving tree
-        //// view to show certain moves, moving the current move highlight, etc.  We could put a cookie
-        //// on Move and ParsedNode, but that feels too much like the model knowing about the view ...
-        //// yeah, Adornments have a cookie, but oh well, and they are arguably viewmodel :-).
-        ////
-        private Dictionary<object, TreeViewNode> treeViewMoveMap = new Dictionary<object, TreeViewNode>();
-        private Grid treeViewSelectedItem;
-
-        //// InitializeTreeView is used by SetupBoardDisplay.  It clears the canvas and sets its size.
-        ////
-        private void InitializeTreeView () {
-            var canvas = this.gameTreeView;
-            canvas.Children.RemoveRange(0, canvas.Children.Count);
-            this.treeViewMoveMap.Clear();
-            this.SetTreeViewSize();
-        }
-
-        private void SetTreeViewSize () {
-            var canvas = this.gameTreeView;
-            canvas.Width = GameAux.TreeViewGridColumns * MainWindowAux.treeViewGridCellSize;
-            canvas.Height = GameAux.TreeViewGridRows * MainWindowAux.treeViewGridCellSize;
-        }
-
-
-        //// DrawGameTree gets a view model of the game tree, creates objects to put on the canvas,
-        //// and sets up the mappings for updating the view as we move around the game tree.  This
-        //// also creates a special "start" mapping to get to the first view model node.
-        ////
-        private void DrawGameTree () {
-            if (this.TreeViewDisplayed())
-                //TODO: this is temporary, should re-use objects from this.treeViewMoveMap
-                this.InitializeTreeView();
-            var treeModel = GameAux.GetGameTreeModel(this.Game);
-            // Set canvas size in case computing tree model had to grow model structures.
-            this.SetTreeViewSize();
-            var canvas = this.gameTreeView;
-            for (var i = 0; i < GameAux.TreeViewGridRows; i++) {
-                for (var j = 0; j < GameAux.TreeViewGridColumns; j++) {
-                    var curModel = treeModel[i, j];
-                    if (curModel != null) {
-                        //TODO: get previous grid from uncleared tree view map copy and update it
-                        // appropriately.  Also, probably want some flag or control that if did cut/paste
-                        // operation, then remove objects, handle renumbering of labels in grids, etc.
-                        // probably just toss whole tree on paste and re-gen for simplicity.
-                        //if (this.treeViewMoveMap.ContainsKey(curModel.Node)
-                        //    eltGrid = ((TreeViewNode)this.treeViewMoveMap[curModel.Node]).Cookie;
-                        if (curModel.Kind != TreeViewNodeKind.LineBend) {
-                            var eltGrid = MainWindowAux.NewTreeViewItemGrid(curModel);
-                            curModel.Cookie = eltGrid;
-                            var node = curModel.Node;
-                            //if (node != null)
-                            //    // If node is null, then it is a line bend node.
-                                this.treeViewMoveMap[curModel.Node] = curModel;
-                            Canvas.SetLeft(eltGrid, curModel.Column * MainWindowAux.treeViewGridCellSize);
-                            Canvas.SetTop(eltGrid, curModel.Row * MainWindowAux.treeViewGridCellSize);
-                            Canvas.SetZIndex(eltGrid, 1);
-                            canvas.Children.Add(eltGrid);
-                        }
-                    }
-                }
-            }
-            this.treeViewMoveMap.Remove(treeModel[0, 0].Node);
-            this.treeViewMoveMap["start"] = treeModel[0, 0];
-            MainWindowAux.DrawGameTreeLines(canvas, treeModel[0, 0]); 
-            Grid cookie = (Grid)treeModel[0, 0].Cookie;
-            cookie.Background = new SolidColorBrush(Colors.LightSkyBlue);
-            this.treeViewSelectedItem = cookie;
-        }
-
-
-        //// UpdateTreeView moves the current move highlighting as the user moves around in the
-        //// tree.  Various command handlers call this after they update the model.  Eventually,
-        //// this will look at some indication to redraw whole tree (cut, paste, maybe add move).
-        ////
-        private void UpdateTreeView (Move move) {
-            // TODO: remove this check when fully integrated and assume tree view is always there.
-            if ( ! this.TreeViewDisplayed())
-                return;
-            TreeViewNode item = this.TreeViewNodeForMove(move);
-            Grid itemCookie = ((Grid)item.Cookie);
-            // Update current move shading and bring into view.
-            var sitem = this.treeViewSelectedItem;
-            this.treeViewSelectedItem = itemCookie;
-            sitem.Background = new SolidColorBrush(Colors.Transparent);
-            itemCookie.Background = new SolidColorBrush(Colors.LightSkyBlue);
-            itemCookie.BringIntoView(new Rect((new Size(MainWindowAux.treeViewGridCellSize * 2, 
-                                                        MainWindowAux.treeViewGridCellSize * 2))));
-        }
-
-        //// TreeViewDipslayed returns whether there is a tree view displayed, abstracting the
-        //// somewhat informal way we determine this state.  Eventually, the tree view will always
-        //// be there and initialized or up to date.
-        ////
-        private bool TreeViewDisplayed () {
-            return this.treeViewMoveMap.ContainsKey("start");
-        }
-
-        //// TreeViewNodeForMove returns the TreeViewNode representing the view model for move.
-        //// Eventually this will handle having to add moves or redraw whole tree due to big
-        //// operations.
-        ////
-        private TreeViewNode TreeViewNodeForMove (Move move) {
-            if (move == null)
-                return this.treeViewMoveMap["start"];
-            else if (this.treeViewMoveMap.ContainsKey(move))
-                return this.treeViewMoveMap[move];
-            else if (move.ParsedNode != null && this.treeViewMoveMap.ContainsKey(move.ParsedNode)) {
-                // Replace parsed node mapping with move mapping.  Once rendered, the move is what
-                // we track, where new moves get hung, etc.
-                var node = this.treeViewMoveMap[move.ParsedNode];
-                this.treeViewMoveMap.Remove(move.ParsedNode);
-                this.treeViewMoveMap[move] = node;
-                return node;
-            }
-            else
-                // TODO: figure out what really to do here.
-                return this.treeViewMoveMap[move] = this.NewTreeViewNode(move);
-        }
-
-        private TreeViewNode NewTreeViewNode(Move move)
-        {
- 	        throw new NotImplementedException();
-        }
-
-        
         ////
         //// Utilities
         ////
@@ -767,7 +848,7 @@ F1 produces this help.
         public void ResetToStart (Move cur_move) {
             var g = this.stonesGrid;
             // Must remove current adornment before other adornments.
-            if (! cur_move.IsPass)
+            if (!cur_move.IsPass)
                 MainWindowAux.RemoveCurrentStoneAdornment(g, cur_move);
             MainWindowAux.RemoveAdornments(g, cur_move.Adornments);
             var size = this.Game.Board.Size;
@@ -813,7 +894,7 @@ F1 produces this help.
                 updating_branch_combo = true;
                 combo.Items.Clear();
                 if (branches != null) {
-                    this.branchLabel.Content = branches.Count.ToString() + " branches:";
+                    this.branchLabel.Text = branches.Count.ToString() + " branches:";
                     combo.IsEnabled = true;
                     combo.Background = new SolidColorBrush(Colors.Yellow);
                     combo.Items.Add("main");
@@ -822,7 +903,7 @@ F1 produces this help.
                     combo.SelectedIndex = branches.IndexOf(next_move);
                 }
                 else {
-                    this.branchLabel.Content = "No branches:";
+                    this.branchLabel.Text = "No branches:";
                     combo.IsEnabled = false;
                     combo.Background = this.branch_combo_background;
                 }
@@ -839,9 +920,12 @@ F1 produces this help.
         //// focus to the stones grid to yank it away from the branches combo and
         //// textbox.
         ////
-        private void FocusOnStones() {
-            this.stonesGrid.Focusable = true;
-            Keyboard.Focus(this.stonesGrid);
+        private void FocusOnStones () {
+            this.inputFocus.IsEnabled = true;
+            this.inputFocus.IsTabStop = true;
+            this.inputFocus.IsHitTestVisible = true;
+            this.inputFocus.Focus(FocusState.Pointer);
+            this.inputFocus.Focus(FocusState.Keyboard);
         }
 
         //// add_unrendered_adornment setups all the UI objects to render the
@@ -850,7 +934,7 @@ F1 produces this help.
         //// order, so this just sets up the adornment so that when the move that
         //// triggers it gets displayed, the adornment is ready to replay.  Game uses this.
         ////
-        public void AddUnrenderedAdornments(Adornments a) {
+        public void AddUnrenderedAdornments (Adornments a) {
             MainWindowAux.AddNewAdornment(this.stonesGrid, a, this.Game, false);
         }
 
@@ -900,7 +984,7 @@ F1 produces this help.
         /// corners rather than making little spurs outside the board from the lines
         /// spanning the full width of the first non-border column (if it were uniform width).
         ///
-        internal static void DefineLinesColumns(Grid g, int size) {
+        internal static void DefineLinesColumns (Grid g, int size) {
             g.ColumnDefinitions.Add(def_col(2)); // border space
             g.ColumnDefinitions.Add(def_col(1)); // split first row so line ends in middle of cell
             g.ColumnDefinitions.Add(def_col(1)); // split first row so line ends in middle of cell
@@ -916,7 +1000,7 @@ F1 produces this help.
         //// size/proportion spec passed in.  The lines grid construction and adornments
         //// grids use this.
         ////
-        private static ColumnDefinition def_col(int proportion) {
+        private static ColumnDefinition def_col (int proportion) {
             var col_def = new ColumnDefinition();
             col_def.Width = new GridLength(proportion, GridUnitType.Star);
             return col_def;
@@ -930,7 +1014,7 @@ F1 produces this help.
         /// making little spurs outside the board from the lines spanning the full
         /// height of the first non-border row (if it were uniform height).
         ///
-        internal static void DefineLinesRows(Grid g, int size) {
+        internal static void DefineLinesRows (Grid g, int size) {
             g.RowDefinitions.Add(def_row(2)); // border space
             g.RowDefinitions.Add(def_row(1)); // split first column so line ends in middle of cell
             g.RowDefinitions.Add(def_row(1)); // split first column so line ends in middle of cell
@@ -946,7 +1030,7 @@ F1 produces this help.
         //// size/proportion spec passed in.  The lines grid construction and adornments
         //// grids use this.
         ////
-        private static RowDefinition def_row(int proportion) {
+        private static RowDefinition def_row (int proportion) {
             var row_def = new RowDefinition();
             row_def.Height = new GridLength(proportion, GridUnitType.Star);
             return row_def;
@@ -959,7 +1043,7 @@ F1 produces this help.
         /// meet cleanly in the corners.  Without the special split rows and columns,
         /// the lines cross and leave little spurs in the corners of the board.
         ///
-        internal static void PlaceLines(Grid g, int size) {
+        internal static void PlaceLines (Grid g, int size) {
             g.Children.Add(def_hline(2, size, VerticalAlignment.Top));
             g.Children.Add(def_vline(2, size, HorizontalAlignment.Left));
             for (int i = 3; i < size + 1; i++) {
@@ -975,7 +1059,7 @@ F1 produces this help.
         /// _def_hline defines a horizontal line for _place_lines.  Loc is the grid row,
         /// size the go board size, and alignment pins the line within the grid row.
         ///
-        private static Rectangle def_hline(int loc, int size, VerticalAlignment alignment) {
+        private static Rectangle def_hline (int loc, int size, VerticalAlignment alignment) {
             var hrect = new Rectangle();
             Grid.SetRow(hrect, loc);
             // 0th and 1st cols are border and half of split col.
@@ -990,7 +1074,7 @@ F1 produces this help.
         /// _def_vline defines a vertical line for _place_lines.  Loc is the grid column,
         /// size the go board size, and alignment pins the line within the grid column.
         ///
-        private static Rectangle def_vline(int loc, int size, HorizontalAlignment alignment) {
+        private static Rectangle def_vline (int loc, int size, HorizontalAlignment alignment) {
             var vrect = new Rectangle();
             // 0th and 1st rows are border and half of split col.
             Grid.SetRow(vrect, 2);
@@ -1007,7 +1091,7 @@ F1 produces this help.
         /// to subtract one from x or y since there is a border row and column that is
         /// at the zero location.
         ///
-        internal static void AddHandicapPoint(Grid g, int x, int y) {
+        internal static void AddHandicapPoint (Grid g, int x, int y) {
             // Account for border rows/cols.
             x += 1;
             y += 1;
@@ -1020,7 +1104,7 @@ F1 produces this help.
             g.Children.Add(dot);
         }
 
-        
+
         ////
         //// Adding and Remvoing Stones
         ////
@@ -1047,8 +1131,8 @@ F1 produces this help.
             stone.Fill = new SolidColorBrush(color);
             stone.HorizontalAlignment = HorizontalAlignment.Stretch;
             stone.VerticalAlignment = VerticalAlignment.Stretch;
-            var b = new Binding("ActualHeight");
-            b.RelativeSource = RelativeSource.Self;
+            var b = new Binding(); // ("ActualHeight");
+            b.ElementName = "ActualHeight";
             stone.SetBinding(FrameworkElement.WidthProperty, b);
             g.Children.Add(stone);
             stones[row - 1, col - 1] = stone;
@@ -1074,7 +1158,7 @@ F1 produces this help.
         /// grid_pixels_to_cell returns the go board indexes (one based)
         /// for which intersection the click occurred on (or nearest to).
         /// 
-        internal static Point GridPixelsToCell(Grid g, double x, double y) {
+        internal static Point GridPixelsToCell (Grid g, double x, double y) {
             var col_defs = g.ColumnDefinitions;
             var row_defs = g.RowDefinitions;
             // No need to add one to map zero based grid elements to one based go board.
@@ -1101,7 +1185,7 @@ F1 produces this help.
         ////
         private static Grid current_stone_adornment_grid = null;
         private static Ellipse current_stone_adornment_ellipse = null;
-        internal static void AddCurrentStoneAdornment(Grid stones_grid, Move move) {
+        internal static void AddCurrentStoneAdornment (Grid stones_grid, Move move) {
             if (current_stone_adornment_grid != null) {
                 current_stone_adornment_ellipse.Stroke =
                    new SolidColorBrush(GameAux.OppositeMoveColor(move.Color));
@@ -1111,7 +1195,7 @@ F1 produces this help.
                 stones_grid.Children.Add(current_stone_adornment_grid);
             }
             else {
-                var inner_grid = AddAdornmentGrid(stones_grid, move.Row, move.Column);
+                var inner_grid = MainWindowAux.AddAdornmentGrid(stones_grid, move.Row, move.Column);
                 current_stone_adornment_grid = inner_grid;
                 //
                 // Create mark
@@ -1144,7 +1228,7 @@ F1 produces this help.
         //// exisits there.  Otherwise, it adds the new adornment.  If the kind is
         //// letter, and all letters A..Z have been used, then this informs the user.
         ////
-        internal static void AddOrRemoveAdornment (Grid stones_grid, int row, int col, AdornmentKind kind,
+        internal static async Task AddOrRemoveAdornment (Grid stones_grid, int row, int col, AdornmentKind kind,
                                                    Game game) {
             var a = game.GetAdornment(row, col, kind);
             if (a != null) {
@@ -1154,8 +1238,8 @@ F1 produces this help.
             else {
                 a = game.AddAdornment(game.CurrentMove, row, col, kind);
                 if (a == null && kind == AdornmentKind.Letter) {
-                    MessageBox.Show("Cannot add another letter adornment.  " +
-                                    "You have used A through Z already.");
+                    await GameAux.Message("Cannot add another letter adornment.  " +
+                                          "You have used A through Z already.");
                     return;
                 }
                 AddNewAdornment(stones_grid, a, game);
@@ -1174,7 +1258,7 @@ F1 produces this help.
         //// or free list them at this time.
         ////
         internal static void AddNewAdornment(Grid stones_grid, Adornments adornment, Game game_inst,
-                                               bool render = true) { 
+                                               bool render = true) {
             UIElement gridOrViewbox;
             Debug.Assert(adornment.Kind == AdornmentKind.Square || adornment.Kind == AdornmentKind.Triangle ||
                          adornment.Kind == AdornmentKind.Letter,
@@ -1185,7 +1269,7 @@ F1 produces this help.
             else if (adornment.Kind == AdornmentKind.Triangle)
                 gridOrViewbox = MakeTriangleAdornment(stones_grid, adornment.Row, adornment.Column,
                                                game_inst, render);
-            else //if (adornment.Kind == AdornmentKind.Letter)
+            else // if (adornment.Kind == AdornmentKind.Letter)
                 // grid in this case is really a viewbow.
                 gridOrViewbox = MakeLetterAdornment(stones_grid, adornment.Row, adornment.Column,
                                              adornment.Letter, game_inst, render);
@@ -1260,15 +1344,15 @@ F1 produces this help.
         //// if there is a move at this location or an empty board location to set the
         //// adornment color.
         ////
-        private static Viewbox MakeLetterAdornment (Grid stones_grid, int row, int col, string letter, 
-                                                      Game game_inst, bool render) {
+        private static Viewbox MakeLetterAdornment (Grid stones_grid, int row, int col, string letter,
+                                                    Game game_inst, bool render) {
             var vwbox = new Viewbox();
             Grid.SetRow(vwbox, row);
             Grid.SetColumn(vwbox, col);
             vwbox.HorizontalAlignment = HorizontalAlignment.Stretch;
             vwbox.VerticalAlignment = VerticalAlignment.Stretch;
-            var label = new Label();
-            label.Content = letter;
+            var label = new TextBlock();
+            label.Text = letter;
             label.FontSize = 50.0;
             Grid.SetRow(label, 1);
             Grid.SetColumn(label, 1);
@@ -1279,12 +1363,32 @@ F1 produces this help.
             Color color;
             if (move != null) {
                 color = GameAux.OppositeMoveColor(move.Color);
-                label.Background = new SolidColorBrush(Colors.Transparent);
+                // No way to set anything here, but the label is transparent by default in win8.
+                //label.Background = new SolidColorBrush(Colors.Transparent);
             }
             else {
                 color = Colors.Black;
+                //
+                // This was start of attempt to put the viewbox in a grid or something with a background property.
+                // ViewBox does not have one, nor does TextBlock.  Need to change fun ret val, callers, etc. if it works.
+                //
+                //var inner_grid = new Grid();
+                //inner_grid.Background = new SolidColorBrush(Color.FromArgb(0xff, 0xd7, 0xb2, 0x64));
+                //Grid.SetRow(inner_grid, row);
+                //Grid.SetColumn(inner_grid, col);
+                //Grid.SetRow(vwbox, 0);
+                //Grid.SetColumn(vwbox, 0);
+                //inner_grid.HorizontalAlignment = HorizontalAlignment.Stretch;
+                //inner_grid.VerticalAlignment = VerticalAlignment.Stretch;
+                //var bkgrnd = new Ellipse();
+                //bkgrnd.Fill = new SolidColorBrush(Color.FromArgb(0xff, 0xd7, 0xb2, 0x64));
+                //bkgrnd.add
+                //inner_grid.Children.Add(vwbox);
+                //label.styl
+                // fixing win8 -- don't know how to have board color background (hides bit of lines impacting letter)
+                //                 probably 
                 // See sgfpy.xaml for lines grid (board) tan background.
-                label.Background = new SolidColorBrush(Color.FromArgb(0xff, 0xd7, 0xb2, 0x64));
+                //label.Background = new SolidColorBrush(Color.FromArgb(0xff, 0xd7, 0xb2, 0x64));
             }
             label.Foreground = new SolidColorBrush(color);
             vwbox.Child = label;
@@ -1300,9 +1404,9 @@ F1 produces this help.
         //// center the adornment in the stones grid cell and to provide a stretchy
         //// container that grows with the stones grid cell.
         ////
-        internal static Grid AddAdornmentGrid (Grid stones_grid, int row, int col, bool render=true) {
+        internal static Grid AddAdornmentGrid (Grid stones_grid, int row, int col, bool render = true) {
             var inner_grid = new Grid();
-            inner_grid.ShowGridLines = false;
+            //inner_grid.ShowGridLines = false;  // not needed on win8
             inner_grid.Background = new SolidColorBrush(Colors.Transparent);
             Grid.SetRow(inner_grid, row);
             Grid.SetColumn(inner_grid, col);
@@ -1340,100 +1444,6 @@ F1 produces this help.
 
 
         ////
-        //// Tree View Utils
-        ////
-
-        //// treeViewGridCellSize is the number of pixels along one side of a "grid cell"
-        //// on the canvas.
-        ////
-        internal const int treeViewGridCellSize = 40;
-
-        //// DrawGameTreeLines draws all the lines from this node to its next nodes.
-        //// Note, these are TreeViewNodes, not Moves, so some of the nodes simply denote
-        //// line bends for drawing the tree.
-        ////
-        internal static void DrawGameTreeLines (Canvas canvas, TreeViewNode node) {
-            if (node.Next == null)
-                return;
-            if (node.Branches != null)
-                foreach (var n in node.Branches) {
-                    MainWindowAux.DrawGameTreeLine(canvas, node, n);
-                    MainWindowAux.DrawGameTreeLines(canvas, n);
-                }
-            else {
-                MainWindowAux.DrawGameTreeLine(canvas, node, node.Next);
-                MainWindowAux.DrawGameTreeLines(canvas, node.Next);
-            }
-        }
-
-        internal static void DrawGameTreeLine (Canvas canvas, TreeViewNode origin, TreeViewNode dest) {
-            var ln = new Line();
-            // You'd think you'd divide by 2 to get a line in the middle of a cell area to the middle
-            // of another cell area, but the lines all appear too low for some reason, so use 3 instead.
-            ln.X1 = (origin.Column * MainWindowAux.treeViewGridCellSize) + (MainWindowAux.treeViewGridCellSize / 3);
-            ln.Y1 = (origin.Row * MainWindowAux.treeViewGridCellSize) + (MainWindowAux.treeViewGridCellSize / 3);
-            ln.X2 = (dest.Column * MainWindowAux.treeViewGridCellSize) + (MainWindowAux.treeViewGridCellSize / 3);
-            ln.Y2 = (dest.Row * MainWindowAux.treeViewGridCellSize) + (MainWindowAux.treeViewGridCellSize / 3);
-            // Lines appear behind Move circles/nodes.
-            Canvas.SetZIndex(ln, 0);
-            ln.Stroke = new SolidColorBrush(Colors.Black);
-            ln.StrokeThickness = 2;
-            canvas.Children.Add(ln);
-        }
-
-
-        //// NewTreeViewItemGrid returns a grid to place on the canvas for drawing game tree views.
-        //// The grid has a stone image with a number label if it is a move, or just an "S" for the start.
-        //// Do not call this on line bend view nodes.
-        ////
-        internal static Grid NewTreeViewItemGrid (TreeViewNode model) {
-            // Get Grid to hold stone image and move number label
-            var g = new Grid();
-            g.ShowGridLines = false;
-            g.HorizontalAlignment = HorizontalAlignment.Stretch;
-            g.VerticalAlignment = VerticalAlignment.Stretch;
-            g.Background = new SolidColorBrush(Colors.Transparent);
-            g.Height = 25;
-            g.Width = 25;
-            g.Margin = new Thickness(0, 2, 0, 2);
-            // Get stone image
-            if (model.Kind == TreeViewNodeKind.Move) {
-                var stone = new Ellipse();
-                stone.StrokeThickness = 1;
-                stone.Stroke = new SolidColorBrush(Colors.Black);
-                stone.Fill = new SolidColorBrush(model.Color);
-                stone.HorizontalAlignment = HorizontalAlignment.Stretch;
-                stone.VerticalAlignment = VerticalAlignment.Stretch;
-                g.Children.Add(stone);
-            }
-            // Get move number label
-            Debug.Assert(model.Kind != TreeViewNodeKind.LineBend,
-                         "Eh?!  Shouldn't be making tree view item grid for line bends.");
-            var label = new Label();
-            if (model.Kind == TreeViewNodeKind.StartBoard)
-                label.Content = "S";
-            else
-                // Should use move number, but ParsedNodes are not numbered.  Column = move number anyway.
-                label.Content = model.Column.ToString();
-            // Set font size based on length of integer print representation
-            label.FontWeight = FontWeights.Bold;
-            if (model.Column.ToString().Length > 2) {
-                label.FontSize = 10;
-                label.FontWeight = FontWeights.Normal;
-            }
-            else
-                label.FontSize = 12;
-            label.Foreground = new SolidColorBrush(model.Kind == TreeViewNodeKind.Move ?
-                                                    GameAux.OppositeMoveColor(model.Color) :
-                                                    Colors.Black);
-            label.HorizontalAlignment = HorizontalAlignment.Center;
-            label.VerticalAlignment = VerticalAlignment.Center;
-            g.Children.Add(label);
-            return g;
-        }
-
-        
-        ////
         //// Misc Utils
         ////
 
@@ -1456,21 +1466,24 @@ F1 produces this help.
         }
 
 
-        internal static string GetSaveFilename (string title = null) {
-            var dlg = new SaveFileDialog();
-            dlg.FileName = "game01"; // Default file name
-            dlg.Title = (title != null ? title : dlg.Title);
-            dlg.DefaultExt = ".sgf"; // Default file extension
-            dlg.Filter = "Text documents (.sgf)|*.sgf"; // Filter files by extension
-            var result = dlg.ShowDialog(); // None, True, or False
-            if (result.HasValue && result.Value)
-                return dlg.FileName;
-            else
-                return null;
+        internal static async Task<StorageFile> GetSaveFilename (string title = null) {
+            var fp = new FileSavePicker();
+            fp.FileTypeChoices.Add("Text documents (.sgf)", new[] { ".sgf" });
+            fp.DefaultFileExtension = ".sgf";
+            fp.SuggestedFileName = "game01";
+            var sf = await fp.PickSaveFileAsync();
+            return sf;
+
+            //dlg.Title = (title != null ? title : dlg.Title);
+            //var result = dlg.ShowDialog(); // None, True, or False
+            //if (result.HasValue && result.Value)
+            //    return dlg.FileName;
+            //else
+            //    return null;
         }
 
 
-} // class MainWindowAux
+    } // class MainWindowAux
 
 } // namespace sgfed
 

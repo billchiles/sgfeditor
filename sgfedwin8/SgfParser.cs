@@ -13,8 +13,11 @@ using System.Text;
 using System.IO;
 using System.Text.RegularExpressions;
 
+using Windows.Storage; // StorageFile
+using System.Threading.Tasks; // Task
 
-namespace SgfEd {
+
+namespace SgfEdwin8 {
 
     public class ParsedGame {
 
@@ -34,7 +37,7 @@ namespace SgfEd {
             else
                 return "(" + this.NodesString(this.Nodes) + ")";
         }
-    
+
         //// _nodes_string returns a string for a series of nodes, and the caller
         //// needs to supply the open and close parens that bracket the series.
         ////
@@ -66,7 +69,7 @@ namespace SgfEd {
         public List<ParsedNode> Branches;
         public Dictionary<string, List<string>> Properties;
 
-        public ParsedNode() {
+        public ParsedNode () {
             this.Next = null;
             this.Previous = null;
             this.Branches = null;
@@ -77,7 +80,7 @@ namespace SgfEd {
         //// preceding newline and the dictionary of properties for the node.
         //// Game uses this for error reporting.
         ////
-        public string NodeString(bool newline) {
+        public string NodeString (bool newline) {
             var props = this.Properties;
             string s;
             if (newline)
@@ -100,11 +103,11 @@ namespace SgfEd {
         //// _escaped_property_values returns a node's property value with escapes so that the .sgf
         //// is valid.  So, ] and \ must be preceded by a backslash.
         ////
-        private string EscapePropertyValues(string id, List<string> values) {
+        private string EscapePropertyValues (string id, List<string> values) {
             var res = "";
             foreach (var v in values) {
                 res = res + "[";
-                if (v.Contains(']') || v.Contains('\\')) {
+                if (v.Contains("]") || v.Contains("\\")) {
                     var sb = new StringBuilder();
                     foreach (var c in v) {
                         if (c == ']' || c == '\\')
@@ -118,8 +121,7 @@ namespace SgfEd {
             } //foreach
             return res;
         }
-
-    } // ParseNode class
+    } // ParsedNode class
 
 
 
@@ -128,8 +130,9 @@ namespace SgfEd {
     ////
     public class ParserAux {
 
-        public static ParsedGame ParseFile (string name) {
-            var l = new Lexer(File.ReadAllText(name));
+        public static async Task<ParsedGame> ParseFile (StorageFile sf) {
+            var contents = await FileIO.ReadTextAsync(sf);
+            var l = new Lexer(contents);
             l.ScanFor("(", "Can't find game start");
             var g = new ParsedGame();
             g.Nodes = ParseNodes(l);
@@ -160,7 +163,7 @@ namespace SgfEd {
                     cur_node = cur_node.Next;
                 }
                 else if (chr == '(') {
-                    if (! branching_yet) {
+                    if (!branching_yet) {
                         cur_node.Next = ParseNodes(lexer);
                         cur_node.Next.Previous = cur_node;
                         cur_node.Branches = new List<ParsedNode>() { cur_node.Next };
@@ -175,9 +178,11 @@ namespace SgfEd {
                 else if (chr == ')')
                     return first;
                 else
-                    throw new FileFormatException("SGF file is malformed at char " + lexer.Location.ToString());
+                    //throw new FileFormatException("SGF file is malformed at char " + lexer.Location.ToString());
+                    throw new Exception("fixing win8");
             }
-            throw new FileFormatException("Unexpectedly hit EOF!");
+            //throw new FileFormatException("Unexpectedly hit EOF!");
+            throw new Exception("fixing win8");
         } // ParseNodes
 
         //// _parse_node returns a ParseNode with its properties filled in.
@@ -206,7 +211,8 @@ namespace SgfEd {
                     lexer.Location = i;
                 }
             }
-            throw new FileFormatException("Unexpectedly hit EOF!");
+            //throw new FileFormatException("Unexpectedly hit EOF!");
+            throw new Exception("fixing win8");
         } // ParseNode
 
     } // ParserAux Class
@@ -226,17 +232,17 @@ namespace SgfEd {
             this._data_len = contents.Length;
             this._index = 0;
         }
-    
-        
-        internal int Location { get {return this._index;} 
-                                set {this._index = value;} }
+
+
+        internal int Location { get { return this._index; }
+                                set { this._index = value; } }
 
 
         //// scan_for scans for any char in chars following whitespace.  If
         //// non-whitespace intervenes, this is an error.  Scan_for leaves _index
         //// after char and returns found char.
         ////
-        internal char ScanFor(string chars, string errmsg = null) {
+        internal char ScanFor (string chars, string errmsg = null) {
             var tmp = this.PeekFor(chars);
             var i = tmp.Item1;
             var c = tmp.Item2;
@@ -256,26 +262,27 @@ namespace SgfEd {
         //// non-whitespace intervenes, this is an error.  Scan_for leaves _index
         //// unmodified.
         ////
-        internal Tuple<int, char> PeekFor(string chars) { 
+        internal Tuple<int, char> PeekFor (string chars) {
             var i = this._index;
             while (this.HasData()) {
                 var c = this._data[i];
+                var cstring = new string(c, 1); // Win8 string.Contains doesn't take a char arg.
                 i += 1;
-                if (" \t\n\r\f\v".Contains(c))
+                if (" \t\n\r\f\v".Contains(cstring))
                     continue;
-                else if (chars.Contains(c))
+                else if (chars.Contains(cstring))
                     return new Tuple<int, char>(i, c);
                 else
                     return new Tuple<int, char>(-1, ((char)0));
             }
             return new Tuple<int, char>(-1, ((char)0));
         }
-        
 
-        internal bool HasData() {
+
+        internal bool HasData () {
             return this._index < this._data_len;
         }
-    
+
 
         private Regex propertyIdRegexp = new Regex(@"\s*([A-Za-z]+)");
 
@@ -306,7 +313,7 @@ namespace SgfEd {
         //    // Skip any whitespace
         //    while (i < this._data_len) {
         //        var c = this._data[i];
-        //        if (" \t\n\r\f\v".Contains(c)) {
+        //        if (" \t\n\r\f\v".Contains(new string(c, 1))) { // win8 string.Contains does not take char
         //            i += 1;
         //            continue;
         //        }
@@ -345,7 +352,7 @@ namespace SgfEd {
         ////
         //// SGF "simpletext" properties are the same as "text" but have no newlines.
         ////
-        internal string GetPropertyValue(bool keep_newlines) { 
+        internal string GetPropertyValue (bool keep_newlines) {
             var res = new StringBuilder();
             while (this.HasData()) {
                 var c = this._data[this._index];
@@ -372,7 +379,7 @@ namespace SgfEd {
                     c = this._data[this._index];
                     this._index += 1;
                     var newline = this.CheckPropertyNewline(c).Item1;
-                    if (! newline)
+                    if (!newline)
                         res.Append(c);
                 }
                 else if (c == ']')
@@ -380,7 +387,8 @@ namespace SgfEd {
                 else
                     res.Append(c);
             }
-            throw new FileFormatException("Unexpectedly hit EOF!");
+            //throw new FileFormatException("Unexpectedly hit EOF!");
+            throw new Exception("fixing win8");
         } // GetPropertyValue
 
         //// _check_property_newline check if c is part of a newline sequence.  If

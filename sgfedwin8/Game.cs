@@ -6,15 +6,20 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 //using System.Text;
-using System.Windows.Media; // Colors
+using Windows.UI; // Colors
+//using System.Windows.Media; // Colors
+using Windows.UI.Xaml.Controls; // ViewBox
 using System.Windows; // Label (need to coerce type to fetch label cookie)
-using System.Windows.Controls; // MessageBox
+//using System.Windows.Controls; // MessageBox
+using Windows.UI.Popups; // MessageDialog
 using System.IO; // StreamWriter
-using System.Text; // StringBuilder
+using System.Threading.Tasks; // Task<string> for GameAux.Message
+using Windows.Storage; // StorageFile
 using System.Diagnostics; // Debug.Assert
 
 
-namespace SgfEd {
+
+namespace SgfEdwin8 {
 
 
     public class Game {
@@ -60,6 +65,7 @@ namespace SgfEd {
         // saved this game.  Filebase is just <name>.<ext>.
         public string Filename { get; set; }
         public string Filebase { get; set; }
+        public StorageFile Storage { get; set; }
         // dirty means we've modified this game in some way
         public bool Dirty { get; set; }
         // player members hold strings if there are player names in record.
@@ -70,7 +76,7 @@ namespace SgfEd {
         private Move cutMove;
 
 
-        public Game(MainWindow main_win, int size, int handicap, string komi, List<Move> handicap_stones = null) {
+        public Game (MainWindow main_win, int size, int handicap, string komi, List<Move> handicap_stones = null) {
             if (size != Game.MaxBoardSize)
                 // Change this eventually to check min size and max size.
                 throw new Exception("Only support 19x19 games for now.");
@@ -90,6 +96,7 @@ namespace SgfEd {
             this.ParsedGame = null;
             this.Filename = null;
             this.Filebase = null;
+            this.Storage = null;
             this.Dirty = false;
             this.PlayerBlack = null;
             this.PlayerWhite = null;
@@ -149,7 +156,6 @@ namespace SgfEd {
                     if (handicap == 9)
                         make_move(10, 10);
                 }
-
                 else {
                     Debug.Assert(handicap_stones.Count == handicap,
                                  "Handicap number is not equal to all " +
@@ -157,7 +163,7 @@ namespace SgfEd {
                     foreach (var m in handicap_stones)
                         this.Board.AddStone(m);
                 }
-            } // Handicap != 0
+            } // handicap != 0
         } // InitHandicapNextColor
 
 
@@ -175,18 +181,18 @@ namespace SgfEd {
         //// new move (or an existing move if the user clicked on a location where
         //// there is a move on another branch following the current move).
         ////
-        public Move MakeMove (int row, int col) {
+        public async Task<Move> MakeMove (int row, int col) {
             var cur_move = this.CurrentMove;
             var maybe_branching = ((cur_move != null && cur_move.Next != null) ||
                                    (cur_move == null && this.FirstMove != null));
             if (this.Board.HasStone(row, col)) {
-                MessageBox.Show("Can't play where there already is a stone.");
+                await GameAux.Message("Can't play where there already is a stone.");
                 return null;
             }
             // move may be set below to pre-existing move, tossing this new object.
             var move = new Move(row, col, this.nextColor);
             if (this.CheckSelfCaptureNoKill(move)) {
-                MessageBox.Show("You cannot make a move that removes a group's last liberty");
+                await GameAux.Message("You cannot make a move that removes a group's last liberty");
                 return null;
             }
             if (maybe_branching) {
@@ -198,7 +204,7 @@ namespace SgfEd {
                 else
                     // Found existing move at location in branches, just reply it for capture effects, etc.
                     // Don't need to check ReplayMove for conflicting board move since user clicked and space is empty.
-                    return this.ReplayMove(); 
+                    return this.ReplayMove();
             }
             else {
                 if (this.State == GameState.NotStarted) {
@@ -237,14 +243,14 @@ namespace SgfEd {
         //// temporarily add the move to the board, then remove it, but we don't need
         //// a try..finally since any error is unexpected and unrecoverable.
         ////
-        private bool CheckSelfCaptureNoKill(Move move) {
+        private bool CheckSelfCaptureNoKill (Move move) {
             this.Board.AddStone(move);
             var noKill = ! this.CheckForKill(move).Any(); // .Any ensures it executes.
             var noLibertyAndNoKill = ! this.FindLiberty(move.Row, move.Column, move.Color) && noKill;
             this.Board.RemoveStone(move);
             return noLibertyAndNoKill;
         }
-        
+
         //// _make_branching_move sets up cur_move to have more than one next move,
         //// that is, branches.  If the new move, move, is at the same location as
         //// a next move of cur_move, then this function loses move in lieu of the
@@ -274,8 +280,8 @@ namespace SgfEd {
         ////
         private Move MakeBranchingMoveBranches (dynamic game_or_move, Move next, Move new_move) {
             if (game_or_move.Branches == null) {
-                game_or_move.Branches = new List<Move>() {next}; // Must pass non-null branches.
-                // Can't use 'var', must decl with 'Move'.  C# doesn't realize all MaybeUpdateBranches
+                game_or_move.Branches = new List<Move>() { next }; // Must pass non-null branches.
+                // Can't use'var', must decl with 'Mpve'.  C# desn't realize all MaybeUpdateBanches
                 // definitions return a Move.
                 Move move = this.MaybeUpdateBranches(game_or_move, new_move);
                 if (object.ReferenceEquals(move, next)) {
@@ -289,20 +295,20 @@ namespace SgfEd {
             else
                 return this.MaybeUpdateBranches(game_or_move, new_move);
         }
-        
-        //// _maybe_update_branches takes a game or move object (has a .branches member)
+
+        //// _maybe_update_branches takes a game or move object (has a .Branches member)
         //// and a next move.  Branches must not be null.  It returns a pre-existing
         //// move if the second argument represents a move at a location for which there
         //// already is a move; otherwise, it returns the second argument as a new next
-        //// move.  If this is a new next move, we add it to .branches.
+        //// move.  If this is a new next move, we add it to .Branches.
         ////
         private Move MaybeUpdateBranches (dynamic game_or_move, Move move) {
             // Must bind branches so that generic ListFind dispatch works and get tooling help.
-            // PTVS does the tooling right, and if C# had disjunctive types decls, wouldn't need 'dynamic'.
+            // PTVS does the tooling right, and if had disjunctive types decls, wouldn't need 'dynamic'.
             List<Move> branches = game_or_move.Branches;
             var already_move = GameAux.ListFind(
                                    move, branches,
-                                   (x,y) => move.Row == ((Move)y).Row && move.Column == ((Move)y).Column);
+                                   (x, y) => move.Row == ((Move)y).Row && move.Column == ((Move)y).Column);
             if (already_move != -1) {
                 var m = branches[already_move];
                 if (! m.Rendered)
@@ -331,17 +337,17 @@ namespace SgfEd {
             var opp_color = GameAux.OppositeMoveColor(move.Color);
             var visited = new bool[this.Board.Size, this.Board.Size];
             var dead_stones = new List<Move>();
-            if (this.Board.HasStoneColorLeft(row, col, opp_color) && 
-                ! this.FindLiberty(row, col - 1, opp_color))
+            if (this.Board.HasStoneColorLeft(row, col, opp_color) &&
+                !this.FindLiberty(row, col - 1, opp_color))
                 this.CollectStones(row, col - 1, opp_color, dead_stones, visited);
-            if (this.Board.HasStoneColorUp(row, col, opp_color) && 
-                ! this.FindLiberty(row - 1, col, opp_color))
+            if (this.Board.HasStoneColorUp(row, col, opp_color) &&
+                !this.FindLiberty(row - 1, col, opp_color))
                 this.CollectStones(row - 1, col, opp_color, dead_stones, visited);
-            if (this.Board.HasStoneColorRight(row, col, opp_color) && 
-                ! this.FindLiberty(row, col + 1, opp_color))
+            if (this.Board.HasStoneColorRight(row, col, opp_color) &&
+                !this.FindLiberty(row, col + 1, opp_color))
                 this.CollectStones(row, col + 1, opp_color, dead_stones, visited);
-            if (this.Board.HasStoneColorDown(row, col, opp_color) && 
-                ! this.FindLiberty(row + 1, col, opp_color))
+            if (this.Board.HasStoneColorDown(row, col, opp_color) &&
+                !this.FindLiberty(row + 1, col, opp_color))
                 this.CollectStones(row + 1, col, opp_color, dead_stones, visited);
             move.DeadStones = dead_stones;
             return dead_stones;
@@ -362,13 +368,13 @@ namespace SgfEd {
             if (visited[row - 1, col - 1])
                 return false;
             // Check for immediate liberty (breadth first).
-            if (col != 1 && ! this.Board.HasStoneLeft(row, col))
+            if (col != 1 && !this.Board.HasStoneLeft(row, col))
                 return true;
-            if (row != 1 && ! this.Board.HasStoneUp(row, col))
+            if (row != 1 && !this.Board.HasStoneUp(row, col))
                 return true;
-            if (col != this.Board.Size && ! this.Board.HasStoneRight(row, col))
+            if (col != this.Board.Size && !this.Board.HasStoneRight(row, col))
                 return true;
-            if (row != this.Board.Size && ! this.Board.HasStoneDown(row, col))
+            if (row != this.Board.Size && !this.Board.HasStoneDown(row, col))
                 return true;
             // No immediate liberties, so keep looking ...
             visited[row - 1, col - 1] = true;
@@ -387,7 +393,7 @@ namespace SgfEd {
             // No liberties ...
             return false;
         }
-    
+
         //// CollectStones gathers all the stones at row, col of color color, adding them
         //// to the list dead_stones.  This does not update the board model by removing
         //// the stones.  CheckForKill uses this to collect stones.  ReadyForRendering calls
@@ -395,27 +401,27 @@ namespace SgfEd {
         //// from the board.
         ////
         private void CollectStones (int row, int col, Color color, List<Move> dead_stones,
-                                    bool [,] visited ) {
+                                    bool[,] visited) {
             Debug.Assert(visited != null, "Must call CollectStones with initial matrix of null values.");
-            if (! visited[row - 1, col - 1])
+            if (!visited[row - 1, col - 1])
                 dead_stones.Add(this.Board.MoveAt(row, col));
             else
                 return;
             visited[row - 1, col - 1] = true;
-            if (this.Board.HasStoneColorLeft(row, col, color) && ! visited[row - 1, col - 2])
+            if (this.Board.HasStoneColorLeft(row, col, color) && !visited[row - 1, col - 2])
                 this.CollectStones(row, col - 1, color, dead_stones, visited);
-            if (this.Board.HasStoneColorUp(row, col, color) && ! visited[row - 2, col - 1])
+            if (this.Board.HasStoneColorUp(row, col, color) && !visited[row - 2, col - 1])
                 this.CollectStones(row - 1, col, color, dead_stones, visited);
-            if (this.Board.HasStoneColorRight(row, col, color) && ! visited[row - 1, col])
+            if (this.Board.HasStoneColorRight(row, col, color) && !visited[row - 1, col])
                 this.CollectStones(row, col + 1, color, dead_stones, visited);
-            if (this.Board.HasStoneColorDown(row, col, color) && ! visited[row, col - 1])
+            if (this.Board.HasStoneColorDown(row, col, color) && !visited[row, col - 1])
                 this.CollectStones(row + 1, col, color, dead_stones, visited);
         }
 
         ////
         //// Unwinding Moves and Goign to Start
         ////
-    
+
         //// unwind_move removes the last move made (see make_move).  Other than
         //// marking the previous move as the current move with a UI adornments,
         //// this handles rewinding game moves.  If the game has not started, or
@@ -429,7 +435,7 @@ namespace SgfEd {
                          "Previous button should be disabled if game not started.");
             var current = this.CurrentMove;
             Debug.Assert(current != null, "Previous button should be disabled if no current move.");
-            if (! current.IsPass)
+            if (!current.IsPass)
                 this.Board.RemoveStone(current);
             this.AddStones(current.DeadStones);
             this.nextColor = current.Color;
@@ -447,7 +453,7 @@ namespace SgfEd {
             this.CurrentMove = previous;
             return current;
         }
-    
+
         public bool CanUnwindMove () {
             return (this.State != GameState.NotStarted) && this.CurrentMove != null;
         }
@@ -485,7 +491,7 @@ namespace SgfEd {
         ////
         //// Replaying Moves and Goign to End
         ////
-    
+
         //// replay_move add the next that follows the current move.  move made (see
         //// make_move).  Other than marking the next move as the current move with
         //// a UI adornments, this handles replaying game moves.  The next move is
@@ -533,7 +539,7 @@ namespace SgfEd {
         //// and UI updates, including current move adornments.  If the game hasn't
         //// started, this throws an error.
         ////
-        public void GotoLastMove () {
+        public async Task GotoLastMove () {
             // This debug.assert could arguably be a throw if we think of this function
             // as platform/library.
             Debug.Assert(this.State != GameState.NotStarted,
@@ -555,8 +561,8 @@ namespace SgfEd {
             // Walk to last move
             while (next != null) {
                 if (this.ReplayMoveUpdateModel(next) == null) {
-                    MessageBox.Show("Next move conincides with a move on the board. " +
-                                    "You are replying moves from a pasted branch that's inconsistent.");
+                    await GameAux.Message("Next move conincides with a move on the board. " +
+                                          "You are replying moves from a pasted branch that's inconsistent.");
                     break;
                 }
                 this.mainWin.AddNextStoneNoCurrent(next);
@@ -581,7 +587,7 @@ namespace SgfEd {
                 this.mainWin.UpdateBranchCombo(null, null);
         }
 
-    
+
         //// _replay_move_update_model updates the board model, next move color,
         //// etc., when replaying a move in the game record.  This also handles
         //// rendering a move that has only been read from a file and never
@@ -592,16 +598,16 @@ namespace SgfEd {
         //// move.
         ////
         private Move ReplayMoveUpdateModel (Move move) {
-            if (! move.IsPass) {
+            if (!move.IsPass) {
                 // Check if board has stone already since might be replaying branch
                 // that was pasted into tree (and moves could conflict).
-                if (! this.Board.HasStone(move.Row, move.Column))
+                if (!this.Board.HasStone(move.Row, move.Column))
                     this.Board.AddStone(move);
                 else
                     return null;
             }
             this.nextColor = GameAux.OppositeMoveColor(move.Color);
-            if (! move.Rendered)
+            if (!move.Rendered)
                 // Move points to a ParsedNode and has never been displayed.
                 this.ReadyForRendering(move);
             this.MoveCount += 1;
@@ -625,8 +631,8 @@ namespace SgfEd {
         //// and moves set up, etc.  This function makes the moves completely ready
         //// for display.
         ////
-        private Move ReadyForRendering(Move move) {
-            if (! move.IsPass)
+        private Move ReadyForRendering (Move move) {
+            if (!move.IsPass)
                 this.CheckForKill(move);
             var pn = move.ParsedNode;
             Move mnext = null;
@@ -685,7 +691,7 @@ namespace SgfEd {
                 var coords = props["LB"].Select((c) => GoBoardAux.ParsedLabelModelCoordinates(c))
                                         .ToList<Tuple<int, int, char>>();
                 //coords = [goboard.parsed_label_model_coordinates(x) for x in props["LB"]];
-                var adorns = coords.Select((c) => this.AddAdornment(move, c.Item1, c.Item2, 
+                var adorns = coords.Select((c) => this.AddAdornment(move, c.Item1, c.Item2,
                                                                     AdornmentKind.Letter, new string(c.Item3, 1)))
                                    .ToList<Adornments>();
                 //adorns = [this.add_adornment(move, x[0], x[1], goboard.Adornments.letter, x[2])
@@ -705,7 +711,7 @@ namespace SgfEd {
         //// intial board state.  If the captured comment has changed, mark game as
         //// dirty.
         ////
-        private void SaveAndUpdateComments(Move origin, Move dest) {
+        private void SaveAndUpdateComments (Move origin, Move dest) {
             this.SaveComment(origin);
             if (dest != null)
                 this.mainWin.CurrentComment = dest.Comments;
@@ -716,14 +722,14 @@ namespace SgfEd {
         //// save_current_comment makes sure the current comment is persisted from the UI to
         //// the model.  This is used from the UI, such as when saving a file.
         ////
-        public void SaveCurrentComment() {
+        public void SaveCurrentComment () {
             this.SaveComment(this.CurrentMove);
         }
 
         //// save_comment takes a move to update with the current comment from the UI.
         //// If move is null, the comment belongs to the game start or empty board.
         ////
-        private void SaveComment(Move move = null) {
+        private void SaveComment (Move move = null) {
             var cur_comment = this.mainWin.CurrentComment;
             if (move != null) {
                 if (move.Comments != cur_comment) {
@@ -747,7 +753,7 @@ namespace SgfEd {
         //// with the previous move or initial board as the current state, and it
         //// updates UI.
         ////
-        public void CutMove() {
+        public void CutMove () {
             var cut_move = this.CurrentMove;
             // This debug.assert could arguably be a throw if we think of this function
             // as platform/library.
@@ -772,7 +778,7 @@ namespace SgfEd {
                     if (branches.Count == 1)
                         this.Branches = null;
                 }
-                if (this.ParsedGame != null && this.ParsedGame.Nodes.Next !=null)
+                if (this.ParsedGame != null && this.ParsedGame.Nodes.Next != null)
                     // May not be parsed node to cut since the cut move
                     // could be new (not from parsed file)
                     this.CutNextParsedNode(this.ParsedGame.Nodes, this.ParsedGame.Nodes.Next);
@@ -837,7 +843,7 @@ namespace SgfEd {
                     pn.Branches = null;
             }
         }
-        
+
         //// can_paste returns whether there is a cut sub tree, but it does not
         //// check whether the cut tree actually can be pasted at the current move.
         //// It ignores whether the right move color will follow the current move,
@@ -854,12 +860,12 @@ namespace SgfEd {
         //// not merge the trees matching moves since this would lose node
         //// information (marked up and comments).
         ////
-        public void PasteMove() {
+        public async Task PasteMove () {
             // These debug.asserts could arguably be throw's if we think of this function
             // as platform/library.
             Debug.Assert(this.cutMove != null, "There is no cut sub tree to paste.");
             if (this.cutMove.Color != this.nextColor) {
-                MessageBox.Show("Cannot paste cut move that is same color as current move.");
+                await GameAux.Message("Cannot paste cut move that is same color as current move.");
                 return;
             }
             var cur_move = this.CurrentMove;
@@ -890,10 +896,10 @@ namespace SgfEd {
             this.Dirty = true;
             GameAux.RenumberMoves(this.cutMove);
             this.cutMove = null;
-            this.mainWin.nextButtonLeftDown(null, null);
+            await this.mainWin.DoNextButton();
         }
 
-            
+
         ////
         //// Adornments
         ////
@@ -905,7 +911,7 @@ namespace SgfEd {
         //// adornments have been used at this point in the game tree, then this
         //// adds nothing and returns None.
         ////
-        public Adornments AddAdornment(Move move, int row, int col, AdornmentKind kind, string data = null) {
+        public Adornments AddAdornment (Move move, int row, int col, AdornmentKind kind, string data = null) {
             Adornments adornment;
             if (this.State == GameState.NotStarted || move == null) {
                 adornment = this.AddAdornmentMakeAdornment(this.SetupAdornments, row, col, kind, data);
@@ -934,10 +940,11 @@ namespace SgfEd {
                     return null;
                 foreach (var elt in capLetters)
                     if (GameAux.ListFind<Adornments>(elt, letters, (x, y) => {
-                            var cookie = ((Adornments)y).Cookie;
-                            var lbl = ((Viewbox)cookie).Child;
-                            var txt = ((Label)lbl).Content;
-                            return (string)x == (string)txt;}) == -1) {
+                        var cookie = ((Adornments)y).Cookie;
+                        var lbl = ((Viewbox)cookie).Child;
+                        var txt = ((TextBlock)lbl).Text;
+                        return (string)x == (string)txt;
+                    }) == -1) {
                         data = elt; //chr(ord('A') +  len(letters))
                         break;
                     }
@@ -950,7 +957,7 @@ namespace SgfEd {
         ////
         public Adornments GetAdornment (int row, int col, AdornmentKind kind) {
             var move = this.CurrentMove;
-            List<Adornments> adornments = 
+            List<Adornments> adornments =
                 (this.State == GameState.NotStarted || move == null) ? this.SetupAdornments : move.Adornments;
             foreach (var a in adornments)
                 if (a.Kind == kind && a.Row == row && a.Column == col)
@@ -958,12 +965,12 @@ namespace SgfEd {
             return null;
         }
 
-        
+
         //// remove_adornment assumes a is in the current adornments list, and
         //// signals an error if it is not.  You can always call this immediately
         //// after get_adornment if no move state has changed.
         ////
-        public void RemoveAdornment(Adornments a) { 
+        public void RemoveAdornment (Adornments a) {
             var move = this.CurrentMove;
             List<Adornments> adornments =
                 (this.State == GameState.NotStarted || move == null) ? this.SetupAdornments : move.Adornments;
@@ -980,7 +987,7 @@ namespace SgfEd {
         //// the branches combo box, which maps to the branches list for the current
         //// move.
         ////
-        public void SetCurrentBranch(int cur) {
+        public void SetCurrentBranch (int cur) {
             if (this.CurrentMove == null) {
                 var move = this.Branches[cur];
                 this.FirstMove = move;
@@ -996,36 +1003,36 @@ namespace SgfEd {
         //// lower in the previous branches list.  If the game hasn't started, or
         //// the conditions aren't met, this informs the user.
         ////
-        public void MoveBranchUp () {
-            var res = this.BranchesForMoving();
+        public async Task MoveBranchUp () {
+            var res = await this.BranchesForMoving();
             var branches = res.Item1;
             var cur_index = res.Item2;
             if (branches != null)
-                this.MoveBranch(branches, cur_index, -1);
+                await this.MoveBranch(branches, cur_index, -1);
         }
 
-        public void MoveBranchDown () {
-            var res = this.BranchesForMoving();
+        public async Task MoveBranchDown () {
+            var res = await this.BranchesForMoving();
             var branches = res.Item1;
             var cur_index = res.Item2;
-            if (branches != null) 
-                this.MoveBranch(branches, cur_index, 1);
+            if (branches != null)
+                await this.MoveBranch(branches, cur_index, 1);
         }
 
         //// _branches_for_moving returns the branches list (from previous move or
         //// intial board state) and the index in that list of the current move.
         //// This does user interation for move_branch_up and move_branch_down.
         ////
-        private Tuple<List<Move>, int> BranchesForMoving () {
+        private async Task<Tuple<List<Move>, int>> BranchesForMoving () {
             // Check if have move
             if (this.State == GameState.NotStarted) {
-                MessageBox.Show("Game not started, now branches to modify.");
+                await GameAux.Message("Game not started, no branches to modify.");
                 return new Tuple<List<Move>, int>(null, -1);
             }
             var current = this.CurrentMove;
             if (current == null) {
-                MessageBox.Show("Must be on the first move of a branch to move it.");
-                return new Tuple<List<Move>,int>(null, -1);
+                await GameAux.Message("Must be on the first move of a branch to move it.");
+                return new Tuple<List<Move>, int>(null, -1);
             }
             // Get appropriate branches
             var prev = current.Previous;
@@ -1037,8 +1044,8 @@ namespace SgfEd {
             // Get index of current move in branches
             var cur_index = -1;
             if (branches == null) {
-                MessageBox.Show("Must be on the first move of a branch to move it.");
-                return new Tuple<List<Move>,int>(null, -1);
+                await GameAux.Message("Must be on the first move of a branch to move it.");
+                return new Tuple<List<Move>, int>(null, -1);
             }
             else if (prev == null)
                 cur_index = branches.IndexOf(this.FirstMove);
@@ -1052,29 +1059,30 @@ namespace SgfEd {
         //// up or down, depending on delta.  This provides feedback to the user of
         //// the result.
         ////
-        private void MoveBranch (List<Move> branches, int cur_index, int delta) {
+        private async Task MoveBranch (List<Move> branches, int cur_index, int delta) {
             Debug.Assert(delta == 1 || delta == -1,
                          "Branch moving delta must be 1 or -1 for now.");
             Action swap = () => {
                 var tmp = branches[cur_index];
                 branches[cur_index] = branches[cur_index + delta];
-                branches[cur_index + delta] = tmp;};
+                branches[cur_index + delta] = tmp;
+            };
             if (delta < 0)
                 // if moving up and current is not top ...
                 if (cur_index > 0) {
                     swap();
-                    MessageBox.Show("Branch moved up.");
+                    await GameAux.Message("Branch moved up.");
                 }
                 else
-                    MessageBox.Show("This branch is the main branch.");
+                    await GameAux.Message("This branch is the main branch.");
             else if (delta > 0)
                 // if moving down and current is not last ...
                 if (cur_index < branches.Count - 1) {
                     swap();
-                    MessageBox.Show("Branch moved down.");
+                    await GameAux.Message("Branch moved down.");
                 }
                 else
-                    MessageBox.Show("This branch is the last branch.");
+                    await GameAux.Message("This branch is the last branch.");
         }
 
 
@@ -1086,23 +1094,24 @@ namespace SgfEd {
         //// to an sgfparser.ParsedGame and uses its __str__ method to produce the
         //// output.
         ////
-        public void WriteGame (string filename = null) {
-            // This debug.assert could arguably be a throw if we think of this function
-            // as platform/library.
-            if (filename == null) {
-                Debug.Assert(this.Filename != null, "Need filename to write file.");
+        public async Task WriteGame (StorageFile sf = null) {
+            string filename = null;
+            if (sf == null) {
+                // This debug.assert could arguably be a throw if we think of this function
+                // as platform/library.
+                Debug.Assert(this.Storage != null, "Need storage/filename to write file.");
+                sf = this.Storage;
                 filename = this.Filename;
             }
             var pg = GameAux.ParsedGameFromGame(this);
-            var f = new StreamWriter(filename);
-            f.Write(pg.ToString());
-            f.Close();
+            await FileIO.WriteTextAsync(sf, pg.ToString());
             this.Dirty = false;
+            this.Storage = sf;
             this.Filename = filename;
             this.Filebase = filename.Substring(filename.LastIndexOf('\\') + 1);
             int number;
             bool is_pass;
-            if (this.CurrentMove== null) {
+            if (this.CurrentMove == null) {
                 number = 0;
                 is_pass = false;
             }
@@ -1121,12 +1130,10 @@ namespace SgfEd {
         //// flipped file.  This does NOT set this.Dirty to false since the tracked
         //// file may be out of date with the state of the game.
         ////
-        public void WriteFlippedGame (string filename) {
+        public async Task WriteFlippedGame (StorageFile sf) {
+            Debug.Assert(sf != null, "Must call WriteFlippedGame with non-null file.");
             var pg = GameAux.ParsedGameFromGame(this, true); // True = flipped
-            var f = new StreamWriter(filename);
-            f.Write(pg.ToString());
-            f.Close();
-            this.Dirty = false;
+            await FileIO.WriteTextAsync(sf, pg.ToString());
         }
 
     } // Game
@@ -1138,11 +1145,51 @@ namespace SgfEd {
     }
 
 
-    
+
     //// GameAux provides stateless helpers for Game and MainWindow.  Members
     //// marked internal should only be used by Game.
     ////
     public static class GameAux {
+
+        //// User notification and prompting utility.
+        ////
+        //// Since Game/GameAux is the controller (and view-model) in MVVC, this is the
+        //// location for this since it is used by Game and MainWindow.
+        ////
+
+        public static string OkMessage = "OK";
+        public static string YesMessage = "Yes";
+
+
+        //// Message is a lot like WPF MessageBox.Show.  It returns the string name of the command selected.
+        //// If cmds is null, there is a simple msgbox with an OK button, which is the default and the escape/
+        //// cancel default commands.  If cmds
+        ////
+        public static async Task<string> Message (string msg, string title = null, List<string> cmds = null) {
+            // Create the message dialog and set its content 
+            var msgdlg = new MessageDialog(msg, title ?? "");
+            string response = "";
+            if (cmds == null) {
+                msgdlg.Commands.Add(new UICommand(GameAux.OkMessage));
+                msgdlg.DefaultCommandIndex = 0;
+                msgdlg.CancelCommandIndex = 0;
+                response = GameAux.OkMessage;
+            }
+            else {
+                foreach (var c in cmds)
+                    msgdlg.Commands.Add(new UICommand(c, new UICommandInvokedHandler((cmd) => response = cmd.Label)));
+                   //msgdlg.Commands.Add(new UICommand("Close", new UICommandInvokedHandler(GameAux.StonesPtrPressedMsgDlgHandler)));
+                // Set the command that will be invoked by default 
+                msgdlg.DefaultCommandIndex = 0;
+                // Set the command to be invoked when escape is pressed 
+                msgdlg.CancelCommandIndex = (uint)(cmds.Count() - 1);
+                // Show the message dialog 
+            }
+            await msgdlg.ShowAsync();
+            return response;
+        }
+        //private static void StonesPtrPressedMsgDlgHandler (IUICommand command) {
+        //} 
 
         ////
         //// Mapping Games to ParsedGames (for printing)
@@ -1190,22 +1237,22 @@ namespace SgfEd {
             var n = new ParsedNode();
             if (game.ParsedGame != null)
                 n.Properties = CopyProperties(game.ParsedGame.Nodes.Properties);
-            n.Properties["AP"] = new List<string>() {"SGFPy"};
-            n.Properties["SZ"] = new List<string>() {game.Board.Size.ToString()};
+            n.Properties["AP"] = new List<string>() { "SGFPy" };
+            n.Properties["SZ"] = new List<string>() { game.Board.Size.ToString() };
             // Comments
             if (n.Properties.ContainsKey("GC"))
                 // game.comments has merged GC and C comments.
                 n.Properties.Remove("GC");
             if (game.Comments != "")
-                n.Properties["C"] = new List<string>() {game.Comments};
+                n.Properties["C"] = new List<string>() { game.Comments };
             else if (n.Properties.ContainsKey("C"))
                 n.Properties.Remove("C");
             // Handicap/Komi
             if (game.Handicap != 0) //&& game.handicap != "0":
-                n.Properties["HA"] = new List<string>() {game.Handicap.ToString()};
+                n.Properties["HA"] = new List<string>() { game.Handicap.ToString() };
             else if (n.Properties.ContainsKey("HA"))
                 n.Properties.Remove("HA");
-            n.Properties["KM"] = new List<string>() {game.Komi};
+            n.Properties["KM"] = new List<string>() { game.Komi };
             if (n.Properties.ContainsKey("AB")) {
                 if (flipped)
                     n.Properties["AB"] = GameAux.FlipCoordinates(n.Properties["AB"]);
@@ -1213,14 +1260,14 @@ namespace SgfEd {
             }
             else
                 if (game.Handicap != 0) //and game.handicap != "0")
-                    n.Properties["AB"] = 
+                    n.Properties["AB"] =
                         game.HandicapMoves.Select((m) => GoBoardAux.GetParsedCoordinates(m, flipped))
                                            .ToList();
-                                        //[goboard.get_parsed_coordinates(m, flipped) for
-                                        //  m in game.handicap_moves]
+            //[goboard.get_parsed_coordinates(m, flipped) for
+            //  m in game.handicap_moves]
             // Player names
-            n.Properties["PB"] = new List<string>() {game.PlayerBlack != null ? game.PlayerBlack : "Black"};
-            n.Properties["PW"] = new List<string>() {game.PlayerWhite != null ? game.PlayerWhite: "White"};
+            n.Properties["PB"] = new List<string>() { game.PlayerBlack != null ? game.PlayerBlack : "Black" };
+            n.Properties["PW"] = new List<string>() { game.PlayerWhite != null ? game.PlayerWhite : "White" };
             return n;
         }
 
@@ -1290,7 +1337,7 @@ namespace SgfEd {
         //// supports editing.  For example, if the end user modified adornments.
         ////
         private static ParsedNode GenParsedNode (Move move, bool flipped) {
-            if (! move.Rendered) {
+            if (!move.Rendered) {
                 // If move exists and not rendered, then must be ParsedNode.
                 if (flipped)
                     return CloneAndFlipNodes(move.ParsedNode);
@@ -1310,7 +1357,7 @@ namespace SgfEd {
                 props["W"] = new List<string>() { GoBoardAux.GetParsedCoordinates(move, flipped) };
             // Comments
             if (move.Comments != "")
-                props["C"] = new List<string>() {move.Comments};
+                props["C"] = new List<string>() { move.Comments };
             else if (props.ContainsKey("C"))
                 props.Remove("C");
             // Adornments
@@ -1326,23 +1373,24 @@ namespace SgfEd {
                     if (props.ContainsKey("TR"))
                         props["TR"].Add(coords);
                     else
-                        props["TR"] = new List<string>() {coords};
+                        props["TR"] = new List<string>() { coords };
                 }
                 if (a.Kind == AdornmentKind.Square) {
                     if (props.ContainsKey("SQ"))
                         props["SQ"].Add(coords);
                     else
-                        props["SQ"] = new List<string>() {coords};
+                        props["SQ"] = new List<string>() { coords };
                 }
                 if (a.Kind == AdornmentKind.Letter) {
                     var cookie = ((Adornments)a).Cookie;
                     var lbl = ((Viewbox)cookie).Child;
-                    var txt = ((Label)lbl).Content;
+                    var txt = ((TextBlock)lbl).Text;
+                    //var txt = ((Label)lbl).Content;
                     var data = coords + ":" + (string)txt;
                     if (props.ContainsKey("LB"))
                         props["LB"].Add(data);
                     else
-                        props["LB"] = new List<string>() {data};
+                        props["LB"] = new List<string>() { data };
                 }
             } // foreach
             return node;
@@ -1418,14 +1466,14 @@ namespace SgfEd {
             if (labels)
                 // coords elts are "<col><row>:<letter>"
                 return GameAux.FlipCoordinates(coords.Select((c) => c.Substring(0, c.Length - 2)).ToList())
-                              .Zip(coords.Select((c) => c.Substring(2, 2)), 
+                              .Zip(coords.Select((c) => c.Substring(2, 2)),
                                    (x, y) => x + y)
                               .ToList();
-                       //[x + y for x in flip_coordinates([l[:2] for l in coords])
-                       //       for y in [lb[2:] for lb in coords]]
+            //[x + y for x in flip_coordinates([l[:2] for l in coords])
+            //       for y in [lb[2:] for lb in coords]]
             else
                 return coords.Select((c) => GoBoardAux.FlipParsedCoordinates(c)).ToList();
-                //[goboard.flip_parsed_coordinates(yx) for yx in coords]
+            //[goboard.flip_parsed_coordinates(yx) for yx in coords]
         }
 
 
@@ -1446,7 +1494,7 @@ namespace SgfEd {
         //// _list_find returns the index of elt in the first argument using the compare
         //// test.  The test defaults to identity.
         ////
-        internal static int ListFind<T>(object elt, List<T> l, Func<object, object, bool> compare = null) {
+        internal static int ListFind<T> (object elt, List<T> l, Func<object, object, bool> compare = null) {
             if (compare == null)
                 compare = object.ReferenceEquals;
             for (int i = 0; i < l.Count; i++)
@@ -1460,7 +1508,7 @@ namespace SgfEd {
         //// Game (which cleans up the current game) and sets up the first moves so that
         //// the user can start advancing through the moves.
         ////
-        public static Game CreateParsedGame (ParsedGame pgame, MainWindow main_win) {
+        public static async Task<Game> CreateParsedGame (ParsedGame pgame, MainWindow main_win) {
             // Check some root properties
             var props = pgame.Nodes.Properties;
             // Handicap stones
@@ -1473,14 +1521,15 @@ namespace SgfEd {
                     throw new Exception("If parsed game has handicap, then need handicap stones.");
                 if (props["AB"].Count != handicap)
                     throw new Exception("Parsed game's handicap count (HA) does not match stones (AB).");
-                all_black = props["AB"].Select((coords) => 
-                                {var tmp = GoBoardAux.ParsedToModelCoordinates(coords);
-                                 var row = tmp.Item1;
-                                 var col = tmp.Item2;
-                                 var m = new Move(row, col, Colors.Black);
-                                 m.ParsedNode = pgame.Nodes;
-                                 m.Rendered = false;
-                                 return m;}).ToList();
+                all_black = props["AB"].Select((coords) => {
+                    var tmp = GoBoardAux.ParsedToModelCoordinates(coords);
+                    var row = tmp.Item1;
+                    var col = tmp.Item2;
+                    var m = new Move(row, col, Colors.Black);
+                    m.ParsedNode = pgame.Nodes;
+                    m.Rendered = false;
+                    return m;
+                }).ToList();
             }
             else {
                 handicap = 0;
@@ -1489,11 +1538,11 @@ namespace SgfEd {
             if (props.ContainsKey("AW"))
                 throw new Exception("Don't support multiple white stones at root.");
             // Board size
-            var size = 19;
+            var size = Game.MaxBoardSize;
             if (props.ContainsKey("SZ"))
                 size = int.Parse(props["SZ"][0]);
             else
-                MessageBox.Show("No SZ, size, property in .sgf.  Default is 19x19");
+                await GameAux.Message("No SZ, size, property in .sgf.  Default is 19x19");
             if (size != Game.MaxBoardSize)
                 //MessageBox.Show("Only work with size 19 currently, got " + size.ToString());
                 throw new Exception("Only work with size 19 currently, got " + size.ToString());
@@ -1563,7 +1612,7 @@ namespace SgfEd {
                 foreach (var n in nodes.Branches) {
                     m = ParsedNodeToMove(n);
                     m.Number = g.MoveCount + 1;
-                    // Don't set m.previous since they are fist moves.
+                    // Don't set m.Previous since they are fist moves.
                     moves.Add(m);
                 }
                 g.Branches = moves;
@@ -1645,7 +1694,7 @@ namespace SgfEd {
         //// I could have used dynamic for the parameters, but the function required an 'is'
         //// type test which is of course a red flag with dynamic.
         ////
-        internal static void PasteNextParsedNode(ParsedNode pn, ParsedNode cut_move) {
+        internal static void PasteNextParsedNode (ParsedNode pn, ParsedNode cut_move) {
             if (pn.Next != null) {
                 if (pn.Branches == null)
                     // need branches
@@ -1658,8 +1707,8 @@ namespace SgfEd {
                 pn.Next = cut_move;
             cut_move.Previous = pn;
         }
-        
-        
+
+
         //// _renumber_moves takes a move with the correct number assignment and walks
         //// the sub tree of moves to reassign new numbers to the nodes.  This is used
         //// by game._paste_move.
@@ -1713,310 +1762,6 @@ namespace SgfEd {
         //    return false;
         //}
 
-
-        ////
-        //// Computing Game Tree Layout
-        ////
-
-        //// The display is a grid of columns and rows, with the main game tree spine
-        //// drawn across the first row, with branches descending from it. So, columns
-        //// map to tree depth, and a column N, should have a move with number N,
-        //// due to fake node added for board start in column zero.
-        ////
-
-
-        //// These properties represent/control the size of the canvas on which we draw
-        //// move nodes and lines.  
-        ////
-        private static int _treeGridCols = 200;
-        public static int TreeViewGridColumns {
-            get { return _treeGridCols; }
-            set { _treeGridCols = value; }
-        }
-        private static int _treeGridRows = 50;
-        public static int TreeViewGridRows {
-            get { return _treeGridRows; }
-            set { _treeGridRows = value; }
-        }
-
-        //// show_tree displays a grid of node objects that represent moves in the game tree,
-        //// where lines between moves need to bend, or where lines need to descend straight
-        //// downward before angling to draw next move in a branch.
-        ////
-        public static TreeViewNode[,] GetGameTreeModel (Game game) {
-            dynamic start = null;
-            // Get start node
-            if (game.FirstMove != null && game.FirstMove.Rendered) {
-                // Mock a move for empty board state.
-                var m = new Move(-1, -1, GoBoardAux.NoColor);
-                m.Next = game.FirstMove;
-                m.Branches = game.Branches;
-                m.Rendered = false;
-                start = m;
-            }
-            else if (game.ParsedGame != null) // This test should be same as g.pg.nodes != null.
-                start = game.ParsedGame.Nodes;
-            // Get layout
-            var layoutData = new TreeViewLayoutData();
-            if (start != null)
-                GameAux.LayoutGameTreeRoot(start, layoutData);
-            else {
-                // Or just have empty board ...
-                layoutData.TreeGrid[0, 0] = GameAux.NewTreeModelStart(start, layoutData);
-            }
-            return layoutData.TreeGrid;
-        }
-
-        public static TreeViewNode LayoutGameTreeRoot (dynamic pn, TreeViewLayoutData layoutData) {
-            // Vars to make arguments to calls below more readable.
-            int tree_depth = 0;
-            int new_branch_depth = 0;
-            int branch_root_row = 0;
-            // Setup initial node model.
-            // Can't use 'var', must decl with 'TreeViewNode'.  C# doesn't realize all NewTreeModelStart
-            // definitions return a TreeViewNode.
-            TreeViewNode model = GameAux.NewTreeModelStart(pn, layoutData);
-            // Return model, or get next model.
-            TreeViewNode next_model;
-            if (LayoutGameTreeNext(pn) == null) {
-                // If no next, then no branches to check below
-                layoutData.TreeGrid[model.Row, tree_depth] = model;
-                return model;
-            }
-            else {
-                next_model = GameAux.LayoutGameTree(LayoutGameTreeNext(pn), layoutData, model.Row,
-                                                    tree_depth + 1, new_branch_depth, branch_root_row);
-                model.Next = next_model;
-            }
-            layoutData.TreeGrid[model.Row, tree_depth] = model;
-            LayoutGameTreeBranches(pn, layoutData, tree_depth, model, next_model);
-            return model;
-        }
-
-        private static TreeViewNode NewTreeModelStart (dynamic pn, TreeViewLayoutData layoutData) {
-            var model = new TreeViewNode(TreeViewNodeKind.StartBoard, pn);
-            model.Row = 0;
-            layoutData.MaxRows[0] = 1;
-            model.Column = 0;
-            model.Color = GoBoardAux.NoColor; // sentinel color;
-            return model;
-        }
-
-        //// LayoutGameTreeNext returns the next node in the top branch following the argument
-        //// node.  If there are no branches, then return the Next property.  This function is
-        //// necessary since Move nodes chain Next to the branch that is selected, but ParsedNodes
-        //// always chain Next to Branches[0] if there are branches.  We always want the top branch.
-        ////
-        private static dynamic LayoutGameTreeNext (dynamic pn) {
-            // Can't dynamically invoke Assert for some reason, and C# doesn't bind only matching
-            // method at compile time.
-            //Debug.Assert(pn.GetType() != typeof(Game));
-            if (pn.Branches != null)
-                return pn.Branches[0];
-            else
-                return pn.Next;
-        }
-
-        //// layout recurses through the moves assigning them to a location in the display grid.
-        //// max_rows is an array mapping the column number to the next free row that
-        //// can hold a node.  cum_max_row is the max row used while descending a branch
-        //// of the game tree, which we use to create branch lines that draw straight across,
-        //// rather than zigging and zagging along the contour of previously placed nodes.
-        //// tree_depth is just that, and branch_depth is the heigh to the closest root node of a
-        //// branch, where its immediate siblings branch too.
-        ////
-        public static TreeViewNode LayoutGameTree (dynamic pn, TreeViewLayoutData layoutData, 
-                                                   int cum_max_row, int tree_depth, int branch_depth, 
-                                                   int branch_root_row) {
-            // Check if done with rendered nodes and switch to parsed nodes.
-            if (pn is Move && ! ((Move)pn).Rendered && ((Move)pn).ParsedNode != null)
-                pn = ((Move)pn).ParsedNode;
-            // Create and init model, set
-            TreeViewNode model = GameAux.SetupTreeLayoutModel(pn, layoutData, cum_max_row, tree_depth);
-            // Adjust last node and return, or get next model node.
-            TreeViewNode next_model;
-            if (LayoutGameTreeNext(pn) == null) {
-                // If no next, then no branches to check below
-                StoreTreeViewNode(layoutData, tree_depth, model);
-                return GameAux.MaybeAddBendNode(layoutData, model.Row, tree_depth,
-                                                branch_depth, branch_root_row, model);
-            }
-            else {
-                next_model = GameAux.LayoutGameTree(LayoutGameTreeNext(pn), layoutData, model.Row, tree_depth + 1,
-                                                    branch_depth == 0 ? 0 : branch_depth + 1, branch_root_row);
-                                                    //new_branch_depth, branch_root_row);
-                model.Next = next_model;
-            }
-            // Adjust current model down if tail is lower, or up if can angle toward root now
-            GameAux.AdjustTreeLayoutRow(model, layoutData, next_model.Row, tree_depth, 
-                                        branch_depth, branch_root_row);
-            StoreTreeViewNode(layoutData, tree_depth, model);
-            // bend is eq to model if there is no bend
-            var bend = GameAux.MaybeAddBendNode(layoutData, model.Row, tree_depth,
-                                                branch_depth, branch_root_row, model);
-            // Layout branches if any
-            LayoutGameTreeBranches(pn, layoutData, tree_depth, model, next_model);
-            return bend;
-        }
-
-        private static void LayoutGameTreeBranches (dynamic pn, TreeViewLayoutData layoutData, int tree_depth, 
-                                                    TreeViewNode model, TreeViewNode next_model) {
-            if (pn.Branches != null) {
-                model.Branches = new List<TreeViewNode>() { next_model };
-                // When handle Move objs, branches[0] is not always model.next
-                for (var i = 1; i < pn.Branches.Count; i++) {
-                    // Can't use 'var', must decl with 'TreeViewNode'.  C# doesn't realize all LayoutGameTree
-                    // definitions return a TreeViewNode.
-                    TreeViewNode branch_model = GameAux.LayoutGameTree(pn.Branches[i], layoutData, model.Row,
-                                                                       tree_depth + 1, 1, model.Row);
-                    model.Branches.Add(branch_model);
-                }
-            }
-        }
-
-
-        //// setup_layout_model initializes the current node model for the display, with row, column,
-        //// color, etc.  This returns the new model element.
-        ////
-        private static TreeViewNode SetupTreeLayoutModel (object pn, TreeViewLayoutData layoutData, 
-                                                          int cum_max_row, int tree_depth) {
-            var model = new TreeViewNode(TreeViewNodeKind.Move, pn);
-            // Get column's free row or use row from parent
-            if (tree_depth >= GameAux.TreeViewGridColumns)
-                GameAux.GrowTreeView(layoutData);
-            var row = Math.Max(cum_max_row, layoutData.MaxRows[tree_depth]);
-            model.Row = row;
-            layoutData.MaxRows[tree_depth] = row + 1;
-            model.Column = tree_depth;
-            // Set color
-            if (pn is Move)
-                model.Color = ((Move)pn).Color;
-            else if (((ParsedNode)pn).Properties.ContainsKey("B"))
-                model.Color = Colors.Black;
-            else if (((ParsedNode)pn).Properties.ContainsKey("W"))
-                model.Color = Colors.White;
-            return model;
-        }
-
-        //// adjust_layout_row adjusts moves downward if moves farther out on the branch
-        //// had to occupy lower rows.  This keeps branches drawn straighter, rather than
-        //// zig-zagging with node contours.  Then this function checks to see if we're
-        //// within the square defined by the current model and the branch root, and if we
-        //// this is the case, then start subtracting one row at at time to get a diagonal
-        //// line of moves up to the branch root.
-        ////
-        private static void AdjustTreeLayoutRow (TreeViewNode model, TreeViewLayoutData layoutData,
-                                                 int next_row_used, int tree_depth, int branch_depth, int branch_root_row) {
-            if (tree_depth >= GameAux.TreeViewGridColumns)
-                    GameAux.GrowTreeView(layoutData);
-            // If we're on a branch, and it had to be moved down farther out to the right
-            // in the layout, then move this node down to keep a straight line.
-            if (next_row_used > model.Row) {
-                model.Row = next_row_used;
-                layoutData.MaxRows[tree_depth] = next_row_used + 1;
-            }
-            //// If we're unwinding back toward this node's branch root, and we're within a direct
-            //// diagonal line from the root, start decreasing the row by one.
-            if ((branch_depth < model.Row - branch_root_row) && (layoutData.TreeGrid[model.Row - 1, tree_depth] == null)) {
-                // row - 1 does not index out of bounds since model.row would have to be zero,
-                // and zero minus anything will not be greater than branch depth (which would be zero)
-                // if row - 1 were less than zero.
-                layoutData.MaxRows[tree_depth] = model.Row;
-                model.Row = model.Row - 1;
-            }
-        }
-
-        //// maybe_add_bend_node checks if the diagonal line of nodes for a branch intersect the column
-        //// for the branch's root at a row great than the root's row.  If this happens, then we
-        //// need a model node to represent where to draw the line bend to start the diagonal line.
-        ////
-        private static TreeViewNode MaybeAddBendNode (TreeViewLayoutData layoutData, int row,
-                                                      int tree_depth, int branch_depth, int branch_root_row,
-                                                      TreeViewNode curNode) {
-            if ((branch_depth == 1) && (row - branch_root_row > 1) &&
-                (layoutData.TreeGrid[row - 1, tree_depth - 1] == null)) {
-                var bend = new TreeViewNode(TreeViewNodeKind.LineBend);
-                bend.Row = row - 1;
-                bend.Column = tree_depth - 1;
-                bend.Next = curNode;
-                layoutData.MaxRows[tree_depth - 1] = row;
-                layoutData.TreeGrid[bend.Row, bend.Column] = bend;
-                return bend;
-            }
-            return curNode;
-        }
-        
-        private static void StoreTreeViewNode (TreeViewLayoutData layoutData, int tree_depth, TreeViewNode model) {
-            if (model.Row >= GameAux.TreeViewGridRows || tree_depth >= GameAux.TreeViewGridColumns)
-                GameAux.GrowTreeView(layoutData);
-            Debug.Assert(layoutData.TreeGrid[model.Row, tree_depth] == null,
-                         "Eh?!  This tree view location should be empty.");
-            layoutData.TreeGrid[model.Row, tree_depth] = model;
-        }
-
-        private static void GrowTreeView (TreeViewLayoutData layoutData) {
-            // Update globals for sizes
-            GameAux.TreeViewGridColumns = GameAux.TreeViewGridColumns + (GameAux.TreeViewGridColumns / 2);
-            GameAux.TreeViewGridRows = GameAux.TreeViewGridRows + (GameAux.TreeViewGridRows / 2);
-            // Grow tree grid
-            var oldGrid = layoutData.TreeGrid;
-            var oldGridRows = oldGrid.GetLength(0);
-            var oldGridCols = oldGrid.GetLength(1);
-            layoutData.TreeGrid = new TreeViewNode[GameAux.TreeViewGridRows, GameAux.TreeViewGridColumns];
-            for (var i = 0; i < oldGridRows; i++) {
-                for (var j = 0; j < oldGridCols; j++) {
-                    layoutData.TreeGrid[i, j] = oldGrid[i, j];
-                }
-            }
-            // Grow Maxes
-            var oldMaxes = layoutData.MaxRows;
-            layoutData.MaxRows = new int[GameAux.TreeViewGridColumns];
-            for (var i = 0; i < oldMaxes.Length; i++)
-                layoutData.MaxRows[i] = oldMaxes[i];
-        }
-
     } // GameAux
-
-
-    public class TreeViewNode {
-        public TreeViewNodeKind Kind {get; set;}
-        public UIElement Cookie {get; set;}
-        public Color Color {get; set;}
-        public dynamic Node { get; set; } // public ParsedNode Node {get; set;}
-        // Row has nothing to do with node's coordinates. It is about where this node appears
-        // in the grid displaying the entire game tree.
-        public int Row {get; set;}
-        public int Column {get; set;}
-        public TreeViewNode Next {get; set;}
-        public List<TreeViewNode> Branches {get; set;}
-
-        public TreeViewNode (TreeViewNodeKind kind = TreeViewNodeKind.Move, dynamic node = null) {
-            this.Kind = kind;
-            this.Cookie = null;
-            this.Node = node;
-            this.Row = 0;
-            this.Column = 0;
-            this.Color = GoBoardAux.NoColor;
-        }
-    } // TreeViewNode
-
-    public enum TreeViewNodeKind {
-        Move, LineBend, StartBoard}
-
-
-    //// TreeViewLayoutData holds info we need to indirect to and change the size of sometimes while
-    //// laying out game tree views.  This would be private to the compilation unit, but that's not possible.
-    //// Also, since LayoutGameTree is partially thought of as platform that might be used by extensions,
-    //// and it is public, this needs to be.
-    ////
-    public class TreeViewLayoutData {
-        public TreeViewNode[,] TreeGrid {get; set;}
-        public int[] MaxRows {get; set;}
-
-        public TreeViewLayoutData () {
-            this.TreeGrid = new TreeViewNode[GameAux.TreeViewGridRows, GameAux.TreeViewGridColumns];
-            this.MaxRows = new int[GameAux.TreeViewGridColumns];
-        }
-    }
 
 } // namespace

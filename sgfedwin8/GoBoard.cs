@@ -3,21 +3,23 @@
 
 using System;
 using System.Collections.Generic;
+using Windows.UI.Xaml; // UIElement
 // System.Windows: UIElement, MessageBox
 using System.Windows;
 //using System.Linq;
 //using System.Text;
-using System.Windows.Media; // Color, Colors
+using Windows.UI; // Color, Colors
+//using System.Windows.Media; // Color, Colors
 using System.Diagnostics; // Debug.Assert
 
 
-namespace SgfEd {
+namespace SgfEdwin8 {
 
     public class GoBoard {
         public int Size { get; set; }
         private Move[,] moves = null;
 
-        public GoBoard(int size) {
+        public GoBoard (int size) {
             this.Size = size;
             this.moves = new Move[size, size];
         }
@@ -42,12 +44,12 @@ namespace SgfEd {
         public void RemoveStone (Move move) {
             this.moves[move.Row - 1, move.Column - 1] = null;
         }
-    
+
         public void RemoveStoneAt (int row, int col) {
             if (this.MoveAt(row, col) != null)
                 this.RemoveStone(this.MoveAt(row, col));
         }
-    
+
         //// goto_start removes all stones from the model.
         ////
         public void GotoStart () {
@@ -62,7 +64,7 @@ namespace SgfEd {
         public Move MoveAt (int row, int col) {
             return this.moves[row - 1, col - 1];
         }
-    
+
         //// color_at returns the color of the stone at row, col (one-based), or None if there is not stone there.
         //// This assumes row, col are valid indexes.
         ////
@@ -78,7 +80,7 @@ namespace SgfEd {
         //// has_stone returns true if the go board location row,col (one-based) has
         //// a stone.  This function assumes row and col are valid locations.
         ////
-        public bool HasStone(int row, int col) {
+        public bool HasStone (int row, int col) {
             return this.MoveAt(row, col) != null;
         }
 
@@ -91,30 +93,30 @@ namespace SgfEd {
         public bool HasStoneLeft (int row, int col) {
             return ((col - 1) >= 1) && (this.MoveAt(row, col - 1) != null);
         }
-    
+
         public bool HasStoneColorLeft (int row, int col, Color color) {
             return this.HasStoneLeft(row, col) && (this.MoveAt(row, col - 1).Color == color);
         }
-    
-    
+
+
         public bool HasStoneRight (int row, int col) {
             return ((col + 1) <= this.Size) && (this.MoveAt(row, col + 1) != null);
         }
-    
+
         public bool HasStoneColorRight (int row, int col, Color color) {
             return this.HasStoneRight(row, col) && (this.MoveAt(row, col + 1).Color == color);
         }
-    
+
 
         public bool HasStoneUp (int row, int col) {
             return ((row - 1) >= 1) && (this.MoveAt(row - 1, col) != null);
         }
-    
+
         public bool HasStoneColorUp (int row, int col, Color color) {
             return this.HasStoneUp(row, col) && (this.MoveAt(row - 1, col).Color == color);
         }
-    
-    
+
+
         public bool HasStoneDown (int row, int col) {
             return ((row + 1) <= this.Size) && (this.MoveAt(row + 1, col) != null);
         }
