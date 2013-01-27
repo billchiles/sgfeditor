@@ -9,7 +9,6 @@
         Background="#C7419082"
         KeyDown="mainWin_keydown" 
     >
-    <!-- KeyUp="mainWin_keyup" -->
     <!-- win8 doesn't have title bars, so have to change UI to display current file, move #, etc. -->
     <!-- Title="SGF Editor - unsaved Move 0" -->
 
@@ -37,29 +36,10 @@
                      VerticalAlignment="Stretch" TextWrapping="Wrap" AcceptsReturn="True"
                      ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto"
                      />
-            <!-- ScrollViewer.CanContentScroll="True" -->
-            <!--<GridSplitter Grid.Row="1" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Height="2" Margin="2"
-                          Background="CornSilk"/>-->
-            <!-- Define the grid to hold board lines, which is filled in programmatically depending on the go board size ... -->
             <ScrollViewer Grid.Row="2" Margin="2,1,2,2" ScrollViewer.HorizontalScrollBarVisibility="Visible" 
                               ScrollViewer.VerticalScrollBarVisibility="Visible" >
-                <!-- ScrollViewer.CanContentScroll="True" -->
-                <!-- <Canvas Background="Wheat" ScrollViewer.HorizontalScrollBarVisibility="Visible" 
-                          ScrollViewer.VerticalScrollBarVisibility="Visible" ScrollViewer.CanContentScroll="True">
-                    <Grid ShowGridLines="True" Background="Transparent"  Name="gameTreeView" Margin="2,1,2,2"
-                          ScrollViewer.HorizontalScrollBarVisibility="Visible" 
-                          ScrollViewer.VerticalScrollBarVisibility="Visible" ScrollViewer.CanContentScroll="True"
-                          > 
-                    </Grid>
-                </Canvas> -->
-                <!-- HorizontalAlignment="Stretch" VerticalAlignment="Stretch" -->
-                <!-- <Grid ShowGridLines="True" Background="Wheat"  Name="gameTreeView" Margin="2,1,2,2"
-                          ScrollViewer.HorizontalScrollBarVisibility="Visible" 
-                          ScrollViewer.VerticalScrollBarVisibility="Visible" ScrollViewer.CanContentScroll="True"
-                          >
-                </Grid> -->
                 <Canvas Background="Wheat" ScrollViewer.HorizontalScrollBarVisibility="Visible" 
-                          ScrollViewer.VerticalScrollBarVisibility="Visible" Name="gameTreeView" Margin="2,1,2,2" >
+                          ScrollViewer.VerticalScrollBarVisibility="Visible" Name="gameTreeView"  >
 
                 </Canvas>
             </ScrollViewer>
@@ -141,19 +121,11 @@
                 </Grid>
             </Grid>
         </local:FocusableInputControl>
-        <!--
-            <Grid Background="#FFD7B264" Grid.RowSpan="2" HorizontalAlignment="Stretch" Margin="2" Name="boardGrid"
-                 VerticalAlignment="Stretch"  >
-            </Grid>
-
-            <Grid  Background="Transparent" Grid.RowSpan="2" HorizontalAlignment="Stretch" IsHitTestVisible="True"
-              Margin="2" Name="stonesGrid" VerticalAlignment="Stretch" PointerPressed="StonesPointerPressed" >
-            </Grid>
-            -->
 
     </Grid>
     <!-- main grid for buttons, board, comments -->
 
+    <!-- This is just here now as example that someone added ... should move file, pass, help buttons here -->
     <Page.BottomAppBar>
         <AppBar>
             <Grid>

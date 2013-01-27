@@ -16,6 +16,7 @@ using System.IO; // StreamWriter
 using System.Threading.Tasks; // Task<string> for GameAux.Message
 using Windows.Storage; // StorageFile
 using System.Diagnostics; // Debug.Assert
+using Windows.UI.Xaml; // UIElement
 
 
 
@@ -1762,6 +1763,310 @@ namespace SgfEdwin8 {
         //    return false;
         //}
 
+        ////
+        //// Computing Game Tree Layout
+        ////
+
+        //// The display is a grid of columns and rows, with the main game tree spine
+        //// drawn across the first row, with branches descending from it. So, columns
+        //// map to tree depth, and a column N, should have a move with number N,
+        //// due to fake node added for board start in column zero.
+        ////
+
+
+        //// These properties represent/control the size of the canvas on which we draw
+        //// move nodes and lines.  
+        ////
+        private static int _treeGridCols = 200;
+        public static int TreeViewGridColumns {
+            get { return _treeGridCols; }
+            set { _treeGridCols = value; }
+        }
+        private static int _treeGridRows = 50;
+        public static int TreeViewGridRows {
+            get { return _treeGridRows; }
+            set { _treeGridRows = value; }
+        }
+
+        //// show_tree displays a grid of node objects that represent moves in the game tree,
+        //// where lines between moves need to bend, or where lines need to descend straight
+        //// downward before angling to draw next move in a branch.
+        ////
+        public static TreeViewNode[,] GetGameTreeModel (Game game) {
+            dynamic start = null;
+            // Get start node
+            if (game.FirstMove != null && game.FirstMove.Rendered) {
+                // Mock a move for empty board state.
+                var m = new Move(-1, -1, GoBoardAux.NoColor);
+                m.Next = game.FirstMove;
+                m.Branches = game.Branches;
+                m.Rendered = false;
+                start = m;
+            }
+            else if (game.ParsedGame != null) // This test should be same as g.pg.nodes != null.
+                start = game.ParsedGame.Nodes;
+            // Get layout
+            var layoutData = new TreeViewLayoutData();
+            if (start != null)
+                GameAux.LayoutGameTreeRoot(start, layoutData);
+            else {
+                // Or just have empty board ...
+                layoutData.TreeGrid[0, 0] = GameAux.NewTreeModelStart(start, layoutData);
+            }
+            return layoutData.TreeGrid;
+        }
+
+        public static TreeViewNode LayoutGameTreeRoot (dynamic pn, TreeViewLayoutData layoutData) {
+            // Vars to make arguments to calls below more readable.
+            int tree_depth = 0;
+            int new_branch_depth = 0;
+            int branch_root_row = 0;
+            // Setup initial node model.
+            // Can't use 'var', must decl with 'TreeViewNode'.  C# doesn't realize all NewTreeModelStart
+            // definitions return a TreeViewNode.
+            TreeViewNode model = GameAux.NewTreeModelStart(pn, layoutData);
+            // Return model, or get next model.
+            TreeViewNode next_model;
+            if (LayoutGameTreeNext(pn) == null) {
+                // If no next, then no branches to check below
+                layoutData.TreeGrid[model.Row, tree_depth] = model;
+                return model;
+            }
+            else {
+                next_model = GameAux.LayoutGameTree(LayoutGameTreeNext(pn), layoutData, model.Row,
+                                                    tree_depth + 1, new_branch_depth, branch_root_row);
+                model.Next = next_model;
+            }
+            layoutData.TreeGrid[model.Row, tree_depth] = model;
+            LayoutGameTreeBranches(pn, layoutData, tree_depth, model, next_model);
+            return model;
+        }
+
+        private static TreeViewNode NewTreeModelStart (dynamic pn, TreeViewLayoutData layoutData) {
+            var model = new TreeViewNode(TreeViewNodeKind.StartBoard, pn);
+            model.Row = 0;
+            layoutData.MaxRows[0] = 1;
+            model.Column = 0;
+            model.Color = GoBoardAux.NoColor; // sentinel color;
+            return model;
+        }
+
+        //// LayoutGameTreeNext returns the next node in the top branch following the argument
+        //// node.  If there are no branches, then return the Next property.  This function is
+        //// necessary since Move nodes chain Next to the branch that is selected, but ParsedNodes
+        //// always chain Next to Branches[0] if there are branches.  We always want the top branch.
+        ////
+        private static dynamic LayoutGameTreeNext (dynamic pn) {
+            // Can't dynamically invoke Assert for some reason, and C# doesn't bind only matching
+            // method at compile time.
+            //Debug.Assert(pn.GetType() != typeof(Game));
+            if (pn.Branches != null)
+                return pn.Branches[0];
+            else
+                return pn.Next;
+        }
+
+        //// layout recurses through the moves assigning them to a location in the display grid.
+        //// max_rows is an array mapping the column number to the next free row that
+        //// can hold a node.  cum_max_row is the max row used while descending a branch
+        //// of the game tree, which we use to create branch lines that draw straight across,
+        //// rather than zigging and zagging along the contour of previously placed nodes.
+        //// tree_depth is just that, and branch_depth is the heigh to the closest root node of a
+        //// branch, where its immediate siblings branch too.
+        ////
+        public static TreeViewNode LayoutGameTree (dynamic pn, TreeViewLayoutData layoutData,
+                                                   int cum_max_row, int tree_depth, int branch_depth,
+                                                   int branch_root_row) {
+            // Check if done with rendered nodes and switch to parsed nodes.
+            if (pn is Move && !((Move)pn).Rendered && ((Move)pn).ParsedNode != null)
+                pn = ((Move)pn).ParsedNode;
+            // Create and init model, set
+            TreeViewNode model = GameAux.SetupTreeLayoutModel(pn, layoutData, cum_max_row, tree_depth);
+            // Adjust last node and return, or get next model node.
+            TreeViewNode next_model;
+            if (LayoutGameTreeNext(pn) == null) {
+                // If no next, then no branches to check below
+                StoreTreeViewNode(layoutData, tree_depth, model);
+                return GameAux.MaybeAddBendNode(layoutData, model.Row, tree_depth,
+                                                branch_depth, branch_root_row, model);
+            }
+            else {
+                next_model = GameAux.LayoutGameTree(LayoutGameTreeNext(pn), layoutData, model.Row, tree_depth + 1,
+                                                    branch_depth == 0 ? 0 : branch_depth + 1, branch_root_row);
+                //new_branch_depth, branch_root_row);
+                model.Next = next_model;
+            }
+            // Adjust current model down if tail is lower, or up if can angle toward root now
+            GameAux.AdjustTreeLayoutRow(model, layoutData, next_model.Row, tree_depth,
+                                        branch_depth, branch_root_row);
+            StoreTreeViewNode(layoutData, tree_depth, model);
+            // bend is eq to model if there is no bend
+            var bend = GameAux.MaybeAddBendNode(layoutData, model.Row, tree_depth,
+                                                branch_depth, branch_root_row, model);
+            // Layout branches if any
+            LayoutGameTreeBranches(pn, layoutData, tree_depth, model, next_model);
+            return bend;
+        }
+
+        private static void LayoutGameTreeBranches (dynamic pn, TreeViewLayoutData layoutData, int tree_depth,
+                                                    TreeViewNode model, TreeViewNode next_model) {
+            if (pn.Branches != null) {
+                model.Branches = new List<TreeViewNode>() { next_model };
+                // When handle Move objs, branches[0] is not always model.next
+                for (var i = 1; i < pn.Branches.Count; i++) {
+                    // Can't use 'var', must decl with 'TreeViewNode'.  C# doesn't realize all LayoutGameTree
+                    // definitions return a TreeViewNode.
+                    TreeViewNode branch_model = GameAux.LayoutGameTree(pn.Branches[i], layoutData, model.Row,
+                                                                       tree_depth + 1, 1, model.Row);
+                    model.Branches.Add(branch_model);
+                }
+            }
+        }
+
+
+        //// setup_layout_model initializes the current node model for the display, with row, column,
+        //// color, etc.  This returns the new model element.
+        ////
+        private static TreeViewNode SetupTreeLayoutModel (object pn, TreeViewLayoutData layoutData,
+                                                          int cum_max_row, int tree_depth) {
+            var model = new TreeViewNode(TreeViewNodeKind.Move, pn);
+            // Get column's free row or use row from parent
+            if (tree_depth >= GameAux.TreeViewGridColumns)
+                GameAux.GrowTreeView(layoutData);
+            var row = Math.Max(cum_max_row, layoutData.MaxRows[tree_depth]);
+            model.Row = row;
+            layoutData.MaxRows[tree_depth] = row + 1;
+            model.Column = tree_depth;
+            // Set color
+            if (pn is Move)
+                model.Color = ((Move)pn).Color;
+            else if (((ParsedNode)pn).Properties.ContainsKey("B"))
+                model.Color = Colors.Black;
+            else if (((ParsedNode)pn).Properties.ContainsKey("W"))
+                model.Color = Colors.White;
+            return model;
+        }
+
+        //// adjust_layout_row adjusts moves downward if moves farther out on the branch
+        //// had to occupy lower rows.  This keeps branches drawn straighter, rather than
+        //// zig-zagging with node contours.  Then this function checks to see if we're
+        //// within the square defined by the current model and the branch root, and if we
+        //// this is the case, then start subtracting one row at at time to get a diagonal
+        //// line of moves up to the branch root.
+        ////
+        private static void AdjustTreeLayoutRow (TreeViewNode model, TreeViewLayoutData layoutData,
+                                                 int next_row_used, int tree_depth, int branch_depth, int branch_root_row) {
+            if (tree_depth >= GameAux.TreeViewGridColumns)
+                GameAux.GrowTreeView(layoutData);
+            // If we're on a branch, and it had to be moved down farther out to the right
+            // in the layout, then move this node down to keep a straight line.
+            if (next_row_used > model.Row) {
+                model.Row = next_row_used;
+                layoutData.MaxRows[tree_depth] = next_row_used + 1;
+            }
+            //// If we're unwinding back toward this node's branch root, and we're within a direct
+            //// diagonal line from the root, start decreasing the row by one.
+            if ((branch_depth < model.Row - branch_root_row) && (layoutData.TreeGrid[model.Row - 1, tree_depth] == null)) {
+                // row - 1 does not index out of bounds since model.row would have to be zero,
+                // and zero minus anything will not be greater than branch depth (which would be zero)
+                // if row - 1 were less than zero.
+                layoutData.MaxRows[tree_depth] = model.Row;
+                model.Row = model.Row - 1;
+            }
+        }
+
+        //// maybe_add_bend_node checks if the diagonal line of nodes for a branch intersect the column
+        //// for the branch's root at a row great than the root's row.  If this happens, then we
+        //// need a model node to represent where to draw the line bend to start the diagonal line.
+        ////
+        private static TreeViewNode MaybeAddBendNode (TreeViewLayoutData layoutData, int row,
+                                                      int tree_depth, int branch_depth, int branch_root_row,
+                                                      TreeViewNode curNode) {
+            if ((branch_depth == 1) && (row - branch_root_row > 1) &&
+                (layoutData.TreeGrid[row - 1, tree_depth - 1] == null)) {
+                var bend = new TreeViewNode(TreeViewNodeKind.LineBend);
+                bend.Row = row - 1;
+                bend.Column = tree_depth - 1;
+                bend.Next = curNode;
+                layoutData.MaxRows[tree_depth - 1] = row;
+                layoutData.TreeGrid[bend.Row, bend.Column] = bend;
+                return bend;
+            }
+            return curNode;
+        }
+
+        private static void StoreTreeViewNode (TreeViewLayoutData layoutData, int tree_depth, TreeViewNode model) {
+            if (model.Row >= GameAux.TreeViewGridRows || tree_depth >= GameAux.TreeViewGridColumns)
+                GameAux.GrowTreeView(layoutData);
+            Debug.Assert(layoutData.TreeGrid[model.Row, tree_depth] == null,
+                         "Eh?!  This tree view location should be empty.");
+            layoutData.TreeGrid[model.Row, tree_depth] = model;
+        }
+
+        private static void GrowTreeView (TreeViewLayoutData layoutData) {
+            // Update globals for sizes
+            GameAux.TreeViewGridColumns = GameAux.TreeViewGridColumns + (GameAux.TreeViewGridColumns / 2);
+            GameAux.TreeViewGridRows = GameAux.TreeViewGridRows + (GameAux.TreeViewGridRows / 2);
+            // Grow tree grid
+            var oldGrid = layoutData.TreeGrid;
+            var oldGridRows = oldGrid.GetLength(0);
+            var oldGridCols = oldGrid.GetLength(1);
+            layoutData.TreeGrid = new TreeViewNode[GameAux.TreeViewGridRows, GameAux.TreeViewGridColumns];
+            for (var i = 0; i < oldGridRows; i++) {
+                for (var j = 0; j < oldGridCols; j++) {
+                    layoutData.TreeGrid[i, j] = oldGrid[i, j];
+                }
+            }
+            // Grow Maxes
+            var oldMaxes = layoutData.MaxRows;
+            layoutData.MaxRows = new int[GameAux.TreeViewGridColumns];
+            for (var i = 0; i < oldMaxes.Length; i++)
+                layoutData.MaxRows[i] = oldMaxes[i];
+        }
+
     } // GameAux
+
+
+    public class TreeViewNode {
+        public TreeViewNodeKind Kind { get; set; }
+        public UIElement Cookie { get; set; }
+        public Color Color { get; set; }
+        public dynamic Node { get; set; } // public ParsedNode Node {get; set;}
+        // Row has nothing to do with node's coordinates. It is about where this node appears
+        // in the grid displaying the entire game tree.
+        public int Row { get; set; }
+        public int Column { get; set; }
+        public TreeViewNode Next { get; set; }
+        public List<TreeViewNode> Branches { get; set; }
+
+        public TreeViewNode (TreeViewNodeKind kind = TreeViewNodeKind.Move, dynamic node = null) {
+            this.Kind = kind;
+            this.Cookie = null;
+            this.Node = node;
+            this.Row = 0;
+            this.Column = 0;
+            this.Color = GoBoardAux.NoColor;
+        }
+    } // TreeViewNode
+
+    public enum TreeViewNodeKind {
+        Move, LineBend, StartBoard
+    }
+
+
+    //// TreeViewLayoutData holds info we need to indirect to and change the size of sometimes while
+    //// laying out game tree views.  This would be private to the compilation unit, but that's not possible.
+    //// Also, since LayoutGameTree is partially thought of as platform that might be used by extensions,
+    //// and it is public, this needs to be.
+    ////
+    public class TreeViewLayoutData {
+        public TreeViewNode[,] TreeGrid { get; set; }
+        public int[] MaxRows { get; set; }
+
+        public TreeViewLayoutData () {
+            this.TreeGrid = new TreeViewNode[GameAux.TreeViewGridRows, GameAux.TreeViewGridColumns];
+            this.MaxRows = new int[GameAux.TreeViewGridColumns];
+        }
+    }
 
 } // namespace

@@ -95,12 +95,13 @@ F1 produces this help.
         public Game Game { get; set; }
 
 
-        public MainWindow() {
+        public MainWindow () {
             InitializeComponent();
             this.Height = 700;
             this.Width = 1050;
             // Add lines grid and stone hit testing grid to MainWindow root grid ...
-            var root = (Grid)this.Content;
+            // THIS NOW HAPPENS IN SetupBoardDisplay CALLED FROM 'new Game'
+            //var root = (Grid)this.Content;
             //SetupLinesGrid(Game.MAX_BOARD_SIZE);
             //this.SetupStonesGrid(Game.MAX_BOARD_SIZE);
 
@@ -317,8 +318,9 @@ F1 produces this help.
 
 
         //// _advance_to_stone displays move, which as already been added to the
-        //// board and readied for rendering.  We add the stone with no current adornment because
-        //// that function does the basic work, and then immediately add the adornment.
+        //// board and readied for rendering.  We add the stone with no current
+        //// adornment and then immediately add the adornment because some places in
+        //// the code need to just add the stone to the display with no adornments.
         ////
         private void AdvanceToStone (Move move) {
             this.AddNextStoneNoCurrent(move);
@@ -400,7 +402,7 @@ F1 produces this help.
                     MessageBox.Show(err.Message + err.StackTrace);
                 }
                 catch (Exception err) {
-                    // No code paths should throw from incomplete, unrecoverable state.
+                    // No code paths should throw from incomplete, unrecoverable state, so should be fine to continue.
                     // For example, game state should be intact (other than IsDirty) for continuing.
                     MessageBox.Show(err.Message + err.StackTrace);
                 }
@@ -1111,7 +1113,7 @@ F1 produces this help.
                 stones_grid.Children.Add(current_stone_adornment_grid);
             }
             else {
-                var inner_grid = AddAdornmentGrid(stones_grid, move.Row, move.Column);
+                var inner_grid = MainWindowAux.AddAdornmentGrid(stones_grid, move.Row, move.Column);
                 current_stone_adornment_grid = inner_grid;
                 //
                 // Create mark

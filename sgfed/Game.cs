@@ -1489,7 +1489,7 @@ namespace SgfEd {
             if (props.ContainsKey("AW"))
                 throw new Exception("Don't support multiple white stones at root.");
             // Board size
-            var size = 19;
+            var size = Game.MaxBoardSize;
             if (props.ContainsKey("SZ"))
                 size = int.Parse(props["SZ"][0]);
             else

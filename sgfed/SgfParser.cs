@@ -119,7 +119,7 @@ namespace SgfEd {
             return res;
         }
 
-    } // ParseNode class
+    } // ParsedNode class
 
 
 

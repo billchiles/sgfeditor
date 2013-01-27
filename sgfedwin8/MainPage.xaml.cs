@@ -20,6 +20,7 @@ using Windows.Storage.Pickers;  // FileOpenPicker
 using Windows.Storage; // FileIO
 using System.Threading.Tasks; // Task<T>
 using System.Diagnostics; // Debug.Assert
+using Windows.UI.Text; // FontWeight
 
 
 namespace SgfEdwin8 {
@@ -54,7 +55,7 @@ namespace SgfEdwin8 {
 
     public sealed partial class MainWindow : Page {
 
-        private const string help_string = @"
+        private const string HelpString = @"
 SGFEd can read and write .sgf files, edit game trees, etc.
 
 PLACING STONES AND ANNOTATIONS:
@@ -172,6 +173,7 @@ F1 produces this help.
             }
             else
                 throw new Exception("Haven't implemented changing board size for new games.");
+            this.InitializeTreeView();
         }
 
         //// SetupLinesGrid takes an int for the board size (as int) and returns a WPF Grid object for
@@ -287,8 +289,11 @@ F1 produces this help.
         protected override void OnLostFocus (RoutedEventArgs e) {
             if (hiddenRootScroller == null) {
                 var d = FocusManager.GetFocusedElement() as DependencyObject;
+                // When new game dialog gets shown, d is null;
+                if (d == null) return;
                 while (d.GetType() != typeof(ScrollViewer)) {
                     d = VisualTreeHelper.GetParent(d);
+                    if (d == null) return;
                 }
                 hiddenRootScroller = d as ScrollViewer;
             }
@@ -330,7 +335,22 @@ F1 produces this help.
 
 
         private void helpButtonLeftDown (object sender, RoutedEventArgs e) {
-            //MessageDialog.Show(help_string, "SGFEd Help");
+            this.ShowHelp();
+        }
+
+        //// This is a hack because win8 msgbox does not scroll, so will need to design a popup with a
+        //// with a scrolling text box.
+        ////
+        private bool showFirstHalfHelp = true;
+        private async void ShowHelp () {
+            var howMuch = (MainWindow.HelpString.Length / 2) + 15;
+            if (this.showFirstHalfHelp)
+                await GameAux.Message("HACK: Hit OK and press F1 again to see alternating halves of help string.\n" +
+                                          MainWindow.HelpString.Substring(0, howMuch),
+                                      "SGFEd Help");
+            else
+                await GameAux.Message(MainWindow.HelpString.Substring(howMuch), "SGFEd Help");
+            this.showFirstHalfHelp = ! this.showFirstHalfHelp;
         }
 
         //// StonesMouseLeftDown handles creating a move or adding adornments
@@ -386,10 +406,13 @@ F1 produces this help.
             //self._update_tree_view(move.Previous);
             if (this.Game.CurrentMove != null) {
                 var m = this.Game.CurrentMove;
+                this.UpdateTreeView(m);
                 this.UpdateTitle(m.Number, m.IsPass);
             }
-            else
+            else {
+                this.UpdateTreeView(null);
                 this.UpdateTitle(0);
+            }
             this.FocusOnStones();
         }
 
@@ -411,6 +434,7 @@ F1 produces this help.
                 return;
             }
             this.AdvanceToStone(move);
+            this.UpdateTreeView(move);
             this.FocusOnStones();
         }
 
@@ -582,11 +606,21 @@ F1 produces this help.
         private async void newButton_left_down(object new_button, RoutedEventArgs e) {
             await DoNewButton();
         }
-        // Need this to re-use this functionality where we need to use 'await'.  Can't
-        // 'await' newButtonLeftDown since it must be 'async void'.
+
+        ////// Needed this when trying to navigate to the new dialog as a page.
+        ////// That didn't work since win8 tears down the main page, and it
+        ////// required crufty hacks to coordinate and synchronize with MianWindow.
+        //////
+        //public bool NewDiaogDone = false;
+        //// white name, black name, size, handicap, komi ...
+        //public Tuple<string, string, string, string, string> NewDialogInfo = null;
+
+        //// DoNewButton can be re-used where we need to use 'await'.  Can't 'await'
+        //// newButtonLeftDown since it must be 'async void' due to being an event handler.
+        ////
         private async Task DoNewButton () {
-            //await GameAux.Message("After solving World Peace, I'll figure out input dialogs in winRT.  " +
-            //                      "For now, create an .sgf file with this line and use the Open command:\n" +
+            // Hack while seplunking how to build a popup dialog in win8.
+            //await GameAux.Message("For now, create an .sgf file with this line and use the Open command:\n" +
             //                      "    ;GM[1]FF[4]SZ[19]KM[6.5]PW[WhiteName]PB[BlackName])\n" +
             //                      "For handicaps, change KM to 0.0 and add stones before the close paren:\n" +
             //                      "   2: AB[pd][dp]\n" +
@@ -595,15 +629,40 @@ F1 produces this help.
             //                      "   5: AB[pd][dp][pp][dd][jj]" +
             //                      "   6: AB[pd][dp][pp][dd][dj][pj]");
             await this.CheckDirtySave();
-            this.Frame.Navigate(typeof(NewGameDialog), this);
-            while (! this.NewDiaogDone)
-                await Task.Delay(500);
-            if (this.NewDialogInfo != null) {
-                var white = this.NewDialogInfo.Item1;
-                var black = this.NewDialogInfo.Item2;
-                var size = this.NewDialogInfo.Item3;
-                var handicap = this.NewDialogInfo.Item4;
-                var komi = this.NewDialogInfo.Item5;
+            var newDialog = new NewGameDialog();
+            var popup = new Popup();
+            newDialog.NewGameDialogClose += (s, e) => { 
+                popup.IsOpen = false;
+                this.NewGameDialogDone(newDialog); 
+            };
+            popup.Child = newDialog;
+            popup.IsOpen = true;
+            // This was used when tried to navigate to new dialog as a page, but win8 tears
+            // down MainWindow when we navigated to the dialog, requiring jumping through multiple hoops.
+            //this.Frame.Navigate(typeof(NewGameDialog), this);
+            //while (! this.NewDiaogDone)
+            //    await Task.Delay(500);
+            //if (this.NewDialogInfo != null) {
+            //    NewGameDialogDone();
+            //}
+        }
+
+        //// NewGameDialogDone handles when the new game dialog popup is done.
+        //// It checks whether the dialog was confirmed or cancelled, and takes
+        //// appropriate action.
+        ////
+        private void NewGameDialogDone (NewGameDialog dlg) {
+            if (dlg.NewGameConfirmed) {
+                var white = dlg.WhiteText;
+                var black = dlg.BlackText;
+                var size = dlg.SizeText;
+                var handicap = dlg.HandicapText;
+                var komi = dlg.KomiText;
+                //var white = this.NewDialogInfo.Item1;
+                //var black = this.NewDialogInfo.Item2;
+                //var size = this.NewDialogInfo.Item3;
+                //var handicap = this.NewDialogInfo.Item4;
+                //var komi = this.NewDialogInfo.Item5;
                 var g = new Game(this, int.Parse(size), int.Parse(handicap), komi);
                 if (black != "")
                     g.PlayerBlack = black;
@@ -613,9 +672,7 @@ F1 produces this help.
                 this.UpdateTitle(0, false, "unsaved");
             }
         }
-        // white name, black name, size, handicap, komi ...
-        public bool NewDiaogDone = false;
-        public Tuple<string, string, string, string, string> NewDialogInfo = null;
+
 
         //// saveButton_left_down saves if game has a file name and is dirty.  If
         //// there's a filename, but the file is up to date, then ask to save-as to
@@ -762,6 +819,11 @@ F1 produces this help.
                 await this.DoOpenButton();
                 e.Handled = true;
             }
+            // Testing Game Tree Layout
+            else if (e.Key == VirtualKey.T && this.IsKeyPressed(VirtualKey.Control)) {
+                this.DrawGameTree();
+                e.Handled = true;
+            }
             // Explicit Save As
             else if (e.Key == VirtualKey.S && 
                      this.IsKeyPressed(VirtualKey.Control) && this.IsKeyPressed(VirtualKey.Menu)) {
@@ -811,12 +873,160 @@ F1 produces this help.
             }
             // Help
             else if (e.Key == VirtualKey.F1) {
-                await GameAux.Message(help_string, "SGFEd Help");
+                this.ShowHelp();
                 e.Handled = true;
             }
         } // mainWin_keydown
 
 
+        ////
+        //// Tree View of Game Tree
+        ////
+
+        //// treeViewMoveMap maps Moves and ParsedNodes to TreeViewNodes.  This aids in moving tree
+        //// view to show certain moves, moving the current move highlight, etc.  We could put a cookie
+        //// on Move and ParsedNode, but that feels too much like the model knowing about the view ...
+        //// yeah, Adornments have a cookie, but oh well, and they are arguably viewmodel :-).
+        ////
+        private Dictionary<object, TreeViewNode> treeViewMoveMap = new Dictionary<object, TreeViewNode>();
+        private Grid treeViewSelectedItem;
+
+        //// InitializeTreeView is used by SetupBoardDisplay.  It clears the canvas and sets its size.
+        ////
+        private void InitializeTreeView () {
+            var canvas = this.gameTreeView;
+            canvas.Children.Clear(); //.RemoveRange(0, canvas.Children.Count);
+            this.treeViewMoveMap.Clear();
+            this.SetTreeViewSize();
+        }
+
+        private void SetTreeViewSize () {
+            var canvas = this.gameTreeView;
+            canvas.Width = GameAux.TreeViewGridColumns * MainWindowAux.treeViewGridCellSize;
+            canvas.Height = GameAux.TreeViewGridRows * MainWindowAux.treeViewGridCellSize;
+        }
+
+
+        //// DrawGameTree gets a view model of the game tree, creates objects to put on the canvas,
+        //// and sets up the mappings for updating the view as we move around the game tree.  This
+        //// also creates a special "start" mapping to get to the first view model node.
+        ////
+        private void DrawGameTree () {
+            if (this.TreeViewDisplayed())
+                //TODO: this is temporary, should re-use objects from this.treeViewMoveMap
+                this.InitializeTreeView();
+            var treeModel = GameAux.GetGameTreeModel(this.Game);
+            // Set canvas size in case computing tree model had to grow model structures.
+            this.SetTreeViewSize();
+            var canvas = this.gameTreeView;
+            for (var i = 0; i < GameAux.TreeViewGridRows; i++) {
+                for (var j = 0; j < GameAux.TreeViewGridColumns; j++) {
+                    var curModel = treeModel[i, j];
+                    if (curModel != null) {
+                        //TODO: get previous grid from uncleared tree view map copy and update it
+                        // appropriately.  Also, probably want some flag or control that if did cut/paste
+                        // operation, then remove objects, handle renumbering of labels in grids, etc.
+                        // probably just toss whole tree on paste and re-gen for simplicity.
+                        //if (this.treeViewMoveMap.ContainsKey(curModel.Node)
+                        //    eltGrid = ((TreeViewNode)this.treeViewMoveMap[curModel.Node]).Cookie;
+                        if (curModel.Kind != TreeViewNodeKind.LineBend) {
+                            var eltGrid = MainWindowAux.NewTreeViewItemGrid(curModel);
+                            curModel.Cookie = eltGrid;
+                            var node = curModel.Node;
+                            //if (node != null)
+                            //    // If node is null, then it is a line bend node.
+                            this.treeViewMoveMap[curModel.Node] = curModel;
+                            Canvas.SetLeft(eltGrid, curModel.Column * MainWindowAux.treeViewGridCellSize);
+                            Canvas.SetTop(eltGrid, curModel.Row * MainWindowAux.treeViewGridCellSize);
+                            Canvas.SetZIndex(eltGrid, 1);
+                            canvas.Children.Add(eltGrid);
+                        }
+                    }
+                }
+            }
+            this.treeViewMoveMap.Remove(treeModel[0, 0].Node);
+            this.treeViewMoveMap["start"] = treeModel[0, 0];
+            MainWindowAux.DrawGameTreeLines(canvas, treeModel[0, 0]);
+            Grid cookie = (Grid)treeModel[0, 0].Cookie;
+            cookie.Background = new SolidColorBrush(Colors.LightSkyBlue);
+            this.treeViewSelectedItem = cookie;
+        }
+
+
+        //// UpdateTreeView moves the current move highlighting as the user moves around in the
+        //// tree.  Various command handlers call this after they update the model.  Eventually,
+        //// this will look at some indication to redraw whole tree (cut, paste, maybe add move).
+        ////
+        private void UpdateTreeView (Move move) {
+            // TODO: remove this check when fully integrated and assume tree view is always there.
+            if (! this.TreeViewDisplayed())
+                return;
+            TreeViewNode item = this.TreeViewNodeForMove(move);
+            Grid itemCookie = ((Grid)item.Cookie);
+            // Update current move shading and bring into view.
+            var sitem = this.treeViewSelectedItem;
+            this.treeViewSelectedItem = itemCookie;
+            sitem.Background = new SolidColorBrush(Colors.Transparent);
+            itemCookie.Background = new SolidColorBrush(Colors.LightSkyBlue);
+            this.BringTreeElementIntoView(itemCookie);
+            //itemCookie.BringIntoView(new Rect((new Size(MainWindowAux.treeViewGridCellSize * 2,
+            //                                            MainWindowAux.treeViewGridCellSize * 2))));
+        }
+
+        private const int BringIntoViewPadding = 10;
+        private void BringTreeElementIntoView (Grid g) {
+            var parent = VisualTreeHelper.GetParent(g);
+            while (parent != null) {
+                parent = VisualTreeHelper.GetParent(parent);
+                var sv = parent as ScrollViewer;
+                if (sv != null) {
+                    //GameAux.Message("foo");
+                    var transform = g.TransformToVisual(sv);
+                    var pos = transform.TransformPoint(new Point(0, 0));
+                    if (pos.Y < 0 || pos.Y > sv.ViewportHeight)
+                        sv.ScrollToVerticalOffset(sv.VerticalOffset + pos.Y - MainWindow.BringIntoViewPadding);
+                    if (pos.X < 0 || pos.X > sv.ViewportWidth)
+                        sv.ScrollToHorizontalOffset(sv.VerticalOffset + pos.X - MainWindow.BringIntoViewPadding);
+                    break;
+                }
+            }
+        }
+
+        //// TreeViewDipslayed returns whether there is a tree view displayed, abstracting the
+        //// somewhat informal way we determine this state.  Eventually, the tree view will always
+        //// be there and initialized or up to date.
+        ////
+        private bool TreeViewDisplayed () {
+            return this.treeViewMoveMap.ContainsKey("start");
+        }
+
+        //// TreeViewNodeForMove returns the TreeViewNode representing the view model for move.
+        //// Eventually this will handle having to add moves or redraw whole tree due to big
+        //// operations.
+        ////
+        private TreeViewNode TreeViewNodeForMove (Move move) {
+            if (move == null)
+                return this.treeViewMoveMap["start"];
+            else if (this.treeViewMoveMap.ContainsKey(move))
+                return this.treeViewMoveMap[move];
+            else if (move.ParsedNode != null && this.treeViewMoveMap.ContainsKey(move.ParsedNode)) {
+                // Replace parsed node mapping with move mapping.  Once rendered, the move is what
+                // we track, where new moves get hung, etc.
+                var node = this.treeViewMoveMap[move.ParsedNode];
+                this.treeViewMoveMap.Remove(move.ParsedNode);
+                this.treeViewMoveMap[move] = node;
+                return node;
+            }
+            else
+                // TODO: figure out what really to do here.
+                return this.treeViewMoveMap[move] = this.NewTreeViewNode(move);
+        }
+
+        private TreeViewNode NewTreeViewNode (Move move) {
+            throw new NotImplementedException();
+        }
+
+        
         ////
         //// Utilities
         ////
@@ -1440,6 +1650,100 @@ F1 produces this help.
         internal static void RestoreAdornments (Grid stones_grid, List<Adornments> adornments) {
             foreach (var a in adornments)
                 stones_grid.Children.Add(a.Cookie);
+        }
+
+
+        ////
+        //// Tree View Utils
+        ////
+
+        //// treeViewGridCellSize is the number of pixels along one side of a "grid cell"
+        //// on the canvas.
+        ////
+        internal const int treeViewGridCellSize = 40;
+
+        //// DrawGameTreeLines draws all the lines from this node to its next nodes.
+        //// Note, these are TreeViewNodes, not Moves, so some of the nodes simply denote
+        //// line bends for drawing the tree.
+        ////
+        internal static void DrawGameTreeLines (Canvas canvas, TreeViewNode node) {
+            if (node.Next == null)
+                return;
+            if (node.Branches != null)
+                foreach (var n in node.Branches) {
+                    MainWindowAux.DrawGameTreeLine(canvas, node, n);
+                    MainWindowAux.DrawGameTreeLines(canvas, n);
+                }
+            else {
+                MainWindowAux.DrawGameTreeLine(canvas, node, node.Next);
+                MainWindowAux.DrawGameTreeLines(canvas, node.Next);
+            }
+        }
+
+        internal static void DrawGameTreeLine (Canvas canvas, TreeViewNode origin, TreeViewNode dest) {
+            var ln = new Line();
+            // You'd think you'd divide by 2 to get a line in the middle of a cell area to the middle
+            // of another cell area, but the lines all appear too low for some reason, so use 3 instead.
+            ln.X1 = (origin.Column * MainWindowAux.treeViewGridCellSize) + (MainWindowAux.treeViewGridCellSize / 3);
+            ln.Y1 = (origin.Row * MainWindowAux.treeViewGridCellSize) + (MainWindowAux.treeViewGridCellSize / 3);
+            ln.X2 = (dest.Column * MainWindowAux.treeViewGridCellSize) + (MainWindowAux.treeViewGridCellSize / 3);
+            ln.Y2 = (dest.Row * MainWindowAux.treeViewGridCellSize) + (MainWindowAux.treeViewGridCellSize / 3);
+            // Lines appear behind Move circles/nodes.
+            Canvas.SetZIndex(ln, 0);
+            ln.Stroke = new SolidColorBrush(Colors.Black);
+            ln.StrokeThickness = 2;
+            canvas.Children.Add(ln);
+        }
+
+
+        //// NewTreeViewItemGrid returns a grid to place on the canvas for drawing game tree views.
+        //// The grid has a stone image with a number label if it is a move, or just an "S" for the start.
+        //// Do not call this on line bend view nodes.
+        ////
+        internal static Grid NewTreeViewItemGrid (TreeViewNode model) {
+            // Get Grid to hold stone image and move number label
+            var g = new Grid();
+            //g.ShowGridLines = false;
+            g.HorizontalAlignment = HorizontalAlignment.Stretch;
+            g.VerticalAlignment = VerticalAlignment.Stretch;
+            g.Background = new SolidColorBrush(Colors.Transparent);
+            g.Height = 25;
+            g.Width = 25;
+            g.Margin = new Thickness(0, 2, 0, 2);
+            // Get stone image
+            if (model.Kind == TreeViewNodeKind.Move) {
+                var stone = new Ellipse();
+                stone.StrokeThickness = 1;
+                stone.Stroke = new SolidColorBrush(Colors.Black);
+                stone.Fill = new SolidColorBrush(model.Color);
+                stone.HorizontalAlignment = HorizontalAlignment.Stretch;
+                stone.VerticalAlignment = VerticalAlignment.Stretch;
+                g.Children.Add(stone);
+            }
+            // Get move number label
+            Debug.Assert(model.Kind != TreeViewNodeKind.LineBend,
+                         "Eh?!  Shouldn't be making tree view item grid for line bends.");
+            var label = new TextBlock();
+            if (model.Kind == TreeViewNodeKind.StartBoard)
+                label.Text = "S";
+            else
+                // Should use move number, but ParsedNodes are not numbered.  Column = move number anyway.
+                label.Text = model.Column.ToString();
+            // Set font size based on length of integer print representation
+            label.FontWeight = FontWeights.Bold;
+            if (model.Column.ToString().Length > 2) {
+                label.FontSize = 10;
+                label.FontWeight = FontWeights.Normal;
+            }
+            else
+                label.FontSize = 12;
+            label.Foreground = new SolidColorBrush(model.Kind == TreeViewNodeKind.Move ?
+                                                    GameAux.OppositeMoveColor(model.Color) :
+                                                    Colors.Black);
+            label.HorizontalAlignment = HorizontalAlignment.Center;
+            label.VerticalAlignment = VerticalAlignment.Center;
+            g.Children.Add(label);
+            return g;
         }
 
 
