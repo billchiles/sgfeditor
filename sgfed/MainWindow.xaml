@@ -32,48 +32,11 @@
                 <!-- Define the grid to hold board lines, which is filled in programmatically depending on the go board size ... -->
                 <ScrollViewer Grid.Row="2" Margin="2,1,2,2" ScrollViewer.HorizontalScrollBarVisibility="Visible" 
                               ScrollViewer.VerticalScrollBarVisibility="Visible" ScrollViewer.CanContentScroll="True">
-                <!-- <Canvas Background="Wheat" ScrollViewer.HorizontalScrollBarVisibility="Visible" 
-                          ScrollViewer.VerticalScrollBarVisibility="Visible" ScrollViewer.CanContentScroll="True">
-                    <Grid ShowGridLines="True" Background="Transparent"  Name="gameTreeView" Margin="2,1,2,2"
-                          ScrollViewer.HorizontalScrollBarVisibility="Visible" 
-                          ScrollViewer.VerticalScrollBarVisibility="Visible" ScrollViewer.CanContentScroll="True"
-                          > 
-                    </Grid>
-                </Canvas> -->  <!-- HorizontalAlignment="Stretch" VerticalAlignment="Stretch" -->
-                <!-- <Grid ShowGridLines="True" Background="Wheat"  Name="gameTreeView" Margin="2,1,2,2"
-                          ScrollViewer.HorizontalScrollBarVisibility="Visible" 
-                          ScrollViewer.VerticalScrollBarVisibility="Visible" ScrollViewer.CanContentScroll="True"
-                          >
-                </Grid> -->
-                <Canvas Background="Wheat" ScrollViewer.HorizontalScrollBarVisibility="Visible" 
-                          ScrollViewer.VerticalScrollBarVisibility="Visible" Name="gameTreeView" Margin="2,1,2,2" >
+                  <Canvas Background="Wheat" ScrollViewer.HorizontalScrollBarVisibility="Visible" 
+                          ScrollViewer.VerticalScrollBarVisibility="Visible" Name="gameTreeView" >
                     
-                </Canvas>
+                  </Canvas>
             </ScrollViewer>
-            <!-- <TreeView Grid.Row="2" ScrollViewer.HorizontalScrollBarVisibility="Auto" Name="gameTreeView" Margin="2,1,2,2"
-                          ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.CanContentScroll="True"> -->
-                    <!--<TreeViewItem Header="Cold Drinks" IsExpanded="True">
-                    <TreeViewItem Header="Coke"></TreeViewItem>
-                    <StackPanel Orientation="Horizontal">
-                        <Ellipse Width="10" Height="10" Fill="Black" Margin="0,0,10,0" />
-                        <TextBlock Text="Coffee"></TextBlock>
-                    </StackPanel>
-                    <Grid Height="25" Width="25" Margin="0,2,0,2">
-                        <Ellipse  Fill="White"  Stroke="Black" HorizontalAlignment="Stretch"
-                                    VerticalAlignment="Stretch"/>
-                        <Label Content="3" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                FontWeight="Bold" FontSize="12"/>
-                    </Grid>
-                    <Grid Height="25" Width="25" Margin="0,2,0,2">
-                        <Ellipse Fill="Black" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
-                        <Label Content="4" HorizontalAlignment="Center" VerticalAlignment="Center"
-                               Foreground="White" FontWeight="Bold" FontSize="12"/>
-                    </Grid>
-                    <TreeViewItem Header="Milk"></TreeViewItem>
-                    <TreeViewItem Header="Iced Tea"></TreeViewItem>
-                    <TreeViewItem Header="Mango Shake"></TreeViewItem>
-                    </TreeViewItem>-->
-                <!-- </TreeView> -->
             </Grid>
 
 

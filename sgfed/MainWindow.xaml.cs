@@ -36,7 +36,7 @@ namespace SgfEd {
 
     public partial class MainWindow : Window {
 
-        private const string help_string = @"
+        private const string HelpString = @"
 SGFEd can read and write .sgf files, edit game trees, etc.
 
 PLACING STONES AND ANNOTATIONS:
@@ -206,8 +206,13 @@ F1 produces this help.
         //// 
 
         private void helpButtonLeftDown(object sender, RoutedEventArgs e) {
-            MessageBox.Show(help_string, "SGFEd Help");
+            this.ShowHelp();
         }
+
+        private void ShowHelp () {
+            MessageBox.Show(MainWindow.HelpString, "SGFEd Help");
+        }
+
 
         //// StonesMouseLeftDown handles creating a move or adding adornments
         //// to the current move.
@@ -602,7 +607,7 @@ F1 produces this help.
             }
             // Help
             else if (e.Key == Key.F1) {
-                MessageBox.Show(help_string, "SGFEd Help");
+                this.ShowHelp();
                 e.Handled = true;
             }
         } // mainWin_keydown
