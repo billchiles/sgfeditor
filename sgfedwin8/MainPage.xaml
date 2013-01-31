@@ -27,16 +27,21 @@
         <!-- Define the comment box and tree control with splitter and scroll bars ... -->
         <Grid Grid.Column="1" Grid.Row="1" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" >
             <Grid.RowDefinitions>
+                <RowDefinition Height="25"/>
                 <RowDefinition  />
                 <RowDefinition Height="Auto"/>
                 <RowDefinition />
             </Grid.RowDefinitions>
             <!-- margin is "left, top, right, bottom"-->
-            <TextBox Grid.Row="0" HorizontalAlignment="Stretch" Margin="2,2,2,1" Name="commentBox" 
+            <Grid Grid.Row="0" Background="DarkKhaki">
+                <TextBlock Text="SGF Editor - unsaved Move 0" FontSize="14" Margin="2"
+                           VerticalAlignment="Stretch" HorizontalAlignment="Stretch" x:Name="Title"/>
+            </Grid>
+            <TextBox Grid.Row="1" HorizontalAlignment="Stretch" Margin="2,2,2,1" Name="commentBox" 
                      VerticalAlignment="Stretch" TextWrapping="Wrap" AcceptsReturn="True"
                      ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto"
                      />
-            <ScrollViewer Grid.Row="2" Margin="2,1,2,2" ScrollViewer.HorizontalScrollBarVisibility="Visible" 
+            <ScrollViewer Grid.Row="3" Margin="2,1,2,2" ScrollViewer.HorizontalScrollBarVisibility="Visible" 
                               ScrollViewer.VerticalScrollBarVisibility="Visible" >
                 <Canvas Background="Wheat" ScrollViewer.HorizontalScrollBarVisibility="Visible" 
                           ScrollViewer.VerticalScrollBarVisibility="Visible" Name="gameTreeView"  >
@@ -64,37 +69,47 @@
             </Grid.RowDefinitions>
 
             <!-- Need to learn how to make a File menu ... -->
-            <Button Content="New" Grid.Row="0" Height="22" HorizontalAlignment="Stretch" Margin="1" Name="newButton"
-                    VerticalAlignment="Top" Width="42" Click="newButton_left_down" 
-                    FontSize="12" BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" Foreground="Black"/>
-            <Button Content="Open" Grid.Row="0" Grid.Column="1" Height="22" HorizontalAlignment="Stretch" Margin="1" Name="openButton"
-                    VerticalAlignment="Top" Width="42" Click="openButton_left_down"
-                    FontSize="12" BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" Foreground="Black"/>
-            <Button Content="Save" Grid.Row="0" Grid.Column="2" Height="22" HorizontalAlignment="Stretch" Margin="1" Name="saveButton"
-                    VerticalAlignment="Top" Width="42" Click="saveButton_left_down"
-                    FontSize="12" BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" Foreground="Black"/>
-            <Button Content="Help" Grid.Row="0" Grid.Column="3" Height="22" HorizontalAlignment="Stretch" Margin="1" Name="helpButton"
-                    VerticalAlignment="Top" Width="42" Click="helpButtonLeftDown"
-                    FontSize="12" BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" Foreground="Black"/>
+            <Button Grid.Row="0" Height="30" HorizontalAlignment="Stretch" Margin="1" Name="newButton"
+                    VerticalAlignment="Top" Width="50" Click="newButton_left_down" 
+                    BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" Foreground="Black">
+                <TextBlock FontSize="14" FontStretch="ExtraExpanded" VerticalAlignment="Center" Margin="0,0,0,3">New</TextBlock>
+            </Button>
+            <Button Grid.Row="0" Grid.Column="1" Height="30" HorizontalAlignment="Stretch" Margin="1" Name="openButton"
+                    VerticalAlignment="Top" Width="50" Click="openButton_left_down"
+                    BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" Foreground="Black">
+                <TextBlock FontSize="14" FontStretch="ExtraExpanded" VerticalAlignment="Center" Margin="0,0,0,3">Open</TextBlock>
+            </Button>
+            <Button Grid.Row="0" Grid.Column="2" Height="30" HorizontalAlignment="Stretch" Margin="1" Name="saveButton"
+                    VerticalAlignment="Top" Width="50" Click="saveButton_left_down"
+                    BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" Foreground="Black">
+                <TextBlock FontSize="14" VerticalAlignment="Center" Margin="0,0,0,3">Save</TextBlock>
+            </Button>
+            <Button Grid.Row="0" Grid.Column="3" Height="30" HorizontalAlignment="Stretch" Margin="1" Name="helpButton"
+                    VerticalAlignment="Top" Width="50" Click="helpButtonLeftDown"
+                    BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" Foreground="Black">
+                <TextBlock FontSize="14" VerticalAlignment="Center" Margin="0,0,0,3">Help</TextBlock>
+            </Button>
 
-            <Button Content="Pass" Grid.Row="1" Height="22" HorizontalAlignment="Stretch" Margin="1" Name="passButton"
-                    VerticalAlignment="Center" Width="42" Click="passButton_left_down"
-                    FontSize="12" BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" Foreground="Black"/>
+            <Button Grid.Row="1" Height="30" HorizontalAlignment="Stretch" Margin="1" Name="passButton"
+                    VerticalAlignment="Center" Width="50" Click="passButton_left_down"
+                    BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" Foreground="Black">
+                <TextBlock FontSize="14" VerticalAlignment="Center" Margin="0,0,0,3">Pass</TextBlock>
+            </Button>
 
-            <Button Content="&lt;&lt;" Grid.Row="2" Grid.Column="0" Height="22" HorizontalAlignment="Stretch" Margin="1" Name="homeButton"
+            <Button Content="&lt;&lt;" Grid.Row="2" Grid.Column="0" Height="30" HorizontalAlignment="Stretch" Margin="1" Name="homeButton"
                     VerticalAlignment="Top" IsEnabled="False" Click="homeButtonLeftDown" 
-                    FontSize="12" BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" Foreground="Black"/>
-            <Button Content="&lt;" Grid.Row="2" Grid.Column="1" Height="22" HorizontalAlignment="Stretch" Margin="1" Name="prevButton" 
+                    FontSize="14" BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" Foreground="Black"/>
+            <Button Content="&lt;" Grid.Row="2" Grid.Column="1" Height="30" HorizontalAlignment="Stretch" Margin="1" Name="prevButton" 
                     VerticalAlignment="Top"  IsEnabled="False" Click="prevButtonLeftDown"
-                    FontSize="12" BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" Foreground="Black"/>
-            <Button Content="&gt;" Grid.Row="2" Grid.Column="2" Height="22" HorizontalAlignment="Stretch" Margin="1" Name="nextButton"
+                    FontSize="14" BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" Foreground="Black"/>
+            <Button Content="&gt;" Grid.Row="2" Grid.Column="2" Height="30" HorizontalAlignment="Stretch" Margin="1" Name="nextButton"
                     VerticalAlignment="Top"  IsEnabled="False" Click="nextButtonLeftDown"
-                    FontSize="12" BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" Foreground="Black"/>
-            <Button Content="&gt;&gt;" Grid.Row="2" Grid.Column="3" Height="22" HorizontalAlignment="Stretch" Margin="1" Name="endButton" 
+                    FontSize="14" BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" Foreground="Black"/>
+            <Button Content="&gt;&gt;" Grid.Row="2" Grid.Column="3" Height="30" HorizontalAlignment="Stretch" Margin="1" Name="endButton" 
                     VerticalAlignment="Top"  IsEnabled="False" Click="endButtonLeftDown"
-                    FontSize="12" BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" Foreground="Black"/>
+                    FontSize="14" BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" Foreground="Black"/>
 
-            <TextBlock Text="No Branches:" Grid.Column="2" Grid.Row="1" Height="28" HorizontalAlignment="Stretch" Margin="1"
+            <TextBlock Text="No Branches:" Grid.Column="2" Grid.Row="1" Height="28" HorizontalAlignment="Stretch" Margin="8"
                    VerticalAlignment="Top" Name="branchLabel" Foreground="White"
                        FontSize="12"   />
             <ComboBox Grid.Column="2" Grid.Row="1"  Height="23" HorizontalAlignment="Stretch" Margin="1" VerticalAlignment="Bottom"
@@ -122,8 +137,7 @@
             </Grid>
         </local:FocusableInputControl>
 
-    </Grid>
-    <!-- main grid for buttons, board, comments -->
+    </Grid> <!-- main grid for buttons, board, comments -->
 
     <!-- This is just here now as example that someone added ... should move file, pass, help buttons here -->
     <Page.BottomAppBar>

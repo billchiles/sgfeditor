@@ -518,16 +518,16 @@ F1 produces this help.
         //// there by default originally.  Game also uses this.
         ////
         public void UpdateTitle (int num, bool is_pass = false, string filebase = null) {
-            //var title = this.Title;
-            //var pass_str = is_pass ? " Pass" : "";
-            //if (filebase != null)
-            //    this.Title = "SGFEd -- " + filebase + ";  Move " + num.ToString() + pass_str;
-            //else {
-            //    var tail = title.IndexOf("Move ");
-            //Debug.Assert(tail != -1, "Title doesn't have move in it?!");
-            //    if (tail != -1)
-            //        this.Title = title.Substring(0, tail + 5) + num.ToString() + pass_str;
-            //}
+            var title = this.Title.Text;
+            var pass_str = is_pass ? " Pass" : "";
+            if (filebase != null)
+                this.Title.Text = "SGFEd -- " + filebase + ";  Move " + num.ToString() + pass_str;
+            else {
+                var tail = title.IndexOf("Move ");
+                Debug.Assert(tail != -1, "Title doesn't have move in it?!");
+                if (tail != -1)
+                    this.Title.Text = title.Substring(0, tail + 5) + num.ToString() + pass_str;
+            }
         }
 
 
@@ -555,10 +555,22 @@ F1 produces this help.
                 return;
             }
             if (sf != null) {
+                //Popup popup = null;
                 try {
                     // fixing win8 -- set flag to disable UI due to await on parsing
+                    //popup = new Popup();
+                    //popup.IsOpen = true;
+                    //var p = new Page();
+                    //var bounds = Window.Current.Bounds;
+                    //p.Width = bounds.Width;
+                    //p.Height = bounds.Height;
+                    //popup.Child = p;
+                    //p.Focus(FocusState.Programmatic);
+                    // Process file ...
                     var pg = await ParserAux.ParseFile(sf);
                     this.Game = await GameAux.CreateParsedGame(pg, this);
+                    this.Title.Text = "bill";
+                    await Task.Delay(10000);
                     this.Game.Storage = sf;
                     var name = sf.Name;
                     this.Game.Filename = name;
@@ -574,6 +586,9 @@ F1 produces this help.
                     // For example, game state should be intact (other than IsDirty) for continuing.
                     GameAux.Message(err.Message + err.StackTrace);
                 }
+                //finally {
+                //    popup.IsOpen = false;
+                //}
             }
             this.FocusOnStones();
         }
@@ -1023,7 +1038,8 @@ F1 produces this help.
         }
 
         private TreeViewNode NewTreeViewNode (Move move) {
-            throw new NotImplementedException();
+            return this.treeViewMoveMap["start"];
+            //throw new NotImplementedException();
         }
 
         
@@ -1595,8 +1611,6 @@ F1 produces this help.
                 //bkgrnd.add
                 //inner_grid.Children.Add(vwbox);
                 //label.styl
-                // fixing win8 -- don't know how to have board color background (hides bit of lines impacting letter)
-                //                 probably 
                 // See sgfpy.xaml for lines grid (board) tan background.
                 //label.Background = new SolidColorBrush(Color.FromArgb(0xff, 0xd7, 0xb2, 0x64));
             }

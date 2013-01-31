@@ -179,10 +179,10 @@ namespace SgfEdwin8 {
                     return first;
                 else
                     //throw new FileFormatException("SGF file is malformed at char " + lexer.Location.ToString());
-                    throw new Exception("fixing win8");
+                    throw new IOException("SGF file is malformed at char " + lexer.Location.ToString());
             }
             //throw new FileFormatException("Unexpectedly hit EOF!");
-            throw new Exception("fixing win8");
+            throw new IOException("Unexpectedly hit EOF!");
         } // ParseNodes
 
         //// _parse_node returns a ParseNode with its properties filled in.
@@ -212,7 +212,7 @@ namespace SgfEdwin8 {
                 }
             }
             //throw new FileFormatException("Unexpectedly hit EOF!");
-            throw new Exception("fixing win8");
+            throw new IOException("Unexpectedly hit EOF!");
         } // ParseNode
 
     } // ParserAux Class
@@ -388,7 +388,7 @@ namespace SgfEdwin8 {
                     res.Append(c);
             }
             //throw new FileFormatException("Unexpectedly hit EOF!");
-            throw new Exception("fixing win8");
+            throw new IOException("Unexpectedly hit EOF!");
         } // GetPropertyValue
 
         //// _check_property_newline check if c is part of a newline sequence.  If

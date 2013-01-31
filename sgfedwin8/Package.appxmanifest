@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Package xmlns="http://schemas.microsoft.com/appx/2010/manifest">
-  <Identity Name="625c18f3-1039-441a-b28c-02c07a71fa38" Publisher="CN=billchi" Version="1.0.0.0" />
+  <Identity Name="625c18f3-1039-441a-b28c-02c07a71fa38" Publisher="CN=billchi" Version="0.7.1.0" />
   <Properties>
     <DisplayName>SgfEdWin8</DisplayName>
     <PublisherDisplayName>billchi</PublisherDisplayName>
