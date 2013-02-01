@@ -943,8 +943,14 @@ namespace SgfEdwin8 {
                     if (GameAux.ListFind<Adornments>(elt, letters, (x, y) => {
                         var cookie = ((Adornments)y).Cookie;
                         var lbl = ((Viewbox)cookie).Child;
-                        var txt = ((TextBlock)lbl).Text;
-                        return (string)x == (string)txt;
+                        // Check for win8 hack: Grid inside Viewbox because ViewBoxes and labels have no background.
+                        var txtgrid = lbl as Grid;
+                        if (txtgrid != null)
+                            return (string)x == (string)((TextBlock)(txtgrid.Children[0])).Text;
+                        else {
+                            var txt = ((TextBlock)lbl).Text;
+                            return (string)x == (string)txt;
+                        }
                     }) == -1) {
                         data = elt; //chr(ord('A') +  len(letters))
                         break;

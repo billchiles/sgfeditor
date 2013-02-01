@@ -1,24 +1,12 @@
-C:\Users\billchi\Documents\Visual Studio 2012\Projects>xcopy WasApp1 \\billchi2\users-chiles\wasapp /s /y /d
 
-Set flag in MainWindow to disable all UI handlers when working through awaits in DoOpenbutton
-   Otherwise, input events mutate state while we're saving dirty file (or making game dirty when it wasn't)
-
-fix button sizes, fonts, spacing, "No Branches:" label location, etc., since UI looks worse on win8 by default
+snapped view
+http://rushabh.greenpoison.org.in/blog/2012/09/18/handling-snap-view-and-all-resolutions-in-windows-8/
 
 Y/N accelerators for yes/no dlgs
-
-fix font for letter annotations, too big now
-
-can't set label background or background transparency
-letters on board weird due to lines going through them
-need to put letter in little grid and set it's background to board background
-
 
 when click stone, then cannot use arrow keys to move around tree
 after stone click, esc and arrows do not get handled as input, even with keydown on focus element
 turns out to be win8 bug, have work around now
-
-
 
 
 -------------

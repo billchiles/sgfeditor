@@ -48,34 +48,34 @@
             </Grid.RowDefinitions>
 
             <!-- White -->
-            <TextBlock Grid.Column="0" Grid.Row="0">White:</TextBlock>
+            <TextBlock FontSize="14" Grid.Column="0" Grid.Row="0">White:</TextBlock>
             <TextBox Name="whiteText" Grid.Column="1" Grid.Row="0" BorderThickness="1" BorderBrush="Black">
             </TextBox>
 
             <!-- Black -->
-            <TextBlock Grid.Column="0" Grid.Row="1">Black:</TextBlock>
-            <TextBox Name="blackText" Grid.Column="1" Grid.Row="1" BorderThickness="1" BorderBrush="Black">
+            <TextBlock FontSize="14" Grid.Column="0" Grid.Row="1">Black:</TextBlock>
+            <TextBox Name="blackText" Grid.Column="1" Grid.Row="1" BorderThickness="1" BorderBrush="Black" FontSize="14">
             </TextBox>
 
             <!-- Size -->
-            <TextBlock Grid.Column="0" Grid.Row="2">Size:</TextBlock>
+            <TextBlock FontSize="14" Grid.Column="0" Grid.Row="2">Size:</TextBlock>
             <TextBox Name="sizeText" Grid.Column="1" Grid.Row="2" BorderThickness="1" BorderBrush="Black">
             </TextBox>
 
             <!-- Handicap -->
-            <TextBlock Grid.Column="0" Grid.Row="3">Handicap:</TextBlock>
+            <TextBlock FontSize="14" Grid.Column="0" Grid.Row="3">Handicap:</TextBlock>
             <TextBox Name="handicapText" Grid.Column="1" Grid.Row="3" BorderThickness="1" BorderBrush="Black">
             </TextBox>
 
             <!-- Komi -->
-            <TextBlock Grid.Column="0" Grid.Row="4">Komi:</TextBlock>
+            <TextBlock FontSize="14" Grid.Column="0" Grid.Row="4">Komi:</TextBlock>
             <TextBox Name="komiText" Grid.Column="1" Grid.Row="4" BorderThickness="1" BorderBrush="Black">
             </TextBox>
 
             <!-- OK or Cancel -->
             <StackPanel Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="5" Orientation="Horizontal">
-                <Button Name="okButton" Click="okButton_click" FontSize="10" Foreground="Black" Padding="0" Height="40">OK</Button>
-                <Button Name="cancelButton" Click="cancelButton_click" FontSize="10" Foreground="Black" Padding="0" Height="40">Cancel</Button>
+                <Button Name="okButton" Click="okButton_click" FontSize="14" Foreground="Black" Padding="0" Height="40">OK</Button>
+                <Button Name="cancelButton" Click="cancelButton_click" FontSize="14" Foreground="Black" Padding="0" Height="40">Cancel</Button>
             </StackPanel>
 
         </Grid>

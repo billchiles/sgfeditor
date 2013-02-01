@@ -555,22 +555,16 @@ F1 produces this help.
                 return;
             }
             if (sf != null) {
-                //Popup popup = null;
+                Popup popup = null;
                 try {
                     // fixing win8 -- set flag to disable UI due to await on parsing
-                    //popup = new Popup();
-                    //popup.IsOpen = true;
-                    //var p = new Page();
-                    //var bounds = Window.Current.Bounds;
-                    //p.Width = bounds.Width;
-                    //p.Height = bounds.Height;
-                    //popup.Child = p;
-                    //p.Focus(FocusState.Programmatic);
+                    popup = new Popup();
+                    popup.Child = this.GetOpenfileUIDike();
+                    popup.IsOpen = true;
                     // Process file ...
                     var pg = await ParserAux.ParseFile(sf);
                     this.Game = await GameAux.CreateParsedGame(pg, this);
-                    this.Title.Text = "bill";
-                    await Task.Delay(10000);
+                    //await Task.Delay(5000);  // Testing input blocker.
                     this.Game.Storage = sf;
                     var name = sf.Name;
                     this.Game.Filename = name;
@@ -586,13 +580,35 @@ F1 produces this help.
                     // For example, game state should be intact (other than IsDirty) for continuing.
                     GameAux.Message(err.Message + err.StackTrace);
                 }
-                //finally {
-                //    popup.IsOpen = false;
-                //}
+                finally {
+                    popup.IsOpen = false;
+                }
             }
             this.FocusOnStones();
         }
 
+        private Grid openFileUIDike = null;
+        private Grid GetOpenfileUIDike () {
+            if (this.openFileUIDike != null)
+                return this.openFileUIDike;
+            else {
+                // Need outer UIElement to stretch over whole screen.
+                var g = new Grid();
+                // Need inner UIElement that can have focus, take input, etc.
+                var tb = new TextBox();
+                // For some reason NewGameDialog can have huge margins and dike input over entire screen,
+                // but this must span entire screen.
+                tb.Margin = new Thickness(1, 1, 1, 1);
+                tb.Background = new SolidColorBrush(Colors.Black);
+                tb.Opacity = 0.25;
+                var bounds = Window.Current.Bounds;
+                g.Width = bounds.Width;
+                g.Height = bounds.Height;
+                g.Children.Add(tb);
+                this.openFileUIDike = g;
+                return g;
+            }
+        }
 
         //// _check_dirty_save prompts whether to save the game if it is dirty.  If
         //// saving, then it uses the game filename, or prompts for one if it is None.
@@ -995,7 +1011,6 @@ F1 produces this help.
                 parent = VisualTreeHelper.GetParent(parent);
                 var sv = parent as ScrollViewer;
                 if (sv != null) {
-                    //GameAux.Message("foo");
                     var transform = g.TransformToVisual(sv);
                     var pos = transform.TransformPoint(new Point(0, 0));
                     if (pos.Y < 0 || pos.Y > sv.ViewportHeight)
@@ -1579,43 +1594,35 @@ F1 produces this help.
             vwbox.VerticalAlignment = VerticalAlignment.Stretch;
             var label = new TextBlock();
             label.Text = letter;
-            label.FontSize = 50.0;
+            // Win8: Fontsize has no effect on TextBlock, but setting a margin will reduce the size.
+            label.FontSize = 10.0;
+            label.Margin = new Thickness(2, 2, 2, 2);
             Grid.SetRow(label, 1);
             Grid.SetColumn(label, 1);
             //label.FontWeight = FontWeights.Bold
-            label.HorizontalAlignment = HorizontalAlignment.Stretch;
-            label.VerticalAlignment = VerticalAlignment.Stretch;
+            //label.HorizontalAlignment = HorizontalAlignment.Stretch;
+            //label.VerticalAlignment = VerticalAlignment.Stretch;
             var move = game_inst.Board.MoveAt(row, col);
             Color color;
             if (move != null) {
                 color = GameAux.OppositeMoveColor(move.Color);
                 // No way to set anything here, but the label is transparent by default in win8.
                 //label.Background = new SolidColorBrush(Colors.Transparent);
+                vwbox.Child = label;
             }
             else {
                 color = Colors.Black;
-                //
-                // This was start of attempt to put the viewbox in a grid or something with a background property.
-                // ViewBox does not have one, nor does TextBlock.  Need to change fun ret val, callers, etc. if it works.
-                //
-                //var inner_grid = new Grid();
-                //inner_grid.Background = new SolidColorBrush(Color.FromArgb(0xff, 0xd7, 0xb2, 0x64));
-                //Grid.SetRow(inner_grid, row);
-                //Grid.SetColumn(inner_grid, col);
-                //Grid.SetRow(vwbox, 0);
-                //Grid.SetColumn(vwbox, 0);
-                //inner_grid.HorizontalAlignment = HorizontalAlignment.Stretch;
-                //inner_grid.VerticalAlignment = VerticalAlignment.Stretch;
-                //var bkgrnd = new Ellipse();
-                //bkgrnd.Fill = new SolidColorBrush(Color.FromArgb(0xff, 0xd7, 0xb2, 0x64));
-                //bkgrnd.add
-                //inner_grid.Children.Add(vwbox);
-                //label.styl
-                // See sgfpy.xaml for lines grid (board) tan background.
-                //label.Background = new SolidColorBrush(Color.FromArgb(0xff, 0xd7, 0xb2, 0x64));
+                // Win8 hack: Need extra grid inside Viewbox because ViewBoxes and TextBlocks have no background.
+                var inner_grid = new Grid();
+                // See MainPage.xaml for lines grid (board) tan background ...
+                inner_grid.Background = new SolidColorBrush(Color.FromArgb(0xff, 0xd7, 0xb2, 0x64));
+                inner_grid.VerticalAlignment = VerticalAlignment.Stretch;
+                inner_grid.HorizontalAlignment = HorizontalAlignment.Stretch;
+                inner_grid.Children.Add(label);
+                vwbox.Child = inner_grid;
             }
             label.Foreground = new SolidColorBrush(color);
-            vwbox.Child = label;
+            //vwbox.Child = label;
             if (render)
                 stones_grid.Children.Add(vwbox);
             return vwbox;

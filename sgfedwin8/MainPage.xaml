@@ -118,8 +118,7 @@
                       BorderThickness="1" Background="White"/>
             <!-- IsEditable="False" IsReadOnly="True" -->
 
-        </Grid>
-        <!-- control buttons -->
+        </Grid>  <!-- control buttons -->
 
         <local:FocusableInputControl Grid.RowSpan="2" Margin="2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
                                      x:Name="inputFocus"  >
