@@ -273,33 +273,37 @@ namespace SgfEd {
         //// there are still no branches yet.
         ////
         private Move MakeBranchingMoveBranches (dynamic game_or_move, Move next, Move new_move) {
-            if (game_or_move.Branches == null) {
-                game_or_move.Branches = new List<Move>() {next}; // Must pass non-null branches.
+            List<Move> branches = game_or_move.Branches;
+            if (branches == null) {
+                branches = new List<Move>() { next }; // Must pass non-null branches.
                 // Can't use 'var', must decl with 'Move'.  C# doesn't realize all MaybeUpdateBranches
                 // definitions return a Move.
-                Move move = this.MaybeUpdateBranches(game_or_move, new_move);
+                Move move = this.MaybeUpdateBranches(branches, new_move);
                 if (object.ReferenceEquals(move, next)) {
-                    // new_move and next are same, keep next and clean up branches.
-                    game_or_move.Branches = null;
+                    //game_or_move.Branches = null;
                     return next;
                 }
-                // Keep branches and return move, which may be new or pre-existing.
-                return move;
+                else {
+                    // new_move and next are not the same, so keep branches since there are two next moves now.
+                    game_or_move.Branches = branches;
+                    // Keep branches and return move
+                    return move;
+                }
             }
             else
-                return this.MaybeUpdateBranches(game_or_move, new_move);
+                return this.MaybeUpdateBranches(branches, new_move);
         }
         
-        //// _maybe_update_branches takes a game or move object (has a .branches member)
-        //// and a next move.  Branches must not be null.  It returns a pre-existing
-        //// move if the second argument represents a move at a location for which there
-        //// already is a move; otherwise, it returns the second argument as a new next
-        //// move.  If this is a new next move, we add it to .branches.
+        //// _maybe_update_branches takes a branches list and a next move.  Branches must not be null.
+        //// It returns a pre-existing move if the second argument represents a move at a location for which there
+        //// already is a move; otherwise, this function returns the second argument as a new next
+        //// move.  If this is a new next move, we add it to branches.
         ////
-        private Move MaybeUpdateBranches (dynamic game_or_move, Move move) {
+        private Move MaybeUpdateBranches (List<Move> branches, Move move) {
+            Debug.Assert(branches != null);
             // Must bind branches so that generic ListFind dispatch works and get tooling help.
             // PTVS does the tooling right, and if C# had disjunctive types decls, wouldn't need 'dynamic'.
-            List<Move> branches = game_or_move.Branches;
+            //List<Move> branches = game_or_move.Branches;
             var already_move = GameAux.ListFind(
                                    move, branches,
                                    (x,y) => move.Row == ((Move)y).Row && move.Column == ((Move)y).Column);
@@ -1129,8 +1133,95 @@ namespace SgfEd {
             this.Dirty = false;
         }
 
-    } // Game
 
+        ////
+        //// Utils for Jumping in Game Tree and Resuming State
+        ////
+
+        public List<Tuple<int, int>> TheEmptyMovePath = new List<Tuple<int, int>>() { Tuple.Create(0, -1) };
+
+        //// GetPathToMove returns a list of tuples, the first int of which is a move
+        //// number to move to paired with what branch to take at that move.  The last
+        //// move (the argumenet) has a sentinel -1 branch int.  Only moves that take
+        //// a alternative branch (not branch zero) are in the result.  This assumes
+        //// move is in the game and on the board, asserting if not.  The 0,-1 tuple
+        //// indicates the empty initial board state, or the empty path.
+        ////
+        public List<Tuple<int, int>> GetPathToMove (Move move) {
+            if (move == null)
+                return this.TheEmptyMovePath;
+            var parent = move.Previous;
+            var res = new List<Tuple<int, int>>() { Tuple.Create(move.Number, -1) };
+            while (parent != null) {
+                if (parent.Branches != null && parent.Branches[0] != move) {
+                        var loc = GameAux.ListFind(move, parent.Branches);
+                        Debug.Assert(loc != -1, "Move must be in game.");
+                        res.Add(Tuple.Create(parent.Number, loc));
+                }
+                move = parent;
+                parent = move.Previous;
+            }
+            if (this.Branches != null && this.Branches[0] != move) {
+                var loc = GameAux.ListFind(move, this.Branches);
+                Debug.Assert(loc != -1, "Move must be in game.");
+                res.Add(Tuple.Create(0, loc));
+            }
+            res.Reverse();
+            return res;
+        }
+
+        //// AdvanceToMovePath takes a path, where each tuple is a move number and the
+        //// branch index to take at that move.  The branch is -1 for the last move.
+        //// This returns true if successful, null if the path was bogus, or we encounter
+        //// a move conflict in the game tree.
+        ////
+        public bool AdvanceToMovePath (List<Tuple<int, int>> path) {
+            Debug.Assert(this.CurrentMove == null, "Must be at beginning of empty game board.");
+            Debug.Assert(this.FirstMove != null || path == this.TheEmptyMovePath,
+                         "If first move is null, then path must be the empty path.");
+            if (this.FirstMove == null) return true;
+            // Setup for loop ...
+            if (path[0].Item1 == 0)
+                this.SetCurrentBranch(path[0].Item2);
+            var curMove = this.FirstMove; // Set after possible call to SetCurrentBranch.
+            this.ReplayMoveUpdateModel(curMove); // This must succeed since the board is empty.
+            this.mainWin.AddNextStoneNoCurrent(curMove);
+            var next = curMove.Next;
+            // Walk to last move on path ...
+            foreach (var n in path) {
+                var target = n.Item1;
+                // Play moves with no branches or all taking default zero branch ...
+                while (curMove.Number != target) {
+                    if (curMove.Branches != null && curMove.Branches[0] != next) {
+                        this.CurrentMove = curMove; // Must set this before calling SetCurrentBranch.
+                        this.SetCurrentBranch(0);
+                        next = curMove.Next; // Update next, now that curMove is updated.
+                    }
+                    if (this.ReplayMoveUpdateModel(next) == null)
+                        return false;
+                    this.mainWin.AddNextStoneNoCurrent(next);
+                    curMove = next;
+                    next = curMove.Next;
+                }
+                // Select next moves branch correctly ...
+                var branch = n.Item2;
+                if (branch == -1) break;
+                Debug.Assert(curMove.Branches != null && branch > 0 && branch < curMove.Branches.Count,
+                             "Move path does not match game's tree.");
+                this.CurrentMove = curMove; // Needs to be right for SetCurrentBranch.
+                this.SetCurrentBranch(branch);
+                next = curMove.Next; // Update next, now that curMove is updated.
+                if (this.ReplayMoveUpdateModel(next) == null)
+                    return false;
+                this.mainWin.AddNextStoneNoCurrent(next);
+                curMove = next;
+                next = curMove.Next;
+            }
+            this.CurrentMove = curMove;
+            return true;
+        }
+
+    } // Game
 
 
     public enum GameState {
@@ -1443,7 +1534,7 @@ namespace SgfEd {
         }
 
 
-        //// _list_find returns the index of elt in the first argument using the compare
+        //// _list_find returns the index of elt (first argument to func) using the compare
         //// test.  The test defaults to identity.
         ////
         internal static int ListFind<T>(object elt, List<T> l, Func<object, object, bool> compare = null) {
@@ -1616,6 +1707,7 @@ namespace SgfEd {
         }
 
 
+        
         ////
         //// Internal utilities for Game methods.
         ////
@@ -1724,7 +1816,6 @@ namespace SgfEd {
         //// due to fake node added for board start in column zero.
         ////
 
-
         //// These properties represent/control the size of the canvas on which we draw
         //// move nodes and lines.  
         ////
@@ -1746,28 +1837,36 @@ namespace SgfEd {
         public static TreeViewNode[,] GetGameTreeModel (Game game) {
             dynamic start = null;
             // Get start node
-            if (game.FirstMove != null && game.FirstMove.Rendered) {
-                // Mock a move for empty board state.
-                var m = new Move(-1, -1, GoBoardAux.NoColor);
-                m.Next = game.FirstMove;
-                m.Branches = game.Branches;
-                m.Rendered = false;
-                start = m;
+            if (game.FirstMove != null) {
+                if (game.FirstMove.Rendered) {
+                    // Mock a move for empty board state.
+                    var m = new Move(-1, -1, GoBoardAux.NoColor);
+                    m.Next = game.FirstMove;
+                    m.Branches = game.Branches;
+                    m.Rendered = false;
+                    start = m;
+                }
+                else if (game.ParsedGame != null) { // This test should be same as g.pg.nodes != null.
+                    start = game.ParsedGame.Nodes;
+                }
             }
-            else if (game.ParsedGame != null) // This test should be same as g.pg.nodes != null.
-                start = game.ParsedGame.Nodes;
             // Get layout
             var layoutData = new TreeViewLayoutData();
             if (start != null)
-                GameAux.LayoutGameTreeRoot(start, layoutData);
+                GameAux.LayoutGameTreeFromRoot(start, layoutData);
             else {
                 // Or just have empty board ...
-                layoutData.TreeGrid[0, 0] = GameAux.NewTreeModelStart(start, layoutData);
+                layoutData.TreeGrid[0, 0] = GameAux.NewTreeModelStart(new Move(-1, -1, GoBoardAux.NoColor),
+                                                                      layoutData);
             }
             return layoutData.TreeGrid;
         }
 
-        public static TreeViewNode LayoutGameTreeRoot (dynamic pn, TreeViewLayoutData layoutData) {
+        //// LayoutGameTreeFromRoot takes a Move or ParsedNode and layout data (tree grid and max rows).
+        //// It returns the model for the start (empty board) node, after laying out the rest of the
+        //// tree.
+        ////
+        public static TreeViewNode LayoutGameTreeFromRoot (dynamic pn, TreeViewLayoutData layoutData) {
             // Vars to make arguments to calls below more readable.
             int tree_depth = 0;
             int new_branch_depth = 0;
@@ -1778,21 +1877,26 @@ namespace SgfEd {
             TreeViewNode model = GameAux.NewTreeModelStart(pn, layoutData);
             // Return model, or get next model.
             TreeViewNode next_model;
-            if (LayoutGameTreeNext(pn) == null) {
+            if (GetLayoutGameTreeNext(pn) == null) {
                 // If no next, then no branches to check below
                 layoutData.TreeGrid[model.Row, tree_depth] = model;
                 return model;
             }
             else {
-                next_model = GameAux.LayoutGameTree(LayoutGameTreeNext(pn), layoutData, model.Row,
+                next_model = GameAux.LayoutGameTree(GetLayoutGameTreeNext(pn), layoutData, model.Row,
                                                     tree_depth + 1, new_branch_depth, branch_root_row);
                 model.Next = next_model;
             }
-            layoutData.TreeGrid[model.Row, tree_depth] = model;
+            // Store start model and layout any branches for first move.
+            // Don't need to call StoreTreeViewNode since definitely do not need to grow model matrix.
+            Debug.Assert(model.Row == 0 && tree_depth == 0);
+            layoutData.TreeGrid[0, 0] = model;
             LayoutGameTreeBranches(pn, layoutData, tree_depth, model, next_model);
             return model;
         }
 
+        //// NewTreeModelStart returns a tree model for the start of the board, the empty board.
+        ////
         private static TreeViewNode NewTreeModelStart (dynamic pn, TreeViewLayoutData layoutData) {
             var model = new TreeViewNode(TreeViewNodeKind.StartBoard, pn);
             model.Row = 0;
@@ -1807,7 +1911,7 @@ namespace SgfEd {
         //// necessary since Move nodes chain Next to the branch that is selected, but ParsedNodes
         //// always chain Next to Branches[0] if there are branches.  We always want the top branch.
         ////
-        private static dynamic LayoutGameTreeNext (dynamic pn) {
+        private static dynamic GetLayoutGameTreeNext (dynamic pn) {
             // Can't dynamically invoke Assert for some reason, and C# doesn't bind only matching
             // method at compile time.
             //Debug.Assert(pn.GetType() != typeof(Game));
@@ -1835,14 +1939,14 @@ namespace SgfEd {
             TreeViewNode model = GameAux.SetupTreeLayoutModel(pn, layoutData, cum_max_row, tree_depth);
             // Adjust last node and return, or get next model node.
             TreeViewNode next_model;
-            if (LayoutGameTreeNext(pn) == null) {
+            if (GetLayoutGameTreeNext(pn) == null) {
                 // If no next, then no branches to check below
                 StoreTreeViewNode(layoutData, tree_depth, model);
                 return GameAux.MaybeAddBendNode(layoutData, model.Row, tree_depth,
                                                 branch_depth, branch_root_row, model);
             }
             else {
-                next_model = GameAux.LayoutGameTree(LayoutGameTreeNext(pn), layoutData, model.Row, tree_depth + 1,
+                next_model = GameAux.LayoutGameTree(GetLayoutGameTreeNext(pn), layoutData, model.Row, tree_depth + 1,
                                                     branch_depth == 0 ? 0 : branch_depth + 1, branch_root_row);
                                                     //new_branch_depth, branch_root_row);
                 model.Next = next_model;

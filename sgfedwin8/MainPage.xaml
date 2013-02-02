@@ -44,7 +44,7 @@
             <ScrollViewer Grid.Row="3" Margin="2,1,2,2" ScrollViewer.HorizontalScrollBarVisibility="Visible" 
                               ScrollViewer.VerticalScrollBarVisibility="Visible" >
                 <Canvas Background="Wheat" ScrollViewer.HorizontalScrollBarVisibility="Visible" 
-                          ScrollViewer.VerticalScrollBarVisibility="Visible" Name="gameTreeView"  >
+                          ScrollViewer.VerticalScrollBarVisibility="Visible" Name="gameTreeView" PointerPressed="gameTree_mousedown" >
 
                 </Canvas>
             </ScrollViewer>

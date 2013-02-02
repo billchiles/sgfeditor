@@ -297,6 +297,7 @@ F1 produces this help.
         private void homeButtonLeftDown(object home_button, RoutedEventArgs e) {
             this.Game.GotoStart();
             this.UpdateTitle(0);
+            this.UpdateTreeView(null);
             this.FocusOnStones();
         }
 
@@ -306,6 +307,9 @@ F1 produces this help.
         ////
         private void endButtonLeftDown(object end_button, RoutedEventArgs e) {
             this.Game.GotoLastMove();
+            var cur = this.Game.CurrentMove;
+            this.UpdateTitle(cur == null ? 0 : cur.Number);
+            this.UpdateTreeView(cur);
             this.FocusOnStones();
         }
 
@@ -522,7 +526,7 @@ F1 produces this help.
             }
             // Last move
             else if (e.Key == Key.End && (! this.commentBox.IsKeyboardFocused) && win.Game.CanReplayMove()) {
-                this.Game.GotoLastMove();
+                this.endButtonLeftDown(null, null);
                 e.Handled = true;
             }
             // Move branch down
@@ -613,6 +617,55 @@ F1 produces this help.
         } // mainWin_keydown
 
 
+        private void gameTree_mousedown (object sender, MouseButtonEventArgs e) {
+            var x = e.GetPosition(this.gameTreeView).X;
+            var y = e.GetPosition(this.gameTreeView).Y;
+            var elt_x = (int)(x / MainWindowAux.treeViewGridCellSize);
+            var elt_y = (int)(y / MainWindowAux.treeViewGridCellSize);
+            TreeViewNode n = null;
+            var found = false;
+            foreach (var moveNode in this.treeViewMoveMap) {
+                n = moveNode.Value;
+                if (n.Row == elt_y && n.Column == elt_x) {
+                    found = true;
+                    break;
+                }
+            }
+            if (! found) return;
+            // XXX doesn't work for parsed nodes
+            var move = n.Node as Move;
+            this.Game.GotoStart();
+            if (move.Row != -1 && move.Column != -1) {
+                // move is not dummy move for start node of game tree view
+                var path = this.Game.GetPathToMove(move);
+                if (path != this.Game.TheEmptyMovePath) {
+                    this.Game.AdvanceToMovePath(path);
+
+                    //this.Game.SaveAndUpdateComments(save_orig_current, current); XXX
+                    this.AddCurrentAdornments(move);
+                    this.Game.CurrentMove = move;
+                    this.Game.MoveCount = move.Number;
+                    //this.Game.nextColor = GameAux.OppositeMoveColor(current.Color);
+                    if (move.Previous != null)
+                        this.EnableBackwardButtons();
+                    else
+                        this.DisableBackwardButtons();
+                    if (move.Next != null) {
+                        this.EnableForwardButtons();
+                        this.UpdateBranchCombo(move.Branches, move.Next);
+                    }
+                    else {
+                        this.DisableForwardButtons();
+                        this.UpdateBranchCombo(null, null);
+                    }
+                }
+            }
+            this.UpdateTreeView(this.Game.CurrentMove);
+            this.FocusOnStones();
+        }
+
+
+
         ////
         //// Tree View of Game Tree
         ////
@@ -683,8 +736,10 @@ F1 produces this help.
             this.treeViewMoveMap["start"] = treeModel[0, 0];
             MainWindowAux.DrawGameTreeLines(canvas, treeModel[0, 0]); 
             Grid cookie = (Grid)treeModel[0, 0].Cookie;
-            cookie.Background = new SolidColorBrush(Colors.LightSkyBlue);
+            //cookie.Background = new SolidColorBrush(Colors.LightSkyBlue);
+            // Set this to something so that UpdateTreeView doesn't deref null.
             this.treeViewSelectedItem = cookie;
+            this.UpdateTreeView(this.Game.CurrentMove);
         }
 
 
@@ -1457,7 +1512,7 @@ F1 produces this help.
 
         internal static void SetCurrentBranchDown (ComboBox combo, Game game) {
             var cur = combo.SelectedIndex;
-            if (cur < combo.Items.Count)
+            if (cur < combo.Items.Count - 1)
                 combo.SelectedIndex = cur + 1;
             game.SetCurrentBranch(combo.SelectedIndex);
         }
