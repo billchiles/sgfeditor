@@ -7,7 +7,7 @@ Y/N accelerators for yes/no dlgs
 when click stone, then cannot use arrow keys to move around tree
 after stone click, esc and arrows do not get handled as input, even with keydown on focus element
 turns out to be win8 bug, have work around now
-
+ 
 
 -------------
 
