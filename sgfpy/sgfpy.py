@@ -859,7 +859,7 @@ def _setup_index_labels (g, size):
         ## chr_offset skips the letter I to avoid looking like a one
         chr_offset = (i < 9 and i) or i + 1
         chr_txt = chr(chr_offset + ord('A') - 1)
-        num_label_y = 19 - (i - 1)
+        num_label_y = size - (i - 1)
         # Place labels
         _setup_index_label(g, str(i), 0, num_label_y,
                            HorizontalAlignment.Left, VerticalAlignment.Center)
@@ -868,7 +868,7 @@ def _setup_index_labels (g, size):
         _setup_index_label(g, chr_txt, i, 0,
                            HorizontalAlignment.Center, VerticalAlignment.Top)
         _setup_index_label(g, chr_txt, i, 20,
-                           HorizontalAlignment.Right, VerticalAlignment.Bottom)
+                           HorizontalAlignment.Center, VerticalAlignment.Bottom)
     return None
 
 def _setup_index_label (g, content, x, y, h_alignment, v_alignment):

@@ -9,11 +9,17 @@
         Background="#C7419082"
         KeyDown="mainWin_keydown" 
     >
-    <!-- win8 doesn't have title bars, so have to change UI to display current file, move #, etc. -->
-    <!-- Title="SGF Editor - unsaved Move 0" -->
 
-    <!-- Define the main UI Grid: buttons upper right, edit box below, go board down the left side ... -->
-    <Grid Background="#C7419082">
+    <!-- Need this apparently to avoid error about setting content twice with two top level grids.
+         May need to wrap this grid in this following scrollviewer to have a fallback for handling any resolution,
+         due to smaller displays, fill view, etc:
+        <ScrollViewer ZoomMode="Disabled" HorizontalScrollMode="Enabled" HorizontalScrollBarVisibility="Visible">
+        </ScrollViewer>
+    -->
+    <Grid x:Name="switchableContentRoot">
+
+        <!-- Define the main UI Grid: buttons upper right, edit box below, go board down the left side ... -->
+        <Grid x:Name="mainLandscapeView" Background="#C7419082">
         <!-- Background="{StaticResource ApplicationPageBackgroundThemeBrush}" -->
         <Grid.RowDefinitions>
             <RowDefinition Height="115" />
@@ -43,8 +49,8 @@
                      />
             <ScrollViewer Grid.Row="3" Margin="2,1,2,2" ScrollViewer.HorizontalScrollBarVisibility="Visible" 
                               ScrollViewer.VerticalScrollBarVisibility="Visible" >
-                <Canvas Background="Wheat" ScrollViewer.HorizontalScrollBarVisibility="Visible" 
-                          ScrollViewer.VerticalScrollBarVisibility="Visible" Name="gameTreeView" PointerPressed="gameTree_mousedown" >
+                    <Canvas Name="gameTreeView" Background="Wheat" ScrollViewer.HorizontalScrollBarVisibility="Visible" 
+                          ScrollViewer.VerticalScrollBarVisibility="Visible" PointerPressed="gameTree_mousedown" >
 
                 </Canvas>
             </ScrollViewer>
@@ -72,12 +78,14 @@
             <Button Grid.Row="0" Height="30" HorizontalAlignment="Stretch" Margin="1" Name="newButton"
                     VerticalAlignment="Top" Width="50" Click="newButton_left_down" 
                     BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" Foreground="Black">
-                <TextBlock FontSize="14" FontStretch="ExtraExpanded" VerticalAlignment="Center" Margin="0,0,0,3">New</TextBlock>
+                <TextBlock FontSize="14" FontStretch="ExtraExpanded" VerticalAlignment="Center" 
+                           Margin="0,0,0,3">New</TextBlock>
             </Button>
             <Button Grid.Row="0" Grid.Column="1" Height="30" HorizontalAlignment="Stretch" Margin="1" Name="openButton"
                     VerticalAlignment="Top" Width="50" Click="openButton_left_down"
                     BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" Foreground="Black">
-                <TextBlock FontSize="14" FontStretch="ExtraExpanded" VerticalAlignment="Center" Margin="0,0,0,3">Open</TextBlock>
+                <TextBlock FontSize="14" FontStretch="ExtraExpanded" VerticalAlignment="Center" 
+                           Margin="0,0,0,3">Open</TextBlock>
             </Button>
             <Button Grid.Row="0" Grid.Column="2" Height="30" HorizontalAlignment="Stretch" Margin="1" Name="saveButton"
                     VerticalAlignment="Top" Width="50" Click="saveButton_left_down"
@@ -97,33 +105,35 @@
             </Button>
 
             <Button Content="&lt;&lt;" Grid.Row="2" Grid.Column="0" Height="30" HorizontalAlignment="Stretch" Margin="1" Name="homeButton"
-                    VerticalAlignment="Top" IsEnabled="False" Click="homeButtonLeftDown" 
-                    FontSize="14" BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" Foreground="Black"/>
+                    VerticalAlignment="Top" IsEnabled="False" Click="homeButtonLeftDown" FontSize="14" 
+                    BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" Foreground="Black"/>
             <Button Content="&lt;" Grid.Row="2" Grid.Column="1" Height="30" HorizontalAlignment="Stretch" Margin="1" Name="prevButton" 
-                    VerticalAlignment="Top"  IsEnabled="False" Click="prevButtonLeftDown"
-                    FontSize="14" BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" Foreground="Black"/>
-            <Button Content="&gt;" Grid.Row="2" Grid.Column="2" Height="30" HorizontalAlignment="Stretch" Margin="1" Name="nextButton"
-                    VerticalAlignment="Top"  IsEnabled="False" Click="nextButtonLeftDown"
-                    FontSize="14" BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" Foreground="Black"/>
-            <Button Content="&gt;&gt;" Grid.Row="2" Grid.Column="3" Height="30" HorizontalAlignment="Stretch" Margin="1" Name="endButton" 
-                    VerticalAlignment="Top"  IsEnabled="False" Click="endButtonLeftDown"
-                    FontSize="14" BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" Foreground="Black"/>
+                    VerticalAlignment="Top"  IsEnabled="False" Click="prevButtonLeftDown" FontSize="14" 
+                    BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" Foreground="Black"/>
+            <Button Content="&gt;" Grid.Row="2" Grid.Column="2" Height="30" HorizontalAlignment="Stretch" Margin="1" 
+                    Name="nextButton" VerticalAlignment="Top"  IsEnabled="False" Click="nextButtonLeftDown"
+                    FontSize="14" BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" 
+                    Foreground="Black"/>
+            <Button Content="&gt;&gt;" Grid.Row="2" Grid.Column="3" Height="30" HorizontalAlignment="Stretch" 
+                    Margin="1" Name="endButton" VerticalAlignment="Top"  IsEnabled="False" Click="endButtonLeftDown"
+                    FontSize="14" BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" 
+                    Foreground="Black"/>
 
-            <TextBlock Text="No Branches:" Grid.Column="2" Grid.Row="1" Height="28" HorizontalAlignment="Stretch" Margin="8"
-                   VerticalAlignment="Top" Name="branchLabel" Foreground="White"
-                       FontSize="12"   />
-            <ComboBox Grid.Column="2" Grid.Row="1"  Height="23" HorizontalAlignment="Stretch" Margin="1" VerticalAlignment="Bottom"
-                      Width="120" Name="branchCombo"  IsEnabled="False" 
-                      SelectionChanged="branchComboSelectionChanged" 
-                      BorderThickness="1" Background="White"/>
+            <TextBlock Text="No Branches:" Grid.Column="2" Grid.Row="1" Height="28" HorizontalAlignment="Stretch" 
+                       Margin="8" VerticalAlignment="Top" Name="branchLabel" Foreground="White" FontSize="14"/>
+            <ComboBox Grid.Column="2" Grid.Row="1"  Height="23" HorizontalAlignment="Stretch" Margin="1" 
+                      VerticalAlignment="Bottom" Width="120" Name="branchCombo"  IsEnabled="False" 
+                      SelectionChanged="branchComboSelectionChanged" BorderThickness="1" Background="White"/>
             <!-- IsEditable="False" IsReadOnly="True" -->
 
         </Grid>  <!-- control buttons -->
 
-        <local:FocusableInputControl Grid.RowSpan="2" Margin="2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
-                                     x:Name="inputFocus"  >
+        <!-- This is needed to contain the Go board lines and stones grids because grids can't have focus in winrt -->
+        <local:FocusableInputControl x:Name="inputFocus" Grid.RowSpan="2" Margin="2" HorizontalAlignment="Stretch" 
+                                     VerticalAlignment="Stretch">
             <Grid>
-                <!-- Define the grid to hold board lines, which is filled in programmatically depending on the go board size ... -->
+                <!-- Define the grid to hold board lines, which is filled in programmatically depending on the 
+                     go board size ... -->
                 <Grid Background="#FFD7B264" HorizontalAlignment="Stretch" x:Name="boardGrid"
                  VerticalAlignment="Stretch"  >
                 </Grid>
@@ -137,6 +147,22 @@
         </local:FocusableInputControl>
 
     </Grid> <!-- main grid for buttons, board, comments -->
+    
+        <!-- Define the snapped view content, which starts off collapsed and possibly gets toggled on size change -->
+        <Grid x:Name="snapViewContent" Visibility="Collapsed" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <!-- Define the grid to hold board lines, which is filled in programmatically depending on the go board 
+                 size ... -->
+            <Grid Background="#FFD7B264" HorizontalAlignment="Stretch" x:Name="collapsedBoardGrid" Grid.Row="0" 
+                  Grid.Column="0" VerticalAlignment="Stretch"  >
+            </Grid>
+
+            <!-- Define the grid to hold go stones, whose rows and columns are filled in programmatically ... -->
+            <Grid Background="Transparent" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Grid.Row="0" 
+                  Grid.Column="0" x:Name="collapsedStonesGrid"  >
+            </Grid>
+        </Grid>
+        
+    </Grid> <!-- switchableContentRoot -->
 
     <!-- This is just here now as example that someone added ... should move file, pass, help buttons here -->
     <Page.BottomAppBar>

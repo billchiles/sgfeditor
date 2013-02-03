@@ -123,6 +123,7 @@ F1 produces this help.
                 // First time setup.
                 this.SetupLinesGrid(new_game.Board.Size);
                 this.SetupStonesGrid(new_game.Board.Size);
+                MainWindowAux.SetupIndexLabels(this.stonesGrid, new_game.Board.Size);
                 this.prevSetupSize = new_game.Board.Size;
                 this.AddHandicapStones(new_game);
             }
@@ -617,13 +618,17 @@ F1 produces this help.
         } // mainWin_keydown
 
 
+        //// gameTree_mousedown handles clicks on the game tree graph canvas,
+        //// navigating to the move clicked on.
+        ////
         private void gameTree_mousedown (object sender, MouseButtonEventArgs e) {
+            // Find TreeViewNode model for click location on canvas.
             var x = e.GetPosition(this.gameTreeView).X;
             var y = e.GetPosition(this.gameTreeView).Y;
             var elt_x = (int)(x / MainWindowAux.treeViewGridCellSize);
             var elt_y = (int)(y / MainWindowAux.treeViewGridCellSize);
             TreeViewNode n = null;
-            var found = false;
+            var found = false; 
             foreach (var moveNode in this.treeViewMoveMap) {
                 n = moveNode.Value;
                 if (n.Row == elt_y && n.Column == elt_x) {
@@ -631,21 +636,18 @@ F1 produces this help.
                     break;
                 }
             }
-            if (! found) return;
+            if (!found) return; // User did not click on node
             // XXX doesn't work for parsed nodes
             var move = n.Node as Move;
-            this.Game.GotoStart();
+            if (this.Game.CurrentMove != null)
+                this.Game.GotoStart();
             if (move.Row != -1 && move.Column != -1) {
                 // move is not dummy move for start node of game tree view
                 var path = this.Game.GetPathToMove(move);
                 if (path != this.Game.TheEmptyMovePath) {
                     this.Game.AdvanceToMovePath(path);
-
-                    //this.Game.SaveAndUpdateComments(save_orig_current, current); XXX
                     this.AddCurrentAdornments(move);
-                    this.Game.CurrentMove = move;
                     this.Game.MoveCount = move.Number;
-                    //this.Game.nextColor = GameAux.OppositeMoveColor(current.Color);
                     if (move.Previous != null)
                         this.EnableBackwardButtons();
                     else
@@ -660,16 +662,15 @@ F1 produces this help.
                     }
                 }
             }
+            this.UpdateTitle(this.Game.CurrentMove == null ? 0 : this.Game.CurrentMove.Number);
             this.UpdateTreeView(this.Game.CurrentMove);
             this.FocusOnStones();
         }
 
 
-
         ////
         //// Tree View of Game Tree
         ////
-
 
         //// treeViewMoveMap maps Moves and ParsedNodes to TreeViewNodes.  This aids in moving tree
         //// view to show certain moves, moving the current move highlight, etc.  We could put a cookie
@@ -1080,6 +1081,50 @@ F1 produces this help.
             Grid.SetColumn(dot, x);
             dot.Fill = new SolidColorBrush(Colors.Black);
             g.Children.Add(dot);
+        }
+
+        
+        ////
+        //// Setup Stones Grid Utilities
+        ////
+
+        //// _setup_index_labels takes a grid and go board size, then emits Label
+        //// objects to create alphanumeric labels.  The labels index the board with
+        //// letters for the columns, starting at the left, and numerals for the rows,
+        //// starting at the bottom.  The letters skip "i" to avoid fontface confusion
+        //// with the numeral one.  This was chosen to match KGS and many standard
+        //// indexing schemes commonly found in pro commentaries.
+        ////
+        internal static void SetupIndexLabels (Grid g, int size) {
+            Debug.Assert(size > 1);
+            for (var i = 1; i < size + 1; i++) {
+            //for i in xrange(1, size + 1):
+                // chr_offset skips the letter I to avoid looking like the numeral one in the display.
+                var chr_offset = (i < 9) ? i : (i + 1);
+                var chr_txt = (char)(chr_offset + (int)('A') - 1);
+                var num_label_y = size - (i - 1);
+                // Place labels
+                MainWindowAux.SetupIndexLabel(g, i.ToString(), 0, num_label_y,
+                                              HorizontalAlignment.Left, VerticalAlignment.Center);
+                MainWindowAux.SetupIndexLabel(g, i.ToString(), 20, num_label_y,
+                                              HorizontalAlignment.Right, VerticalAlignment.Center);
+                MainWindowAux.SetupIndexLabel(g, chr_txt.ToString(), i, 0,
+                                   HorizontalAlignment.Center, VerticalAlignment.Top);
+                MainWindowAux.SetupIndexLabel(g, chr_txt.ToString(), i, 20,
+                                              HorizontalAlignment.Center, VerticalAlignment.Bottom);
+            }
+        }
+
+        internal static void SetupIndexLabel (Grid g, string content, int x, int y, 
+                                              HorizontalAlignment h_alignment, VerticalAlignment v_alignment) {
+            var label = new Label();
+            label.Content = content;
+            Grid.SetRow(label, y);
+            Grid.SetColumn(label, x);
+            label.FontWeight = FontWeights.Bold;
+            label.HorizontalAlignment = h_alignment;
+            label.VerticalAlignment = v_alignment;
+            g.Children.Add(label);
         }
 
         

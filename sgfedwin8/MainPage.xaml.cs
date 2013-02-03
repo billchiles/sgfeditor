@@ -21,6 +21,7 @@ using Windows.Storage; // FileIO
 using System.Threading.Tasks; // Task<T>
 using System.Diagnostics; // Debug.Assert
 using Windows.UI.Text; // FontWeight
+using Windows.UI.ViewManagement; // ApplicationView (for snap view)
 
 
 namespace SgfEdwin8 {
@@ -109,31 +110,91 @@ F1 produces this help.
 ";
 
         private int prevSetupSize = 0;
-        //private Game game = null;
 
         public Game Game { get; set; }
 
 
         public MainWindow () {
             this.InitializeComponent();
-            this.SetValue(ScrollViewer.HorizontalScrollBarVisibilityProperty, ScrollBarVisibility.Disabled);
-            this.SetValue(ScrollViewer.VerticalScrollBarVisibilityProperty, ScrollBarVisibility.Disabled);
-            // Setting size is meaningless on win8.
-            //this.Height = 700;
-            //this.Width = 1050;
-            //
-            // Add lines grid and stone hit testing grid to MainWindow root grid ...
-            // THIS NOW HAPPENS IN SetupBoardDisplay CALLED FROM 'new GAME'
-            //var root = (Grid)this.Content;
-            //SetupLinesGrid(Game.MAX_BOARD_SIZE);
-            //this.SetupStonesGrid(Game.MAX_BOARD_SIZE);
-            //root.Children.Add(CreateStonesGrid(Game.MAX_BOARD_SIZE));
             this.prevSetupSize = 0;
             this.Game = GameAux.CreateDefaultGame(this);
             // fixing win8 -- tried this to always get it invoked, but the event is simply not raising
             //this.AddHandler(UIElement.KeyDownEvent, (KeyEventHandler)this.mainWin_keydown, true);
         } // Constructor
 
+
+        //// 
+        //// Handling Snap View (required by store compliance)
+        //// 
+
+        protected override void OnNavigatedTo (NavigationEventArgs e) {
+            // Can't use e.Parameter here as in examples because it is appears to have type CSharp.Runtime.Binder?
+            //MainWindow mainWin = e.Parameter as MainWindow;
+            Window.Current.SizeChanged += this.MainView_SizeChanged;
+            base.OnNavigatedTo(e);
+        }
+
+        //// OnNavigatedFrom removes the resize handler, which was recommended in the sample I used
+        //// to figure out how to create a snapped view.
+        //// 
+        protected override void OnNavigatedFrom (NavigationEventArgs e) {
+            Window.Current.SizeChanged -= this.MainView_SizeChanged;
+            base.OnNavigatedFrom(e);
+        }
+
+        //// MainView_SizeChanged does the work to switch from full view to snapped view.  For now
+        //// this assumes the main view is good enough for filled view (complement of snapped)
+        //// and portrait, which it might be if the xaml includes the commented out scrollviewer
+        //// shown in sample used to figure out snapped view.  Also, if the xaml includes that
+        //// scrollviewer, then the code in OnFocusLost will have to test for the scrollviewer
+        //// used in SGFed and keep searching for the hidden root scrollviewer that steals focus.
+        //// 
+        void MainView_SizeChanged (object sender, WindowSizeChangedEventArgs e) {
+            switch (ApplicationView.Value) {
+                case ApplicationViewState.Snapped:
+                    this.mainLandscapeView.Visibility = Visibility.Collapsed;
+                    this.snapViewContent.Visibility = Visibility.Visible;
+                    this.SetupSnappedViewDisplay();
+                    break;
+                case ApplicationViewState.FullScreenLandscape:
+                case ApplicationViewState.FullScreenPortrait:
+                case ApplicationViewState.Filled:
+                    this.snapViewContent.Visibility = Visibility.Collapsed;
+                    this.mainLandscapeView.Visibility = Visibility.Visible;
+                    break;
+            }
+        }
+
+        //// SetupSnappedViewDisplay creates a small static board view so that the user can see
+        //// the current state of the game.  Need to refactor some code and state maintenance in
+        //// MainWindowAux that assumes there's only one live view of the game: stones matrix for
+        //// mapping where stone UIElements are in the view and current move adorment UIelement.
+        //// 
+        private bool DisplayedSnappedViewBefore = false;
+        public void SetupSnappedViewDisplay () {
+            if (! this.DisplayedSnappedViewBefore) {
+                this.snapViewContent.Height = Window.Current.Bounds.Width;
+                this.SetupLinesGrid(this.Game.Board.Size, this.collapsedBoardGrid);
+                this.SetupStonesGrid(this.Game.Board.Size, this.collapsedStonesGrid);
+                this.DisplayedSnappedViewBefore = true;
+            }
+            else
+                this.collapsedStonesGrid.Children.Clear();
+            this.AddHandicapStones(this.Game, this.collapsedStonesGrid);
+            var size = this.Game.Board.Size;
+            for (var row = 0; row < size; row++)
+                for (var col = 0; col < size; col++) {
+                    var stone = MainWindowAux.stones[row, col];
+                    if (stone != null)
+                        MainWindowAux.AddStoneNoMapping(this.collapsedStonesGrid, row + 1, col + 1, 
+                                                        this.Game.Board.ColorAt(row + 1, col + 1));
+                }
+        }
+
+
+        //// 
+        //// Setting up Board and Stones Grids
+        //// 
 
         //// setup_board_display sets up the lines and stones hit grids.  Game uses
         //// this to call back on the main UI when constructing a Game.  This also
@@ -145,6 +206,7 @@ F1 produces this help.
                 // First time setup.
                 this.SetupLinesGrid(new_game.Board.Size);
                 this.SetupStonesGrid(new_game.Board.Size);
+                MainWindowAux.SetupIndexLabels(this.stonesGrid, new_game.Board.Size);
                 this.prevSetupSize = new_game.Board.Size;
                 this.AddHandicapStones(new_game);
             }
@@ -179,18 +241,20 @@ F1 produces this help.
         //// SetupLinesGrid takes an int for the board size (as int) and returns a WPF Grid object for
         //// adding to the MainWindow's Grid.  The returned Grid contains lines for the Go board.
         ////
-        private Grid SetupLinesGrid (int size) {
+        private Grid SetupLinesGrid (int size, Grid g = null) {
             Debug.Assert(size >= Game.MinBoardSize && size <= Game.MaxBoardSize,
                          "Board size must be between " + Game.MinBoardSize +
                          " and " + Game.MaxBoardSize + " inclusively.");
-            // <Grid ShowGridLines="False" Background="#FFD7B264" Grid.RowSpan="2" HorizontalAlignment="Stretch" Margin="2"
-            //       Name="boardGrid" VerticalAlignment="Stretch" 
+            // <Grid ShowGridLines="False" Background="#FFD7B264" Grid.RowSpan="2" HorizontalAlignment="Stretch"
+            //       Margin="2" Name="boardGrid" VerticalAlignment="Stretch" 
             //       Width="{Binding ActualHeight, RelativeSource={RelativeSource Self}}" >
             //
-            //var g = this.boardGrid;
-            // On win8, need user control for setting stones focus, and win8 tooling doesn't set this.boardGrid.
-            var g = (Grid)this.inputFocus.FindName("boardGrid");
-            this.boardGrid = g;
+            if (g == null) {
+                //var g = this.boardGrid;
+                // On win8, need user control for setting stones focus, and win8 tooling doesn't set this.boardGrid.
+                g = (Grid)this.inputFocus.FindName("boardGrid");
+                this.boardGrid = g;
+            }
             //Grid g = ((Grid)this.inputFocus.Content).Children[0] as Grid;
             MainWindowAux.DefineLinesColumns(g, size);
             MainWindowAux.DefineLinesRows(g, size);
@@ -212,11 +276,13 @@ F1 produces this help.
         /// SetupStonesGrid takes an int for the size of the go board and sets up
         /// this.stonesGrid to which we add stones and hit test mouse clicks.
         ///
-        private void SetupStonesGrid (int size) {
-            //var g = this.stonesGrid;
-            // On win8, need user control for setting stones focus, and win8 tooling doesn't set this.stonesGrid.
-            var g = (Grid)this.inputFocus.FindName("stonesGrid");
-            this.stonesGrid = g;
+        private void SetupStonesGrid (int size, Grid g = null) {
+            if (g == null) {
+                //var g = this.stonesGrid;
+                // On win8, need user control for setting stones focus, and win8 tooling doesn't set this.stonesGrid.
+                g = (Grid)this.inputFocus.FindName("stonesGrid");
+                this.stonesGrid = g;
+            }
             //Grid g = ((Grid)this.inputFocus.Content).Children[1] as Grid;
             // Define rows and columns
             for (int i = 0; i < size + 2; i++) {
@@ -914,7 +980,11 @@ F1 produces this help.
         } // mainWin_keydown
 
 
+        //// gameTree_mousedown handles clicks on the game tree graph canvas,
+        //// navigating to the move clicked on.
+        ////
         private void gameTree_mousedown (object sender, PointerRoutedEventArgs e) {
+            // find TreeViewNode model for click locatio on canvas.
             var x = e.GetCurrentPoint(this.gameTreeView).Position.X;
             var y = e.GetCurrentPoint(this.gameTreeView).Position.Y;
             var elt_x = (int)(x / MainWindowAux.treeViewGridCellSize);
@@ -928,21 +998,19 @@ F1 produces this help.
                     break;
                 }
             }
-            if (! found) return;
+            if (! found) return; // User did not click on node.
             // XXX doesn't work for parsed nodes
             var move = n.Node as Move;
-            this.Game.GotoStart();
+            if (this.Game.CurrentMove != null)
+                this.Game.GotoStart();
             if (move.Row != -1 && move.Column != -1) {
                 // move is not dummy move for start node of game tree view
                 var path = this.Game.GetPathToMove(move);
                 if (path != this.Game.TheEmptyMovePath) {
                     this.Game.AdvanceToMovePath(path);
-
-                    //this.Game.SaveAndUpdateComments(save_orig_current, current); XXX
                     this.AddCurrentAdornments(move);
                     this.Game.CurrentMove = move;
                     this.Game.MoveCount = move.Number;
-                    //this.Game.nextColor = GameAux.OppositeMoveColor(current.Color);
                     if (move.Previous != null)
                         this.EnableBackwardButtons();
                     else
@@ -957,10 +1025,12 @@ F1 produces this help.
                     }
                 }
             }
+            this.UpdateTitle(this.Game.CurrentMove == null ? 0 : this.Game.CurrentMove.Number);
             this.UpdateTreeView(this.Game.CurrentMove);
             this.FocusOnStones();
 
         }
+
 
         ////
         //// Tree View of Game Tree
@@ -1159,14 +1229,21 @@ F1 produces this help.
         }
 
 
-        //// add_handicap_stones takes a game and adds its handicap moves to the
+        //// AddHandicapStones takes a game and adds its handicap moves to the
         //// display.  This takes a game because it is used on new games when
-        //// setting up an initial display and when resetting to the start of self.game.
+        //// setting up an initial display and when resetting to the start of this.Game.
+        //// This optionally takes a grid to use instead of the main this.stonesGrid,
+        //// and when we're adding stones to a one-off grid, then we do not map the
+        //// added stones and screw up the main displays mapping of stone Ellispes.
         ////
-        private void AddHandicapStones (Game game) {
-            if (game.HandicapMoves != null)
+        private void AddHandicapStones (Game game, Grid g = null) {
+            if (game.HandicapMoves != null) {
                 foreach (var elt in game.HandicapMoves)
-                    MainWindowAux.AddStone(this.stonesGrid, elt.Row, elt.Column, elt.Color);
+                    if (g == null)
+                        MainWindowAux.AddStone(this.stonesGrid, elt.Row, elt.Column, elt.Color);
+                    else
+                        MainWindowAux.AddStoneNoMapping(g, elt.Row, elt.Column, elt.Color);
+            }
         }
 
         //// update_branch_combo takes the current branches and the next move,
@@ -1401,6 +1478,52 @@ F1 produces this help.
 
 
         ////
+        //// Setup Stones Grid Utilities
+        ////
+
+        //// _setup_index_labels takes a grid and go board size, then emits Label
+        //// objects to create alphanumeric labels.  The labels index the board with
+        //// letters for the columns, starting at the left, and numerals for the rows,
+        //// starting at the bottom.  The letters skip "i" to avoid fontface confusion
+        //// with the numeral one.  This was chosen to match KGS and many standard
+        //// indexing schemes commonly found in pro commentaries.
+        ////
+        internal static void SetupIndexLabels (Grid g, int size) {
+            Debug.Assert(size > 1);
+            for (var i = 1; i < size + 1; i++) {
+                //for i in xrange(1, size + 1):
+                // chr_offset skips the letter I to avoid looking like the numeral one in the display.
+                var chr_offset = (i < 9) ? i : (i + 1);
+                var chr_txt = (char)(chr_offset + (int)('A') - 1);
+                var num_label_y = size - (i - 1);
+                // Place labels
+                MainWindowAux.SetupIndexLabel(g, i.ToString(), 0, num_label_y,
+                                              HorizontalAlignment.Left, VerticalAlignment.Center);
+                MainWindowAux.SetupIndexLabel(g, i.ToString(), 20, num_label_y,
+                                              HorizontalAlignment.Right, VerticalAlignment.Center);
+                MainWindowAux.SetupIndexLabel(g, chr_txt.ToString(), i, 0,
+                                   HorizontalAlignment.Center, VerticalAlignment.Top);
+                MainWindowAux.SetupIndexLabel(g, chr_txt.ToString(), i, 20,
+                                              HorizontalAlignment.Center, VerticalAlignment.Bottom);
+            }
+        }
+
+        internal static void SetupIndexLabel (Grid g, string content, int x, int y,
+                                              HorizontalAlignment h_alignment, VerticalAlignment v_alignment) {
+            var label = new TextBlock();
+            label.Text = content;
+            Grid.SetRow(label, y);
+            Grid.SetColumn(label, x);
+            label.FontWeight = FontWeights.Bold;
+            label.FontSize = 14;
+            label.Foreground = new SolidColorBrush(Colors.Black);
+            label.HorizontalAlignment = h_alignment;
+            label.VerticalAlignment = v_alignment;
+            g.Children.Add(label);
+        }
+
+        
+        ////
         //// Adding and Remvoing Stones
         ////
 
@@ -1413,11 +1536,19 @@ F1 produces this help.
         ///
         internal static Ellipse[,] stones = new Ellipse[Game.MaxBoardSize, Game.MaxBoardSize];
 
-
         //// add_stone takes a Grid and row, column that index the go board one based
         //// from the top left corner.  It adds a WPF Ellipse object to the stones grid.
         ////
         internal static void AddStone (Grid g, int row, int col, Color color) {
+            var stone = AddStoneNoMapping(g, row, col, color);
+            stones[row - 1, col - 1] = stone;
+        }
+
+        //// AddStoneNoMapping does most of the work of AddStone, but it does NOT record the
+        //// Ellipse in stones[,] for quick look up elsewhere (ResetToStart, SetupBoardDisplay).
+        //// This method helps SetupSnappedViewDisplay create one-off static board images.
+        ////
+        internal static Ellipse AddStoneNoMapping (Grid g, int row, int col, Color color) {
             var stone = new Ellipse();
             Grid.SetRow(stone, row);
             Grid.SetColumn(stone, col);
@@ -1430,7 +1561,7 @@ F1 produces this help.
             b.ElementName = "ActualHeight";
             stone.SetBinding(FrameworkElement.WidthProperty, b);
             g.Children.Add(stone);
-            stones[row - 1, col - 1] = stone;
+            return stone;
         }
 
         //// remove_stone takes a stones grid and a move.  It removes the Ellipse for
