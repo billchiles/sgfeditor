@@ -1163,8 +1163,9 @@ namespace SgfEdwin8 {
         //// indicates the empty initial board state, or the empty path.
         ////
         public List<Tuple<int, int>> GetPathToMove (Move move) {
-            if (move == null)
-                return this.TheEmptyMovePath;
+            Debug.Assert(move != null);
+            //if (move == null)
+            //    return this.TheEmptyMovePath;
             var parent = move.Previous;
             var res = new List<Tuple<int, int>>() { Tuple.Create(move.Number, -1) };
             while (parent != null) {
@@ -1185,6 +1186,41 @@ namespace SgfEdwin8 {
             return res;
         }
 
+        public List<Tuple<int, int>> GetPathToMove (ParsedNode move) {
+            Debug.Assert(move != null);
+            //if (move == null)
+            //    return this.TheEmptyMovePath;
+            var parent = move.Previous;
+            if (parent == null)
+                return this.TheEmptyMovePath;
+            // No move nums in parsed nodes, so count down, then fix numbers at end.
+            var moveNum = 1000000;
+            var res = new List<Tuple<int, int>>() { Tuple.Create(moveNum, -1) };
+            while (parent != this.ParsedGame.Nodes) {
+                moveNum -= 1;
+                if (parent.Branches != null && parent.Branches[0] != move) {
+                    var loc = GameAux.ListFind(move, parent.Branches);
+                    Debug.Assert(loc != -1, "Move must be in game.");
+                    res.Add(Tuple.Create(moveNum, loc));
+                }
+                move = parent;
+                parent = move.Previous;
+            }
+            moveNum -= 1;
+            if (this.ParsedGame.Nodes.Branches != null) {
+                var loc = GameAux.ListFind(move, this.ParsedGame.Nodes.Branches);
+                Debug.Assert(loc != -1, "Move must be in game.");
+                res.Add(Tuple.Create(0, loc));
+            }
+            //res.Reverse();
+            var final = new List<Tuple<int, int>>();
+            foreach (var pair in res) {
+                final.Add(Tuple.Create(pair.Item1 - moveNum, pair.Item2));
+            }
+            final.Reverse();
+            return final;
+        }
+
         //// AdvanceToMovePath takes a path, where each tuple is a move number and the
         //// branch index to take at that move.  The branch is -1 for the last move.
         //// This returns true if successful, null if the path was bogus, or we encounter
@@ -1196,8 +1232,13 @@ namespace SgfEdwin8 {
                          "If first move is null, then path must be the empty path.");
             if (this.FirstMove == null) return true;
             // Setup for loop ...
-            if (path[0].Item1 == 0)
+            if (path[0].Item1 == 0) {
                 this.SetCurrentBranch(path[0].Item2);
+                path.RemoveAt(0);
+            }
+            else if (this.Branches != null && this.FirstMove != this.Branches[0]) {
+                this.SetCurrentBranch(0);
+            }
             var curMove = this.FirstMove; // Set after possible call to SetCurrentBranch.
             this.ReplayMoveUpdateModel(curMove); // This must succeed since the board is empty.
             this.mainWin.AddNextStoneNoCurrent(curMove);

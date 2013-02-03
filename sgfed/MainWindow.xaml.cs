@@ -636,38 +636,69 @@ F1 produces this help.
                     break;
                 }
             }
-            if (!found) return; // User did not click on node
-            // XXX doesn't work for parsed nodes
+            if (! found) return; // User did not click on node
             var move = n.Node as Move;
             if (this.Game.CurrentMove != null)
                 this.Game.GotoStart();
-            if (move.Row != -1 && move.Column != -1) {
-                // move is not dummy move for start node of game tree view
-                var path = this.Game.GetPathToMove(move);
-                if (path != this.Game.TheEmptyMovePath) {
-                    this.Game.AdvanceToMovePath(path);
-                    this.AddCurrentAdornments(move);
-                    this.Game.MoveCount = move.Number;
-                    if (move.Previous != null)
-                        this.EnableBackwardButtons();
-                    else
-                        this.DisableBackwardButtons();
-                    if (move.Next != null) {
-                        this.EnableForwardButtons();
-                        this.UpdateBranchCombo(move.Branches, move.Next);
-                    }
-                    else {
-                        this.DisableForwardButtons();
-                        this.UpdateBranchCombo(null, null);
-                    }
-                }
+            if (move != null) {
+                if (move.Row != -1 && move.Column != -1)
+                    // move is not dummy move for start node of game tree view
+                    this.GotoGameTreeMove(move);
             }
+            else
+                this.GotoGameTreeMove((ParsedNode)n.Node);
             this.UpdateTitle(this.Game.CurrentMove == null ? 0 : this.Game.CurrentMove.Number);
             this.UpdateTreeView(this.Game.CurrentMove);
             this.FocusOnStones();
         }
 
+        private void GotoGameTreeMove (Move move) {
+            var path = this.Game.GetPathToMove(move);
+            if (path != this.Game.TheEmptyMovePath) {
+                this.Game.AdvanceToMovePath(path);
+                GotoGameTreeMoveUpdateButtons(move);
+            } 
+        }
 
+        private void GotoGameTreeMove (ParsedNode move) {
+            var path = this.Game.GetPathToMove(move);
+            if (path != this.Game.TheEmptyMovePath) {
+                this.Game.AdvanceToMovePath(path);
+                this.GotoGameTreeMoveUpdateButtons(this.Game.CurrentMove);
+                //var curMove = this.Game.CurrentMove;
+                //this.AddCurrentAdornments(curMove);
+                //if (move.Previous != null)
+                //    this.EnableBackwardButtons();
+                //else
+                //    this.DisableBackwardButtons();
+                //if (move.Next != null) {
+                //    this.EnableForwardButtons();
+                //    this.UpdateBranchCombo(curMove.Branches, curMove.Next);
+                //}
+                //else {
+                //    this.DisableForwardButtons();
+                //    this.UpdateBranchCombo(null, null);
+                //}
+            }
+        }
+
+        private void GotoGameTreeMoveUpdateButtons (Move move) {
+            this.AddCurrentAdornments(move);
+            if (move.Previous != null)
+                this.EnableBackwardButtons();
+            else
+                this.DisableBackwardButtons();
+            if (move.Next != null) {
+                this.EnableForwardButtons();
+                this.UpdateBranchCombo(move.Branches, move.Next);
+            }
+            else {
+                this.DisableForwardButtons();
+                this.UpdateBranchCombo(null, null);
+            }
+        }
+
+        
         ////
         //// Tree View of Game Tree
         ////
