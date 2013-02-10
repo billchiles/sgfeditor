@@ -637,15 +637,17 @@ F1 produces this help.
                 }
             }
             if (! found) return; // User did not click on node
+            // Reset board before advancing to move.
             var move = n.Node as Move;
             if (this.Game.CurrentMove != null)
                 this.Game.GotoStart();
             if (move != null) {
                 if (move.Row != -1 && move.Column != -1)
-                    // move is not dummy move for start node of game tree view
+                    // move is NOT dummy move for start node of game tree view, so advance to it
                     this.GotoGameTreeMove(move);
             }
             else
+                // Move is ParsedNode, not a move that's been rendered.
                 this.GotoGameTreeMove((ParsedNode)n.Node);
             this.UpdateTitle(this.Game.CurrentMove == null ? 0 : this.Game.CurrentMove.Number);
             this.UpdateTreeView(this.Game.CurrentMove);
@@ -665,24 +667,11 @@ F1 produces this help.
             if (path != this.Game.TheEmptyMovePath) {
                 this.Game.AdvanceToMovePath(path);
                 this.GotoGameTreeMoveUpdateButtons(this.Game.CurrentMove);
-                //var curMove = this.Game.CurrentMove;
-                //this.AddCurrentAdornments(curMove);
-                //if (move.Previous != null)
-                //    this.EnableBackwardButtons();
-                //else
-                //    this.DisableBackwardButtons();
-                //if (move.Next != null) {
-                //    this.EnableForwardButtons();
-                //    this.UpdateBranchCombo(curMove.Branches, curMove.Next);
-                //}
-                //else {
-                //    this.DisableForwardButtons();
-                //    this.UpdateBranchCombo(null, null);
-                //}
             }
         }
 
         private void GotoGameTreeMoveUpdateButtons (Move move) {
+            // All other game and UI state has been updated by Game.AdvanceToMovePath.
             this.AddCurrentAdornments(move);
             if (move.Previous != null)
                 this.EnableBackwardButtons();

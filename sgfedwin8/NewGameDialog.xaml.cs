@@ -20,7 +20,6 @@ namespace SgfEdwin8 {
     /// </summary>
     public sealed partial class NewGameDialog : Page {
 
-        private MainWindow mainWin = null;
         public bool NewGameConfirmed { get; set; }
         public string WhiteText { get; set; }
         public string BlackText { get; set; }

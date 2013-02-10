@@ -407,17 +407,31 @@ F1 produces this help.
         //// This is a hack because win8 msgbox does not scroll, so will need to design a popup with a
         //// with a scrolling text box.
         ////
-        private bool showFirstHalfHelp = true;
         private async void ShowHelp () {
-            var howMuch = (MainWindow.HelpString.Length / 2) + 15;
-            if (this.showFirstHalfHelp)
-                await GameAux.Message("HACK: Hit OK and press F1 again to see alternating halves of help string.\n" +
-                                          MainWindow.HelpString.Substring(0, howMuch),
-                                      "SGFEd Help");
-            else
-                await GameAux.Message(MainWindow.HelpString.Substring(howMuch), "SGFEd Help");
-            this.showFirstHalfHelp = ! this.showFirstHalfHelp;
+            var helpDialog = new HelpDialog();
+            var helpText = helpDialog.FindName("helpText") as TextBox;
+            helpText.Text = "Note: text has scroll bar to view all help.\n\n" + MainWindow.HelpString;
+            var popup = new Popup();
+            helpDialog.HelpDialogClose += (s, e) => { 
+                popup.IsOpen = false;
+            };
+            popup.Child = helpDialog;
+            popup.IsOpen = true;
         }
+        // This is previous hack due to win8 msgbox not scrolling.
+        //
+        //private bool showFirstHalfHelp = true;
+        //private async void ShowHelp () {
+        //    var howMuch = (MainWindow.HelpString.Length / 2) + 15;
+        //    if (this.showFirstHalfHelp)
+        //        await GameAux.Message("HACK: Hit OK and press F1 again to see alternating halves of help string.\n" +
+        //                                  MainWindow.HelpString.Substring(0, howMuch),
+        //                              "SGFEd Help");
+        //    else
+        //        await GameAux.Message(MainWindow.HelpString.Substring(howMuch), "SGFEd Help");
+        //    this.showFirstHalfHelp = ! this.showFirstHalfHelp;
+        //}
+
 
         //// StonesMouseLeftDown handles creating a move or adding adornments
         //// to the current move.

@@ -45,17 +45,15 @@
             </Grid>
             <TextBox Grid.Row="1" HorizontalAlignment="Stretch" Margin="2,2,2,1" Name="commentBox" 
                      VerticalAlignment="Stretch" TextWrapping="Wrap" AcceptsReturn="True"
-                     ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto"
-                     />
+                     ScrollViewer.HorizontalScrollBarVisibility="Auto" 
+                     ScrollViewer.VerticalScrollBarVisibility="Auto" />
             <ScrollViewer Grid.Row="3" Margin="2,1,2,2" ScrollViewer.HorizontalScrollBarVisibility="Visible" 
-                              ScrollViewer.VerticalScrollBarVisibility="Visible" >
-                    <Canvas Name="gameTreeView" Background="Wheat" ScrollViewer.HorizontalScrollBarVisibility="Visible" 
-                          ScrollViewer.VerticalScrollBarVisibility="Visible" PointerPressed="gameTree_mousedown" >
-
+                          ScrollViewer.VerticalScrollBarVisibility="Visible" >
+                <Canvas Name="gameTreeView" Background="Wheat" ScrollViewer.HorizontalScrollBarVisibility="Visible" 
+                        ScrollViewer.VerticalScrollBarVisibility="Visible" PointerPressed="gameTree_mousedown" >
                 </Canvas>
             </ScrollViewer>
-
-        </Grid>
+        </Grid> <!-- comment box, tree view, ...-->
 
 
 
@@ -81,19 +79,19 @@
                 <TextBlock FontSize="14" FontStretch="ExtraExpanded" VerticalAlignment="Center" 
                            Margin="0,0,0,3">New</TextBlock>
             </Button>
-            <Button Grid.Row="0" Grid.Column="1" Height="30" HorizontalAlignment="Stretch" Margin="1" Name="openButton"
-                    VerticalAlignment="Top" Width="50" Click="openButton_left_down"
+            <Button Grid.Row="0" Grid.Column="1" Height="30" HorizontalAlignment="Stretch" Margin="1" 
+                    Name="openButton" VerticalAlignment="Top" Width="50" Click="openButton_left_down"
                     BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" Foreground="Black">
                 <TextBlock FontSize="14" FontStretch="ExtraExpanded" VerticalAlignment="Center" 
                            Margin="0,0,0,3">Open</TextBlock>
             </Button>
-            <Button Grid.Row="0" Grid.Column="2" Height="30" HorizontalAlignment="Stretch" Margin="1" Name="saveButton"
-                    VerticalAlignment="Top" Width="50" Click="saveButton_left_down"
+            <Button Grid.Row="0" Grid.Column="2" Height="30" HorizontalAlignment="Stretch" Margin="1" 
+                    Name="saveButton" VerticalAlignment="Top" Width="50" Click="saveButton_left_down"
                     BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" Foreground="Black">
                 <TextBlock FontSize="14" VerticalAlignment="Center" Margin="0,0,0,3">Save</TextBlock>
             </Button>
-            <Button Grid.Row="0" Grid.Column="3" Height="30" HorizontalAlignment="Stretch" Margin="1" Name="helpButton"
-                    VerticalAlignment="Top" Width="50" Click="helpButtonLeftDown"
+            <Button Grid.Row="0" Grid.Column="3" Height="30" HorizontalAlignment="Stretch" Margin="1" 
+                    Name="helpButton" VerticalAlignment="Top" Width="50" Click="helpButtonLeftDown"
                     BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" Foreground="Black">
                 <TextBlock FontSize="14" VerticalAlignment="Center" Margin="0,0,0,3">Help</TextBlock>
             </Button>
@@ -104,12 +102,14 @@
                 <TextBlock FontSize="14" VerticalAlignment="Center" Margin="0,0,0,3">Pass</TextBlock>
             </Button>
 
-            <Button Content="&lt;&lt;" Grid.Row="2" Grid.Column="0" Height="30" HorizontalAlignment="Stretch" Margin="1" Name="homeButton"
-                    VerticalAlignment="Top" IsEnabled="False" Click="homeButtonLeftDown" FontSize="14" 
-                    BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" Foreground="Black"/>
-            <Button Content="&lt;" Grid.Row="2" Grid.Column="1" Height="30" HorizontalAlignment="Stretch" Margin="1" Name="prevButton" 
-                    VerticalAlignment="Top"  IsEnabled="False" Click="prevButtonLeftDown" FontSize="14" 
-                    BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" Foreground="Black"/>
+            <Button Content="&lt;&lt;" Grid.Row="2" Grid.Column="0" Height="30" HorizontalAlignment="Stretch" 
+                    Margin="1" Name="homeButton" VerticalAlignment="Top" IsEnabled="False" Click="homeButtonLeftDown" 
+                    FontSize="14" BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" 
+                    Foreground="Black"/>
+            <Button Content="&lt;" Grid.Row="2" Grid.Column="1" Height="30" HorizontalAlignment="Stretch" Margin="1" 
+                    Name="prevButton" VerticalAlignment="Top"  IsEnabled="False" Click="prevButtonLeftDown" 
+                    FontSize="14" BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" 
+                    Foreground="Black"/>
             <Button Content="&gt;" Grid.Row="2" Grid.Column="2" Height="30" HorizontalAlignment="Stretch" Margin="1" 
                     Name="nextButton" VerticalAlignment="Top"  IsEnabled="False" Click="nextButtonLeftDown"
                     FontSize="14" BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" 
@@ -126,22 +126,22 @@
                       SelectionChanged="branchComboSelectionChanged" BorderThickness="1" Background="White"/>
             <!-- IsEditable="False" IsReadOnly="True" -->
 
-        </Grid>  <!-- control buttons -->
+        </Grid>  <!-- upper right control buttons -->
 
-        <!-- This is needed to contain the Go board lines and stones grids because grids can't have focus in winrt -->
+        <!-- Needed to contain the Go board lines and stones grids because grids can't have focus in winrt -->
         <local:FocusableInputControl x:Name="inputFocus" Grid.RowSpan="2" Margin="2" HorizontalAlignment="Stretch" 
                                      VerticalAlignment="Stretch">
             <Grid>
                 <!-- Define the grid to hold board lines, which is filled in programmatically depending on the 
                      go board size ... -->
                 <Grid Background="#FFD7B264" HorizontalAlignment="Stretch" x:Name="boardGrid"
-                 VerticalAlignment="Stretch"  >
+                      VerticalAlignment="Stretch"  >
                 </Grid>
 
-                <!-- Define the grid to hold go stones, whose rows and columns are filled in programmatically ... -->
+                <!-- Define the grid to hold go stones, whose rows and columns are filled in programmatically -->
                 <!-- ShowGridLines="False" -->
                 <Grid  Background="Transparent" HorizontalAlignment="Stretch" IsHitTestVisible="True"
-              x:Name="stonesGrid" VerticalAlignment="Stretch" PointerPressed="StonesPointerPressed" >
+                       x:Name="stonesGrid" VerticalAlignment="Stretch" PointerPressed="StonesPointerPressed" >
                 </Grid>
             </Grid>
         </local:FocusableInputControl>
@@ -149,7 +149,8 @@
     </Grid> <!-- main grid for buttons, board, comments -->
     
         <!-- Define the snapped view content, which starts off collapsed and possibly gets toggled on size change -->
-        <Grid x:Name="snapViewContent" Visibility="Collapsed" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+        <Grid x:Name="snapViewContent" Background="#C7419082" Visibility="Collapsed" HorizontalAlignment="Stretch" 
+              VerticalAlignment="Stretch">
             <!-- Define the grid to hold board lines, which is filled in programmatically depending on the go board 
                  size ... -->
             <Grid Background="#FFD7B264" HorizontalAlignment="Stretch" x:Name="collapsedBoardGrid" Grid.Row="0" 
