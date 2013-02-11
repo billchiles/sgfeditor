@@ -158,7 +158,7 @@ namespace SgfEdwin8 {
                         make_move(10, 10);
                 }
                 else {
-                    Debug.Assert(handicap_stones.Count == handicap,
+                    MyDbg.Assert(handicap_stones.Count == handicap,
                                  "Handicap number is not equal to all " +
                                  "black stones in parsed root node.");
                     foreach (var m in handicap_stones)
@@ -308,7 +308,7 @@ namespace SgfEdwin8 {
         //// move.  If this is a new next move, we add it to branches.
         ////
         private Move MaybeUpdateBranches (List<Move> branches, Move move) {
-            Debug.Assert(branches != null);
+            MyDbg.Assert(branches != null);
             // Must bind branches so that generic ListFind dispatch works and get tooling help.
             // PTVS does the tooling right, and if had disjunctive types decls, wouldn't need 'dynamic'.
             //List<Move> branches = game_or_move.Branches;
@@ -408,7 +408,7 @@ namespace SgfEdwin8 {
         ////
         private void CollectStones (int row, int col, Color color, List<Move> dead_stones,
                                     bool[,] visited) {
-            Debug.Assert(visited != null, "Must call CollectStones with initial matrix of null values.");
+            MyDbg.Assert(visited != null, "Must call CollectStones with initial matrix of null values.");
             if (!visited[row - 1, col - 1])
                 dead_stones.Add(this.Board.MoveAt(row, col));
             else
@@ -437,10 +437,10 @@ namespace SgfEdwin8 {
         public Move UnwindMove () {
             // These debug.asserts could arguably be throw's if we think of this function
             // as platform/library.
-            Debug.Assert(this.State != GameState.NotStarted,
+            MyDbg.Assert(this.State != GameState.NotStarted,
                          "Previous button should be disabled if game not started.");
             var current = this.CurrentMove;
-            Debug.Assert(current != null, "Previous button should be disabled if no current move.");
+            MyDbg.Assert(current != null, "Previous button should be disabled if no current move.");
             if (!current.IsPass)
                 this.Board.RemoveStone(current);
             this.AddStones(current.DeadStones);
@@ -478,10 +478,10 @@ namespace SgfEdwin8 {
         public void GotoStart () {
             // These debug.asserts could arguably be throw's if we think of this function
             // as platform/library.
-            Debug.Assert(this.State != GameState.NotStarted,
+            MyDbg.Assert(this.State != GameState.NotStarted,
                          "Home button should be disabled if game not started.");
             var current = this.CurrentMove;
-            Debug.Assert(current != null, "Home button should be disabled if no current move.");
+            MyDbg.Assert(current != null, "Home button should be disabled if no current move.");
             this.SaveAndUpdateComments(current, null);
             this.Board.GotoStart();
             this.mainWin.ResetToStart(current);
@@ -509,14 +509,14 @@ namespace SgfEdwin8 {
         public Move ReplayMove () {
             // These debug.asserts could arguably be throw's if we think of this function
             // as platform/library.
-            Debug.Assert(this.State != GameState.NotStarted,
+            MyDbg.Assert(this.State != GameState.NotStarted,
                          "Next button should be disabled if game not started.");
             // advance this.current_move to the next move.
             var fixupMove = this.CurrentMove; // save for catch block
             if (this.CurrentMove == null)
                 this.CurrentMove = this.FirstMove;
             else {
-                Debug.Assert(this.CurrentMove.Next != null,
+                MyDbg.Assert(this.CurrentMove.Next != null,
                              "Next button should be disabled if no next move.");
                 this.CurrentMove = this.CurrentMove.Next;
             }
@@ -548,7 +548,7 @@ namespace SgfEdwin8 {
         public async Task GotoLastMove () {
             // This debug.assert could arguably be a throw if we think of this function
             // as platform/library.
-            Debug.Assert(this.State != GameState.NotStarted,
+            MyDbg.Assert(this.State != GameState.NotStarted,
                          "End button should be disabled if game not started.");
             var current = this.CurrentMove;
             var save_orig_current = current;
@@ -763,7 +763,7 @@ namespace SgfEdwin8 {
             var cut_move = this.CurrentMove;
             // This debug.assert could arguably be a throw if we think of this function
             // as platform/library.
-            Debug.Assert(cut_move != null,
+            MyDbg.Assert(cut_move != null,
                          "Must cut current move, so cannot be initial board state.");
             // unwind move with all UI updates and game model updates (and saves comments)
             this.mainWin.prevButtonLeftDown(null, null);
@@ -869,7 +869,7 @@ namespace SgfEdwin8 {
         public async Task PasteMove () {
             // These debug.asserts could arguably be throw's if we think of this function
             // as platform/library.
-            Debug.Assert(this.cutMove != null, "There is no cut sub tree to paste.");
+            MyDbg.Assert(this.cutMove != null, "There is no cut sub tree to paste.");
             if (this.cutMove.Color != this.nextColor) {
                 await GameAux.Message("Cannot paste cut move that is same color as current move.");
                 return;
@@ -890,7 +890,7 @@ namespace SgfEdwin8 {
                         GameAux.PasteNextParsedNode(this.ParsedGame.Nodes, this.cutMove.ParsedNode);
                 }
                 else {
-                    Debug.Assert(this.State == GameState.NotStarted,
+                    MyDbg.Assert(this.State == GameState.NotStarted,
                                  "Internal error: no first move and game not started?!");
                     // not branching initial board state
                     this.FirstMove = this.cutMove;
@@ -1072,7 +1072,7 @@ namespace SgfEdwin8 {
         //// the result.
         ////
         private async Task MoveBranch (List<Move> branches, int cur_index, int delta) {
-            Debug.Assert(delta == 1 || delta == -1,
+            MyDbg.Assert(delta == 1 || delta == -1,
                          "Branch moving delta must be 1 or -1 for now.");
             Action swap = () => {
                 var tmp = branches[cur_index];
@@ -1111,7 +1111,7 @@ namespace SgfEdwin8 {
             if (sf == null) {
                 // This debug.assert could arguably be a throw if we think of this function
                 // as platform/library.
-                Debug.Assert(this.Storage != null, "Need storage/filename to write file.");
+                MyDbg.Assert(this.Storage != null, "Need storage/filename to write file.");
                 sf = this.Storage;
                 filename = this.Filename;
             }
@@ -1143,7 +1143,7 @@ namespace SgfEdwin8 {
         //// file may be out of date with the state of the game.
         ////
         public async Task WriteFlippedGame (StorageFile sf) {
-            Debug.Assert(sf != null, "Must call WriteFlippedGame with non-null file.");
+            MyDbg.Assert(sf != null, "Must call WriteFlippedGame with non-null file.");
             var pg = GameAux.ParsedGameFromGame(this, true); // True = flipped
             await FileIO.WriteTextAsync(sf, pg.ToString());
         }
@@ -1163,7 +1163,7 @@ namespace SgfEdwin8 {
         //// indicates the empty initial board state, or the empty path.
         ////
         public List<Tuple<int, int>> GetPathToMove (Move move) {
-            Debug.Assert(move != null);
+            MyDbg.Assert(move != null);
             //if (move == null)
             //    return this.TheEmptyMovePath;
             var parent = move.Previous;
@@ -1171,7 +1171,7 @@ namespace SgfEdwin8 {
             while (parent != null) {
                 if (parent.Branches != null && parent.Branches[0] != move) {
                     var loc = GameAux.ListFind(move, parent.Branches);
-                    Debug.Assert(loc != -1, "Move must be in game.");
+                    MyDbg.Assert(loc != -1, "Move must be in game.");
                     res.Add(Tuple.Create(parent.Number, loc));
                 }
                 move = parent;
@@ -1179,7 +1179,7 @@ namespace SgfEdwin8 {
             }
             if (this.Branches != null && this.Branches[0] != move) {
                 var loc = GameAux.ListFind(move, this.Branches);
-                Debug.Assert(loc != -1, "Move must be in game.");
+                MyDbg.Assert(loc != -1, "Move must be in game.");
                 res.Add(Tuple.Create(0, loc));
             }
             res.Reverse();
@@ -1187,7 +1187,7 @@ namespace SgfEdwin8 {
         }
 
         public List<Tuple<int, int>> GetPathToMove (ParsedNode move) {
-            Debug.Assert(move != null);
+            MyDbg.Assert(move != null);
             //if (move == null)
             //    return this.TheEmptyMovePath;
             var parent = move.Previous;
@@ -1200,7 +1200,7 @@ namespace SgfEdwin8 {
                 moveNum -= 1;
                 if (parent.Branches != null && parent.Branches[0] != move) {
                     var loc = GameAux.ListFind(move, parent.Branches);
-                    Debug.Assert(loc != -1, "Move must be in game.");
+                    MyDbg.Assert(loc != -1, "Move must be in game.");
                     res.Add(Tuple.Create(moveNum, loc));
                 }
                 move = parent;
@@ -1209,7 +1209,7 @@ namespace SgfEdwin8 {
             moveNum -= 1;
             if (this.ParsedGame.Nodes.Branches != null) {
                 var loc = GameAux.ListFind(move, this.ParsedGame.Nodes.Branches);
-                Debug.Assert(loc != -1, "Move must be in game.");
+                MyDbg.Assert(loc != -1, "Move must be in game.");
                 res.Add(Tuple.Create(0, loc));
             }
             //res.Reverse();
@@ -1227,8 +1227,8 @@ namespace SgfEdwin8 {
         //// a move conflict in the game tree.
         ////
         public bool AdvanceToMovePath (List<Tuple<int, int>> path) {
-            Debug.Assert(this.CurrentMove == null, "Must be at beginning of empty game board.");
-            Debug.Assert(this.FirstMove != null || path == this.TheEmptyMovePath,
+            MyDbg.Assert(this.CurrentMove == null, "Must be at beginning of empty game board.");
+            MyDbg.Assert(this.FirstMove != null || path == this.TheEmptyMovePath,
                          "If first move is null, then path must be the empty path.");
             if (this.FirstMove == null) return true;
             // Setup for loop ...
@@ -1262,7 +1262,7 @@ namespace SgfEdwin8 {
                 // Select next moves branch correctly ...
                 var branch = n.Item2;
                 if (branch == -1) break;
-                Debug.Assert(curMove.Branches != null && branch > 0 && branch < curMove.Branches.Count,
+                MyDbg.Assert(curMove.Branches != null && branch > 0 && branch < curMove.Branches.Count,
                              "Move path does not match game's tree.");
                 this.CurrentMove = curMove; // Needs to be right for SetCurrentBranch.
                 this.SetCurrentBranch(branch);
@@ -1490,7 +1490,7 @@ namespace SgfEdwin8 {
                                                          : node.Properties;
             var props = node.Properties;
             // Color
-            Debug.Assert(move.Color == Colors.Black || move.Color == Colors.White,
+            MyDbg.Assert(move.Color == Colors.Black || move.Color == Colors.White,
                          "Move color must be B or W?!");
             if (move.Color == Colors.Black)
                 props["B"] = new List<string>() { GoBoardAux.GetParsedCoordinates(move, flipped) };
@@ -1583,7 +1583,7 @@ namespace SgfEdwin8 {
             new_node.Properties = CopyProperties(node.Properties);
             var props = new_node.Properties;
             // Color
-            Debug.Assert(props.ContainsKey("B") || props.ContainsKey("W"),
+            MyDbg.Assert(props.ContainsKey("B") || props.ContainsKey("W"),
                          "Move color must be B or W?!");
             if (props.ContainsKey("B"))
                 props["B"] = FlipCoordinates(props["B"]);
@@ -2148,7 +2148,7 @@ namespace SgfEdwin8 {
         private static void StoreTreeViewNode (TreeViewLayoutData layoutData, int tree_depth, TreeViewNode model) {
             if (model.Row >= GameAux.TreeViewGridRows || tree_depth >= GameAux.TreeViewGridColumns)
                 GameAux.GrowTreeView(layoutData);
-            Debug.Assert(layoutData.TreeGrid[model.Row, tree_depth] == null,
+            MyDbg.Assert(layoutData.TreeGrid[model.Row, tree_depth] == null,
                          "Eh?!  This tree view location should be empty.");
             layoutData.TreeGrid[model.Row, tree_depth] = model;
         }

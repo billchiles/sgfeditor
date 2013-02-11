@@ -1,6 +1,4 @@
 
-need png images for logo, small logo, splash, and store
-
 
 snapped view
 http://rushabh.greenpoison.org.in/blog/2012/09/18/handling-snap-view-and-all-resolutions-in-windows-8/

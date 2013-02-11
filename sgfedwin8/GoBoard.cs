@@ -31,7 +31,7 @@ namespace SgfEdwin8 {
         public Move AddStone (Move move) {
             // This debug.assert could arguably be a throw if we think of this function
             // as platform/library.
-            Debug.Assert(this.moves[move.Row - 1, move.Column - 1] == null,
+            MyDbg.Assert(this.moves[move.Row - 1, move.Column - 1] == null,
                          "Ensure board has no stone at location.");
             this.moves[move.Row - 1, move.Column - 1] = move;
             return move;
@@ -303,7 +303,7 @@ namespace SgfEdwin8 {
         public static void GetCurrentMove (Move move, UIElement cookie) {
             // This debug.assert could arguably be a throw if we think of this function
             // as platform/library.
-            Debug.Assert(Adornments.CurrentMoveAdornment.Move == null,
+            MyDbg.Assert(Adornments.CurrentMoveAdornment.Move == null,
                          "Already have current move adornment at row, col: "); // +
                 //Adornments.CurrentMoveAdornment.Move.Row.ToString() + ", " +
                 //Adornments.CurrentMoveAdornment.Move.Column.ToString() + ".");
@@ -319,7 +319,7 @@ namespace SgfEdwin8 {
             var move = Adornments.CurrentMoveAdornment.Move;
             // This debug.assert could arguably be a throw if we think of this function
             // as platform/library.
-            Debug.Assert(move != null, "Do not have current move adornment.");
+            MyDbg.Assert(move != null, "Do not have current move adornment.");
             move.Adornments.Remove(Adornments.CurrentMoveAdornment);
             Adornments.CurrentMoveAdornment.Move = null;
             Adornments.CurrentMoveAdornment.Cookie = null;

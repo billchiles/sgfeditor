@@ -242,7 +242,7 @@ F1 produces this help.
         //// adding to the MainWindow's Grid.  The returned Grid contains lines for the Go board.
         ////
         private Grid SetupLinesGrid (int size, Grid g = null) {
-            Debug.Assert(size >= Game.MinBoardSize && size <= Game.MaxBoardSize,
+            MyDbg.Assert(size >= Game.MinBoardSize && size <= Game.MaxBoardSize,
                          "Board size must be between " + Game.MinBoardSize +
                          " and " + Game.MaxBoardSize + " inclusively.");
             // <Grid ShowGridLines="False" Background="#FFD7B264" Grid.RowSpan="2" HorizontalAlignment="Stretch"
@@ -608,7 +608,7 @@ F1 produces this help.
                 this.Title.Text = "SGFEd -- " + filebase + ";  Move " + num.ToString() + pass_str;
             else {
                 var tail = title.IndexOf("Move ");
-                Debug.Assert(tail != -1, "Title doesn't have move in it?!");
+                MyDbg.Assert(tail != -1, "Title doesn't have move in it?!");
                 if (tail != -1)
                     this.Title.Text = title.Substring(0, tail + 5) + num.ToString() + pass_str;
             }
@@ -1521,7 +1521,7 @@ F1 produces this help.
         //// indexing schemes commonly found in pro commentaries.
         ////
         internal static void SetupIndexLabels (Grid g, int size) {
-            Debug.Assert(size > 1);
+            MyDbg.Assert(size > 1);
             for (var i = 1; i < size + 1; i++) {
                 //for i in xrange(1, size + 1):
                 // chr_offset skips the letter I to avoid looking like the numeral one in the display.
@@ -1603,7 +1603,7 @@ F1 produces this help.
         ////
         internal static void RemoveStone (Grid g, Move move) {
             var stone = stones[move.Row - 1, move.Column - 1];
-            Debug.Assert(stone != null, "Shouldn't be removing stone if there isn't one.");
+            MyDbg.Assert(stone != null, "Shouldn't be removing stone if there isn't one.");
             g.Children.Remove(stone);
             stones[move.Row - 1, move.Column - 1] = null;
             // Must remove current adornment before other adornments (or just call
@@ -1718,7 +1718,7 @@ F1 produces this help.
         internal static void AddNewAdornment(Grid stones_grid, Adornments adornment, Game game_inst,
                                                bool render = true) {
             UIElement gridOrViewbox;
-            Debug.Assert(adornment.Kind == AdornmentKind.Square || adornment.Kind == AdornmentKind.Triangle ||
+            MyDbg.Assert(adornment.Kind == AdornmentKind.Square || adornment.Kind == AdornmentKind.Triangle ||
                          adornment.Kind == AdornmentKind.Letter,
                          "Eh?! Unsupported AdornmentKind value?");
             if (adornment.Kind == AdornmentKind.Square)
@@ -1959,7 +1959,7 @@ F1 produces this help.
                 g.Children.Add(stone);
             }
             // Get move number label
-            Debug.Assert(model.Kind != TreeViewNodeKind.LineBend,
+            MyDbg.Assert(model.Kind != TreeViewNodeKind.LineBend,
                          "Eh?!  Shouldn't be making tree view item grid for line bends.");
             var label = new TextBlock();
             if (model.Kind == TreeViewNodeKind.StartBoard)
