@@ -1,11 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Windows.ApplicationModel;
 using Windows.ApplicationModel.Activation;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
+using Windows.Storage; // StorageFile for OnFileActivated()
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Controls.Primitives;
@@ -39,39 +42,55 @@ namespace SgfEdwin8
         /// search results, and so forth.
         /// </summary>
         /// <param name="args">Details about the launch request and process.</param>
-        protected override void OnLaunched(LaunchActivatedEventArgs args)
-        {
+        protected override void OnLaunched (LaunchActivatedEventArgs args) {
             Frame rootFrame = Window.Current.Content as Frame;
-
             // Do not repeat app initialization when the Window already has content,
             // just ensure that the window is active
-            if (rootFrame == null)
-            {
+            if (rootFrame == null) {
                 // Create a Frame to act as the navigation context and navigate to the first page
                 rootFrame = new Frame();
-
-                if (args.PreviousExecutionState == ApplicationExecutionState.Terminated)
-                {
+                if (args.PreviousExecutionState == ApplicationExecutionState.Terminated) {
                     //TODO: Load state from previously suspended application
                 }
-
                 // Place the frame in the current Window
                 Window.Current.Content = rootFrame;
             }
-
-            if (rootFrame.Content == null)
-            {
+            if (rootFrame.Content == null) {
                 // When the navigation stack isn't restored navigate to the first page,
                 // configuring the new page by passing required information as a navigation
                 // parameter
-                if (!rootFrame.Navigate(typeof(MainWindow), args.Arguments))
-                {
+                if (!rootFrame.Navigate(typeof(MainWindow), args.Arguments)) {
                     throw new Exception("Failed to create initial page");
                 }
             }
             // Ensure the current window is active
             Window.Current.Activate();
         }
+
+        protected override async void OnFileActivated (FileActivatedEventArgs args) {
+            base.OnFileActivated(args);
+            MainWindow mainwin;
+            // We only handle one file for now ...
+            var f = args.Files[0];
+            // Check dirty save if running already
+            if (args.PreviousExecutionState == ApplicationExecutionState.Running ||
+                    args.PreviousExecutionState == ApplicationExecutionState.Suspended) {
+                mainwin = ((Frame)Window.Current.Content).Content as MainWindow;
+                if (mainwin.Game.Dirty)
+                    await mainwin.CheckDirtySave();
+            } else {
+                // else create main UI as OnLaunched does
+                var frame = new Frame();
+                Window.Current.Content = frame;
+                frame.Navigate(typeof(MainWindow));
+                mainwin = frame.Content as MainWindow;
+                Window.Current.Activate();
+            }
+            var sf = f as StorageFile;
+            await mainwin.ParseAndCreateGame(sf);
+            //win.FocusOnStones();
+        }
+
 
         /// <summary>
         /// Invoked when application execution is being suspended.  Application state is saved

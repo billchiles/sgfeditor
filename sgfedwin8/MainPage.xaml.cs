@@ -113,6 +113,8 @@ F1 produces this help.
 
         public Game Game { get; set; }
 
+        //public StorageFile ActivatedFile;
+
 
         public MainWindow () {
             this.InitializeComponent();
@@ -120,8 +122,16 @@ F1 produces this help.
             this.Game = GameAux.CreateDefaultGame(this);
             // fixing win8 -- tried this to always get it invoked, but the event is simply not raising
             //this.AddHandler(UIElement.KeyDownEvent, (KeyEventHandler)this.mainWin_keydown, true);
-        } // Constructor
 
+            //this.Loaded += MainWindow_Loaded;
+        }
+
+        //async void MainWindow_Loaded (object sender, RoutedEventArgs e) {
+        //    if (this.ActivatedFile != null)
+        //        await this.ParseAndCreateGame(this.ActivatedFile);
+        //} // Constructor
+
+        
 
         //// 
         //// Handling Snap View (required by store compliance)
@@ -646,14 +656,7 @@ F1 produces this help.
                     popup.Child = this.GetOpenfileUIDike();
                     popup.IsOpen = true;
                     // Process file ...
-                    var pg = await ParserAux.ParseFile(sf);
-                    this.Game = await GameAux.CreateParsedGame(pg, this);
-                    //await Task.Delay(5000);  // Testing input blocker.
-                    this.Game.Storage = sf;
-                    var name = sf.Name;
-                    this.Game.Filename = name;
-                    this.Game.Filebase = name.Substring(name.LastIndexOf('\\') + 1);
-                    this.UpdateTitle(0, false, this.Game.Filebase);
+                    await ParseAndCreateGame(sf);
                 }
                 catch (IOException err) {
                     // Essentially handles unexpected EOF or malformed property values.
@@ -669,6 +672,19 @@ F1 produces this help.
                 }
             }
             this.FocusOnStones();
+        }
+
+        //// ParseAndCreateGame does just that.  DoOpenButton above and app.xaml.cs's OnFileActivated use this.
+        ////
+        public async Task ParseAndCreateGame (StorageFile sf) {
+            var pg = await ParserAux.ParseFile(sf);
+            this.Game = await GameAux.CreateParsedGame(pg, this);
+            //await Task.Delay(5000);  // Testing input blocker.
+            this.Game.Storage = sf;
+            var name = sf.Name;
+            this.Game.Filename = name;
+            this.Game.Filebase = name.Substring(name.LastIndexOf('\\') + 1);
+            this.UpdateTitle(0, false, this.Game.Filebase);
         }
 
         private Grid openFileUIDike = null;
@@ -696,8 +712,9 @@ F1 produces this help.
 
         //// _check_dirty_save prompts whether to save the game if it is dirty.  If
         //// saving, then it uses the game filename, or prompts for one if it is None.
+        //// This is public for use in app.xaml.cs OnfileActivated.
         ////
-        private async Task CheckDirtySave () {
+        public async Task CheckDirtySave () {
             this.Game.SaveCurrentComment();
             if (this.Game.Dirty &&
                     await GameAux.Message("Game is unsaved, save it?", "Confirm saving file",
