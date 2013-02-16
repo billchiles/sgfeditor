@@ -40,7 +40,7 @@
             </Grid.RowDefinitions>
             <!-- margin is "left, top, right, bottom"-->
             <Grid Grid.Row="0" Background="DarkKhaki">
-                <TextBlock Text="SGF Editor - unsaved Move 0" FontSize="14" Margin="2"
+                <TextBlock Text="SGF Editor - unsaved Move 0" FontSize="14" Margin="2,1,1,1"
                            VerticalAlignment="Stretch" HorizontalAlignment="Stretch" x:Name="Title"/>
             </Grid>
             <TextBox Grid.Row="1" HorizontalAlignment="Stretch" Margin="2,2,2,1" Name="commentBox" 
@@ -103,33 +103,45 @@
             </Button>
 
             <Button Content="&lt;&lt;" Grid.Row="2" Grid.Column="0" Height="30" HorizontalAlignment="Stretch" 
-                    Margin="1" Name="homeButton" VerticalAlignment="Top" IsEnabled="False" Click="homeButtonLeftDown" 
+                    Margin="1,1,1,2" Name="homeButton" VerticalAlignment="Top" IsEnabled="False" Click="homeButtonLeftDown" 
                     FontSize="14" BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" 
                     Foreground="Black"/>
-            <Button Content="&lt;" Grid.Row="2" Grid.Column="1" Height="30" HorizontalAlignment="Stretch" Margin="1" 
+            <Button Content="&lt;" Grid.Row="2" Grid.Column="1" Height="30" HorizontalAlignment="Stretch" 
+                    Margin="1,1,1,1" 
                     Name="prevButton" VerticalAlignment="Top"  IsEnabled="False" Click="prevButtonLeftDown" 
                     FontSize="14" BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" 
                     Foreground="Black"/>
-            <Button Content="&gt;" Grid.Row="2" Grid.Column="2" Height="30" HorizontalAlignment="Stretch" Margin="1" 
+            <Button Content="&gt;" Grid.Row="2" Grid.Column="2" Height="30" HorizontalAlignment="Stretch" 
+                    Margin="1,1,1,1" 
                     Name="nextButton" VerticalAlignment="Top"  IsEnabled="False" Click="nextButtonLeftDown"
                     FontSize="14" BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" 
                     Foreground="Black"/>
             <Button Content="&gt;&gt;" Grid.Row="2" Grid.Column="3" Height="30" HorizontalAlignment="Stretch" 
-                    Margin="1" Name="endButton" VerticalAlignment="Top"  IsEnabled="False" Click="endButtonLeftDown"
+                    Margin="1,1,1,1" Name="endButton" VerticalAlignment="Top"  IsEnabled="False" 
+                    Click="endButtonLeftDown"
                     FontSize="14" BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" 
                     Foreground="Black"/>
 
+            <StackPanel Grid.Column="2" Grid.Row="1" Background="Transparent"
+                            HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                <TextBlock FontSize="14" Name="branchLabel" Margin="2,5,2,1" Width="120"
+                           >No Branches:</TextBlock>
+                <ComboBox BorderThickness="1" Background="White" Width="120"
+                          Name="branchCombo"  IsEnabled="False" ></ComboBox>
+            </StackPanel>
+                    <!--
             <TextBlock Text="No Branches:" Grid.Column="2" Grid.Row="1" Height="28" HorizontalAlignment="Stretch" 
                        Margin="8" VerticalAlignment="Top" Name="branchLabel" Foreground="White" FontSize="14"/>
             <ComboBox Grid.Column="2" Grid.Row="1"  Height="23" HorizontalAlignment="Stretch" Margin="1" 
                       VerticalAlignment="Bottom" Width="120" Name="branchCombo"  IsEnabled="False" 
                       SelectionChanged="branchComboSelectionChanged" BorderThickness="1" Background="White"/>
+            -->
             <!-- IsEditable="False" IsReadOnly="True" -->
 
         </Grid>  <!-- upper right control buttons -->
 
         <!-- Needed to contain the Go board lines and stones grids because grids can't have focus in winrt -->
-        <local:FocusableInputControl x:Name="inputFocus" Grid.RowSpan="2" Margin="2" HorizontalAlignment="Stretch" 
+        <local:FocusableInputControl x:Name="inputFocus" Grid.RowSpan="2" Margin="2,2,2,2" HorizontalAlignment="Stretch" 
                                      VerticalAlignment="Stretch">
             <Grid>
                 <!-- Define the grid to hold board lines, which is filled in programmatically depending on the 

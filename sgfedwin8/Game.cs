@@ -1115,6 +1115,8 @@ namespace SgfEdwin8 {
                 sf = this.Storage;
                 filename = this.Filename;
             }
+            else
+                filename = sf.Name;
             var pg = GameAux.ParsedGameFromGame(this);
             await FileIO.WriteTextAsync(sf, pg.ToString());
             this.Dirty = false;

@@ -16,8 +16,29 @@ using Windows.UI.Xaml.Navigation;
 
 namespace SgfEdwin8 {
     public sealed partial class FocusableInputControl : UserControl {
+
         public FocusableInputControl () {
             this.InitializeComponent();
+
+
+            this.SizeChanged += FocusableInputControl_SizeChanged;
         }
+
+        void FocusableInputControl_SizeChanged(object sender, SizeChangedEventArgs e) {
+            var width = this.ActualWidth;
+            var height = this.ActualHeight;
+            if (width != height) {
+                var size = Math.Min(width, height);
+                if (this.ActualWidth != size)
+                    this.Width = size;
+                else
+                    this.Height = size;
+                var parent = this.Parent as Grid;
+                if (parent != null) {
+                    parent.ColumnDefinitions[0].Width = new GridLength(size + 2);
+                }
+            }
+        }
+
     }
 }

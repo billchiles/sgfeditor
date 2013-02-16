@@ -113,8 +113,6 @@ F1 produces this help.
 
         public Game Game { get; set; }
 
-        //public StorageFile ActivatedFile;
-
 
         public MainWindow () {
             this.InitializeComponent();
@@ -122,16 +120,8 @@ F1 produces this help.
             this.Game = GameAux.CreateDefaultGame(this);
             // fixing win8 -- tried this to always get it invoked, but the event is simply not raising
             //this.AddHandler(UIElement.KeyDownEvent, (KeyEventHandler)this.mainWin_keydown, true);
-
-            //this.Loaded += MainWindow_Loaded;
         }
 
-        //async void MainWindow_Loaded (object sender, RoutedEventArgs e) {
-        //    if (this.ActivatedFile != null)
-        //        await this.ParseAndCreateGame(this.ActivatedFile);
-        //} // Constructor
-
-        
 
         //// 
         //// Handling Snap View (required by store compliance)
@@ -417,7 +407,7 @@ F1 produces this help.
         //// This is a hack because win8 msgbox does not scroll, so will need to design a popup with a
         //// with a scrolling text box.
         ////
-        private async void ShowHelp () {
+        private void ShowHelp () {
             var helpDialog = new HelpDialog();
             var helpText = helpDialog.FindName("helpText") as TextBox;
             helpText.Text = "Note: text has scroll bar to view all help.\n\n" + MainWindow.HelpString;
@@ -1034,6 +1024,8 @@ F1 produces this help.
             var move = n.Node as Move;
             if (this.Game.CurrentMove != null)
                 this.Game.GotoStart();
+            else
+                this.Game.SaveCurrentComment();
             if (move != null) {
                 if (move.Row != -1 && move.Column != -1)
                     // move is NOT dummy move for start node of game tree view, so advance to it.
@@ -1051,7 +1043,7 @@ F1 produces this help.
             var path = this.Game.GetPathToMove(move);
             if (path != this.Game.TheEmptyMovePath) {
                 this.Game.AdvanceToMovePath(path);
-                GotoGameTreeMoveUpdateButtons(move);
+                GotoGameTreeMoveUpdateUI(move);
             }
         }
 
@@ -1059,11 +1051,16 @@ F1 produces this help.
             var path = this.Game.GetPathToMove(move);
             if (path != this.Game.TheEmptyMovePath) {
                 this.Game.AdvanceToMovePath(path);
-                this.GotoGameTreeMoveUpdateButtons(this.Game.CurrentMove);
+                this.GotoGameTreeMoveUpdateUI(this.Game.CurrentMove);
             }
         }
 
-        private void GotoGameTreeMoveUpdateButtons (Move move) {
+        //// GotoGameTreeMoveUpdateUI sets the forw/back buttons appropriately.  It also
+        //// stores move's comment in the comment box.  We do not need to use the save
+        //// and update function because we reset to the board start, saving any current
+        //// comment at that time, and now just need to put the current comment in the UI.
+        ////
+        private void GotoGameTreeMoveUpdateUI(Move move) {
             // All other game and UI state has been updated by Game.AdvanceToMovePath.
             this.AddCurrentAdornments(move);
             if (move.Previous != null)
@@ -1078,6 +1075,7 @@ F1 produces this help.
                 this.DisableForwardButtons();
                 this.UpdateBranchCombo(null, null);
             }
+            this.CurrentComment = move.Comments;
         }
 
 
@@ -1325,8 +1323,12 @@ F1 produces this help.
                 }
                 else {
                     this.branchLabel.Text = "No branches:";
+                    // Win8 randomly sets background to transparent when disabled, and sometimes
+                    // the background declared in the xaml (white) shows through, so just always
+                    // set transparent on win8.  In WPF, it is always white, as declared.
+                    combo.Background = new SolidColorBrush(Colors.Transparent);
+                    //combo.Background = this.branch_combo_background;
                     combo.IsEnabled = false;
-                    combo.Background = this.branch_combo_background;
                 }
                 this.FocusOnStones();
             }
@@ -1567,6 +1569,8 @@ F1 produces this help.
             label.FontSize = 14;
             label.Foreground = new SolidColorBrush(Colors.Black);
             label.HorizontalAlignment = h_alignment;
+            if (h_alignment == HorizontalAlignment.Right)
+                label.Margin = new Thickness(0, 0, 2, 0);
             label.VerticalAlignment = v_alignment;
             g.Children.Add(label);
         }
