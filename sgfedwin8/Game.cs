@@ -886,8 +886,6 @@ namespace SgfEdwin8 {
                         this.Branches.Add(this.cutMove);
                     this.FirstMove = this.cutMove;
                     this.FirstMove.Number = 1;
-                    if (this.ParsedGame != null && this.cutMove.ParsedNode != null)
-                        GameAux.PasteNextParsedNode(this.ParsedGame.Nodes, this.cutMove.ParsedNode);
                 }
                 else {
                     MyDbg.Assert(this.State == GameState.NotStarted,
@@ -897,6 +895,8 @@ namespace SgfEdwin8 {
                     this.FirstMove.Number = 1;
                     this.State = GameState.Started;
                 }
+                if (this.ParsedGame != null && this.cutMove.ParsedNode != null)
+                    GameAux.PasteNextParsedNode(this.ParsedGame.Nodes, this.cutMove.ParsedNode);
             }
             this.cutMove.Previous = cur_move;  // stores null appropriately when no current
             this.Dirty = true;
@@ -1331,8 +1331,7 @@ namespace SgfEdwin8 {
             await msgdlg.ShowAsync();
             return response;
         }
-        //private static void StonesPtrPressedMsgDlgHandler (IUICommand command) {
-        //} 
+
 
         ////
         //// Mapping Games to ParsedGames (for printing)
@@ -1361,6 +1360,8 @@ namespace SgfEdwin8 {
                 }
                 pgame.Nodes.Next = branches[0];
             }
+            // Need to store new game since creating the parsed game re-uses original nodes.
+            game.ParsedGame = pgame;
             return pgame;
         }
 
@@ -1437,6 +1438,8 @@ namespace SgfEdwin8 {
                 if (flipped)
                     return CloneAndFlipNodes(move.ParsedNode);
                 else
+                    // Note: result re-uses original parsed nodes, and callers change this node
+                    // to point to new parents.
                     return move.ParsedNode;
             }
             var cur_node = GenParsedNode(move, flipped);
@@ -1471,10 +1474,8 @@ namespace SgfEdwin8 {
 
         //// _gen_parsed_node returns a ParsedNode that is based on the Move object.  It
         //// grabs any existing parsed node properties from move to preserve any move
-        //// properties that we ignore from a file we read.  This does not just take the
-        //// whole parsed node from move to avoid keeping branches or whatnot that we've
-        //// deleted.  If flipped is true, then moves and adornment indexes are
-        //// diagonally mirrored; see write_flipped_game.
+        //// properties that we ignore from a file we read.  If flipped is true, then moves 
+        //// and adornment indexes are diagonally mirrored; see write_flipped_game.
         ////
         //// NOTE, this function needs to overwrite any node properties that the UI
         //// supports editing.  For example, if the end user modified adornments.
@@ -1485,6 +1486,8 @@ namespace SgfEdwin8 {
                 if (flipped)
                     return CloneAndFlipNodes(move.ParsedNode);
                 else
+                    // Note: result re-uses original parsed nodes, and callers change this node
+                    // to point to new parents.
                     return move.ParsedNode;
             }
             var node = new ParsedNode();
@@ -1527,9 +1530,14 @@ namespace SgfEdwin8 {
                 if (a.Kind == AdornmentKind.Letter) {
                     var cookie = ((Adornments)a).Cookie;
                     var lbl = ((Viewbox)cookie).Child;
-                    var txt = ((TextBlock)lbl).Text;
-                    //var txt = ((Label)lbl).Content;
-                    var data = coords + ":" + (string)txt;
+                    string txt;
+                    // Check for win8 hack: Grid inside Viewbox because ViewBoxes and labels have no background.
+                    var txtgrid = lbl as Grid;
+                    if (txtgrid != null)
+                        txt = ((TextBlock)(txtgrid.Children[0])).Text;
+                    else
+                        txt = ((TextBlock)lbl).Text;
+                    var data = coords + ":" + txt;
                     if (props.ContainsKey("LB"))
                         props["LB"].Add(data);
                     else
@@ -2064,7 +2072,8 @@ namespace SgfEdwin8 {
                                                     TreeViewNode model, TreeViewNode next_model) {
             if (pn.Branches != null) {
                 model.Branches = new List<TreeViewNode>() { next_model };
-                // When handle Move objs, branches[0] is not always model.next
+                // Skip branches[0] since caller already did branch zero as pn's next move, but note, when
+                // pn is a Move (that is, not a ParsedNode), then branches[0] may not equal pn.Next.
                 for (var i = 1; i < pn.Branches.Count; i++) {
                     // Can't use 'var', must decl with 'TreeViewNode'.  C# doesn't realize all LayoutGameTree
                     // definitions return a TreeViewNode.

@@ -241,7 +241,9 @@ namespace SgfEdwin8 {
             // Branches holds all the next moves, while next points to one of these.
             // This is None until there's more than one next move.
             this.Branches = null;
-            // parsed_node is a node from a .sgf file.
+            // parsed_node is a node from a .sgf file.  This holds properties we may ignore, but
+            // we include them when generating a file/persistence representation of moves, merging
+            // with an state that's changed from user edits.
             this.ParsedNode = null;
             // rendered by default is true assuming moves are made and immediately
             // displayed, but parsed nodes can have unprocessed branches or
