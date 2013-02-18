@@ -377,13 +377,18 @@ F1 produces this help.
         public void UpdateTitle (int num, bool is_pass = false, string filebase = null) {
             var title = this.Title;
             var pass_str = is_pass ? " Pass" : "";
-            if (filebase != null)
-                this.Title = "SGFEd -- " + filebase + ";  Move " + num.ToString() + pass_str;
+            if (filebase != null) {
+                this.Title = "SGF Editor -- " + filebase + ";  Move " + num.ToString() + pass_str;
+                this.MyTitle.Text = filebase + ";  Move " + num.ToString() + pass_str;
+            }
             else {
                 var tail = title.IndexOf("Move ");
                 Debug.Assert(tail != -1, "Title doesn't have move in it?!");
-                if (tail != -1)
+                if (tail != -1) {
                     this.Title = title.Substring(0, tail + 5) + num.ToString() + pass_str;
+                    // MyTitle doesn't have "SGFEd -- ".
+                    this.MyTitle.Text = title.Substring(14, (tail - 14) + 5) + num.ToString() + pass_str;
+                }
             }
         }
 
@@ -641,6 +646,8 @@ F1 produces this help.
             var move = n.Node as Move;
             if (this.Game.CurrentMove != null)
                 this.Game.GotoStart();
+            else
+                this.Game.SaveCurrentComment();
             if (move != null) {
                 if (move.Row != -1 && move.Column != -1)
                     // move is NOT dummy move for start node of game tree view, so advance to it
@@ -658,7 +665,7 @@ F1 produces this help.
             var path = this.Game.GetPathToMove(move);
             if (path != this.Game.TheEmptyMovePath) {
                 this.Game.AdvanceToMovePath(path);
-                GotoGameTreeMoveUpdateButtons(move);
+                GotoGameTreeMoveUpdateUI(move);
             } 
         }
 
@@ -666,11 +673,16 @@ F1 produces this help.
             var path = this.Game.GetPathToMove(move);
             if (path != this.Game.TheEmptyMovePath) {
                 this.Game.AdvanceToMovePath(path);
-                this.GotoGameTreeMoveUpdateButtons(this.Game.CurrentMove);
+                this.GotoGameTreeMoveUpdateUI(this.Game.CurrentMove);
             }
         }
 
-        private void GotoGameTreeMoveUpdateButtons (Move move) {
+        //// GotoGameTreeMoveUpdateUI sets the forw/back buttons appropriately.  It also
+        //// stores move's comment in the comment box.  We do not need to use the save
+        //// and update function because we reset to the board start, saving any current
+        //// comment at that time, and now just need to put the current comment in the UI.
+        ////
+        private void GotoGameTreeMoveUpdateUI (Move move) {
             // All other game and UI state has been updated by Game.AdvanceToMovePath.
             this.AddCurrentAdornments(move);
             if (move.Previous != null)
@@ -685,6 +697,7 @@ F1 produces this help.
                 this.DisableForwardButtons();
                 this.UpdateBranchCombo(null, null);
             }
+            this.CurrentComment = move.Comments;
         }
 
         

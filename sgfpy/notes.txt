@@ -1,22 +1,29 @@
 
 general todo:
  * handle pass move
+ * pattern match ko and forbid ko take back
  * formalize exceptions, handle them up in the UI layer, keep program running
  * handle MA property for X marks
  * provide command to see game info from root node, and allow editing.
  * handle setup moves AW/AB and change color props ... others?
- *
+ * count and report prisoners in title bar
+ * make help scrolling dialog like win8
+ * 
 
 cs code:
  * fully integrate tree view (add move, move branch, cut/paste, re-use graphics objects when redrawing)
  * maybe mark nodes with comments
  * maybe highlight next node to show active branch
- * support clicking in tree view to goto to move
- *
+ * 
 
 pycode todo:
- * throw out old tree view and port code from C# project
- *
+ * last port back of bug fixes was changeset:   75:5555f6facde9, 11 NOV
+ * throw out old tree view and port code from C# project (drawing, jumping, node highlighting, ...)
+ * remove throw when SZ missing, default to 19
+ * bug in saving empty board games (changeset:   82:267a3b8694bf)
+ * bug in parser not storing prev ptrs correctly for nodes in branches (changeset:   83:e85d29911493)
+ * bug in collecting dead stones (changeset:   84:34575a7ff8c3, 86:10e27102185b)
+ * 
 
 
 Architectural references ...

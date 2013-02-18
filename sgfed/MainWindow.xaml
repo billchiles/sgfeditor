@@ -18,19 +18,25 @@
             <!-- Define the comment box and tree control with splitter and scroll bars ... -->
             <Grid Grid.Column="1" Grid.Row="1" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" >
                 <Grid.RowDefinitions>
+                    <RowDefinition  Height="25"/>
                     <RowDefinition  />
                     <RowDefinition Height="Auto"/>
                     <RowDefinition />
                 </Grid.RowDefinitions>
                 <!-- margin is "left, top, right, bottom"-->
-                <TextBox Grid.Row="0" HorizontalAlignment="Stretch" Margin="2,2,2,1" Name="commentBox" 
+            <Grid Grid.Row="0" Background="DarkKhaki">
+                <TextBlock Text="unsaved Move 0" Margin="2,2,1,1"
+                           VerticalAlignment="Center" HorizontalAlignment="Stretch" x:Name="MyTitle"/>
+            </Grid>
+
+            <TextBox Grid.Row="1" HorizontalAlignment="Stretch" Margin="2,2,2,1" Name="commentBox" 
                      VerticalAlignment="Stretch" TextWrapping="Wrap" AcceptsReturn="True"
                      ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto"
                      ScrollViewer.CanContentScroll="True"/>
-                <GridSplitter Grid.Row="1" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Height="2" Margin="2"
+                <GridSplitter Grid.Row="2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Height="2" Margin="2"
                           Background="CornSilk"/>
                 <!-- Define the grid to hold board lines, which is filled in programmatically depending on the go board size ... -->
-                <ScrollViewer Grid.Row="2" Margin="2,1,2,2" ScrollViewer.HorizontalScrollBarVisibility="Visible" 
+                <ScrollViewer Grid.Row="3" Margin="2,1,2,2" ScrollViewer.HorizontalScrollBarVisibility="Visible" 
                               ScrollViewer.VerticalScrollBarVisibility="Visible" ScrollViewer.CanContentScroll="True">
                   <Canvas Background="Wheat" ScrollViewer.HorizontalScrollBarVisibility="Visible" 
                           ScrollViewer.VerticalScrollBarVisibility="Visible" Name="gameTreeView" MouseDown="gameTree_mousedown">

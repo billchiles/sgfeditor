@@ -1,14 +1,58 @@
 
+Things to do before submitting win8 version to store:
+ * test with touch and Surface
+ * bug bash under real usage of editing games
+ * add some auto saving to temp file feature
+ * add appropriate try/catch to UI event handlers, write temp file
+ * make game tree always up to date, maybe optimize for just adding moves in zero row
+ 
 
-snapped view
-http://rushabh.greenpoison.org.in/blog/2012/09/18/handling-snap-view-and-all-resolutions-in-windows-8/
+Since the last release, 26 JAN, I've:
+ * cleaned up several little things in the code/comments
+ * disbling UI while parsing file on open command and displaying game
+ * added "title" bar under command buttons to see file name and current move number
+ * fixed letter adornments to have background so that board lines do not go through the letters
+ * set preferred launch of win8 version to be landscape
+ * removed some old python files never meant to be checked in
+ * implemented jumping to a move by clicking on game tree
+ * fixed current game tree node highlighting
+ * fixed bug where end key and end button didn't behave the same
+ * fixed bug in gotolastmove so that it calls UpdateTitle
+ * fixed game tree drawing bug
+ * removed some uses of 'dynamic'
+ * added letters and numerals to board display for referencing intersections
+ * implemented win8 snapped view (requirement of store compliance)
+ * fixed bug in python version
+ * game tree no fully works with Move and ParsedNode (rendered moves and moves just parsed)
+ * added scrollable help dialog since win8 msgbox doesn't handle help string
+ * implemented my own debug.assert due to win8 bug
+ * added size change handler to board to keep it square on win8 devices
+ * fixed writegame to set filename and not deref null in some cases
+ * fixed branch combo label alignment with stackpanel
+ * tweaked buttons margins to make cmd panel more appealing,
+      don't know why disabled buttons have no bottom border
+ * fixed jumping in game tree to save comments, restore destination move comments
+ * added some margin padding to right board index labels so the feel less squished
+ * fixed writegame to test for letter adornments grid hack workaround for win8 background
+ * fixed writegame/parsedgamefromgame to store new parsedgame since we re-use parsednodes
+ * fixed parsednode handling in pasting moves
+ * centered title in title bar
+ ---- WPF
+ * fixed jumping in tree comments preservation
+ * fixed parsednode handling in paste
+ * fixed parsednode/game handling in writegame/parsedgamefromgame
+ * updated notes
+ * added title bar under cmd bay, changed UpdateTitle for simpler title there.
+ 
+ 
+ 
+-------------
 
 Y/N accelerators for yes/no dlgs
 
-when click stone, then cannot use arrow keys to move around tree
-after stone click, esc and arrows do not get handled as input, even with keydown on focus element
-turns out to be win8 bug, have work around now
- 
+-------------
+snapped view
+http://rushabh.greenpoison.org.in/blog/2012/09/18/handling-snap-view-and-all-resolutions-in-windows-8/
 
 -------------
 

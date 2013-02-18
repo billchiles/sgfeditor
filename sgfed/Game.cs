@@ -878,8 +878,6 @@ namespace SgfEd {
                         this.Branches.Add(this.cutMove);
                     this.FirstMove = this.cutMove;
                     this.FirstMove.Number = 1;
-                    if (this.ParsedGame != null && this.cutMove.ParsedNode != null)
-                        GameAux.PasteNextParsedNode(this.ParsedGame.Nodes, this.cutMove.ParsedNode);
                 }
                 else {
                     Debug.Assert(this.State == GameState.NotStarted,
@@ -889,6 +887,8 @@ namespace SgfEd {
                     this.FirstMove.Number = 1;
                     this.State = GameState.Started;
                 }
+                if (this.ParsedGame != null && this.cutMove.ParsedNode != null)
+                    GameAux.PasteNextParsedNode(this.ParsedGame.Nodes, this.cutMove.ParsedNode);
             }
             this.cutMove.Previous = cur_move;  // stores null appropriately when no current
             this.Dirty = true;
@@ -1097,7 +1097,7 @@ namespace SgfEd {
                 Debug.Assert(this.Filename != null, "Need filename to write file.");
                 filename = this.Filename;
             }
-            var pg = GameAux.ParsedGameFromGame(this);
+            var pg = GameAux.UpdateParsedGameFromGame(this);
             var f = new StreamWriter(filename);
             f.Write(pg.ToString());
             f.Close();
@@ -1126,7 +1126,7 @@ namespace SgfEd {
         //// file may be out of date with the state of the game.
         ////
         public void WriteFlippedGame (string filename) {
-            var pg = GameAux.ParsedGameFromGame(this, true); // True = flipped
+            var pg = GameAux.UpdateParsedGameFromGame(this, true); // True = flipped
             var f = new StreamWriter(filename);
             f.Write(pg.ToString());
             f.Close();
@@ -1285,7 +1285,7 @@ namespace SgfEd {
         //// ignore from parsed files.  If flipped is true, then moves and adornment
         //// indexes are diagonally mirrored; see write_flipped_game.
         ////
-        internal static ParsedGame ParsedGameFromGame (Game game, bool flipped = false) {
+        internal static ParsedGame UpdateParsedGameFromGame (Game game, bool flipped = false) {
             var pgame = new ParsedGame();
             pgame.Nodes = GenParsedGameRoot(game, flipped);
             if (game.Branches == null) {
@@ -1303,6 +1303,8 @@ namespace SgfEd {
                 }
                 pgame.Nodes.Next = branches[0];
             }
+            // Need to store new game since creating the parsed game re-uses original nodes.
+            game.ParsedGame = pgame;
             return pgame;
         }
 
@@ -1379,6 +1381,8 @@ namespace SgfEd {
                 if (flipped)
                     return CloneAndFlipNodes(move.ParsedNode);
                 else
+                    // Note: result re-uses original parsed nodes, and callers change this node
+                    // to point to new parents.
                     return move.ParsedNode;
             }
             var cur_node = GenParsedNode(move, flipped);
@@ -1413,10 +1417,8 @@ namespace SgfEd {
 
         //// _gen_parsed_node returns a ParsedNode that is based on the Move object.  It
         //// grabs any existing parsed node properties from move to preserve any move
-        //// properties that we ignore from a file we read.  This does not just take the
-        //// whole parsed node from move to avoid keeping branches or whatnot that we've
-        //// deleted.  If flipped is true, then moves and adornment indexes are
-        //// diagonally mirrored; see write_flipped_game.
+        //// properties that we ignore from a file we read.  If flipped is true, then moves 
+        //// and adornment indexes are diagonally mirrored; see write_flipped_game.
         ////
         //// NOTE, this function needs to overwrite any node properties that the UI
         //// supports editing.  For example, if the end user modified adornments.
@@ -1427,6 +1429,8 @@ namespace SgfEd {
                 if (flipped)
                     return CloneAndFlipNodes(move.ParsedNode);
                 else
+                    // Note: result re-uses original parsed nodes, and callers change this node
+                    // to point to new parents.
                     return move.ParsedNode;
             }
             var node = new ParsedNode();
@@ -2008,7 +2012,8 @@ namespace SgfEd {
                                                     TreeViewNode model, TreeViewNode next_model) {
             if (pn.Branches != null) {
                 model.Branches = new List<TreeViewNode>() { next_model };
-                // When handle Move objs, branches[0] is not always model.next
+                // Skip branches[0] since caller already did branch zero as pn's next move, but note, when
+                // pn is a Move (that is, not a ParsedNode), then branches[0] may not equal pn.Next.
                 for (var i = 1; i < pn.Branches.Count; i++) {
                     // Can't use 'var', must decl with 'TreeViewNode'.  C# doesn't realize all LayoutGameTree
                     // definitions return a TreeViewNode.
