@@ -433,7 +433,12 @@ F1 produces this help.
         //}
 
 
-        //// StonesMouseLeftDown handles creating a move or adding adornments
+        //// whatBoardClickCreates is set in App Bar button handlers and used by
+        //// StonesPointerPressed.
+        ////
+        AdornmentKind whatBoardClickCreates = AdornmentKind.CurrentMove;
+
+        //// StonesPointerPressed handles creating a move or adding adornments
         //// to the current move.
         ////
         private async void StonesPointerPressed (object sender, PointerRoutedEventArgs e) {
@@ -443,16 +448,17 @@ F1 produces this help.
                                                           e.GetCurrentPoint(g).Position.Y);
                 //MessageDialog.Show(cell.X.ToString() + ", " + cell.Y.ToString());
                 // cell x,y is col, row from top left, and board is row, col.
-                if (this.IsKeyPressed(VirtualKey.Shift))
+                if (this.IsKeyPressed(VirtualKey.Shift) || this.whatBoardClickCreates == AdornmentKind.Square)
                     await MainWindowAux.AddOrRemoveAdornment(this.stonesGrid, (int)cell.Y, (int)cell.X, 
                                                              AdornmentKind.Square, this.Game);
-                else if (this.IsKeyPressed(VirtualKey.Control))
+                else if (this.IsKeyPressed(VirtualKey.Control) || this.whatBoardClickCreates == AdornmentKind.Triangle)
                     await MainWindowAux.AddOrRemoveAdornment(this.stonesGrid, (int)cell.Y, (int)cell.X, 
                                                              AdornmentKind.Triangle, this.Game);
-                else if (this.IsKeyPressed(VirtualKey.Menu))
+                else if (this.IsKeyPressed(VirtualKey.Menu) || this.whatBoardClickCreates == AdornmentKind.Letter)
                     await MainWindowAux.AddOrRemoveAdornment(this.stonesGrid, (int)cell.Y, (int)cell.X, 
                                                              AdornmentKind.Letter, this.Game);
                 else {
+                    MyDbg.Assert(this.whatBoardClickCreates == AdornmentKind.CurrentMove);
                     var move = await this.Game.MakeMove((int)cell.Y, (int)cell.X);
                     if (move != null)
                         this.AdvanceToStone(move);
@@ -1077,6 +1083,55 @@ F1 produces this help.
             }
             this.CurrentComment = move.Comments;
         }
+
+
+        ////
+        //// App Bar Input Handling
+        ////
+
+        private void AppBarMoveButtonClick(object sender, RoutedEventArgs e) {
+            SetAppBarText("Moves");
+            this.appBarMoveButton.IsEnabled = false;
+            this.appBarTriangleButton.IsEnabled = true;
+            this.appBarLetterButton.IsEnabled = true;
+            this.appBarSquareButton.IsEnabled = true;
+            this.whatBoardClickCreates = AdornmentKind.CurrentMove;
+        }
+
+        private void AppBarTriangleButtonClick(object sender, RoutedEventArgs e) {
+            SetAppBarText("Triangles");
+            this.appBarTriangleButton.IsEnabled = false;
+            this.appBarMoveButton.IsEnabled = true;
+            this.appBarLetterButton.IsEnabled = true;
+            this.appBarSquareButton.IsEnabled = true;
+            this.whatBoardClickCreates = AdornmentKind.Triangle;
+        }
+
+        private void AppBarLetterButtonClick(object sender, RoutedEventArgs e) {
+            SetAppBarText("Letters");
+            this.appBarLetterButton.IsEnabled = false;
+            this.appBarTriangleButton.IsEnabled = true;
+            this.appBarMoveButton.IsEnabled = true;
+            this.appBarSquareButton.IsEnabled = true;
+            this.whatBoardClickCreates = AdornmentKind.Letter;
+        }
+
+        private void AppBarSquareButtonClick(object sender, RoutedEventArgs e) {
+            SetAppBarText("Squares");
+            this.appBarSquareButton.IsEnabled = false;
+            this.appBarLetterButton.IsEnabled = true;
+            this.appBarTriangleButton.IsEnabled = true;
+            this.appBarMoveButton.IsEnabled = true;
+            this.whatBoardClickCreates = AdornmentKind.Square;
+        }
+
+        private void SetAppBarText(string kind) {
+            var txt = this.appBarText.Text;
+            var loc = txt.IndexOf(" ... ");
+            MyDbg.Assert(loc != -1);
+            this.appBarText.Text = txt.Substring(0, loc + 5) + kind;
+        }
+
 
 
         ////

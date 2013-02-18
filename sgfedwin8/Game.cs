@@ -1117,7 +1117,7 @@ namespace SgfEdwin8 {
             }
             else
                 filename = sf.Name;
-            var pg = GameAux.ParsedGameFromGame(this);
+            var pg = GameAux.UpdateParsedGameFromGame(this);
             await FileIO.WriteTextAsync(sf, pg.ToString());
             this.Dirty = false;
             this.Storage = sf;
@@ -1146,7 +1146,7 @@ namespace SgfEdwin8 {
         ////
         public async Task WriteFlippedGame (StorageFile sf) {
             MyDbg.Assert(sf != null, "Must call WriteFlippedGame with non-null file.");
-            var pg = GameAux.ParsedGameFromGame(this, true); // True = flipped
+            var pg = GameAux.UpdateParsedGameFromGame(this, true); // True = flipped
             await FileIO.WriteTextAsync(sf, pg.ToString());
         }
 
@@ -1339,10 +1339,12 @@ namespace SgfEdwin8 {
 
         //// parsed_game_from_game returns a ParsedGame representing game, re-using
         //// existing parsed node properties where appropriate to avoid losing any we
-        //// ignore from parsed files.  If flipped is true, then moves and adornment
-        //// indexes are diagonally mirrored; see write_flipped_game.
+        //// ignore from parsed files.  This stores the new ParsedGame into Game
+        //// because re-using ParsedNode objects changes some previous pointners.
+        //// We just keep the new one for consistency.  If flipped is true, then move
+        //// and adornment indexes are diagonally mirrored; see write_flipped_game.
         ////
-        internal static ParsedGame ParsedGameFromGame (Game game, bool flipped = false) {
+        internal static ParsedGame UpdateParsedGameFromGame (Game game, bool flipped = false) {
             var pgame = new ParsedGame();
             pgame.Nodes = GenParsedGameRoot(game, flipped);
             if (game.Branches == null) {
