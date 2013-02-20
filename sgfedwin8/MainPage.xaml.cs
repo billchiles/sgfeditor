@@ -225,11 +225,11 @@ F1 produces this help.
                 }
                 // Clear board just to make sure we drop all model refs.
                 this.Game.Board.GotoStart();
-                this.prevButton.IsEnabled = false;
-                this.homeButton.IsEnabled = false;
+                this.UpdateBranchCombo(null, null);
+                this.CurrentComment = "";
+                this.DisableBackwardButtons();
                 // If opening game file, next/end set to true by game code.
-                this.nextButton.IsEnabled = false;
-                this.endButton.IsEnabled = false;
+                this.DisableForwardButtons();
                 MainWindowAux.stones = new Ellipse[Game.MaxBoardSize, Game.MaxBoardSize];
                 this.AddHandicapStones(new_game);
             }
@@ -611,7 +611,7 @@ F1 produces this help.
             var title = this.Title.Text;
             var pass_str = is_pass ? " Pass" : "";
             if (filebase != null)
-                this.Title.Text = "SGFEd -- " + filebase + ";  Move " + num.ToString() + pass_str;
+                this.Title.Text = "SGF Editor -- " + filebase + ";  Move " + num.ToString() + pass_str;
             else {
                 var tail = title.IndexOf("Move ");
                 MyDbg.Assert(tail != -1, "Title doesn't have move in it?!");
@@ -836,6 +836,12 @@ F1 produces this help.
             }
         }
 
+        private async Task SaveFlippedFile() {
+            var sf = await MainWindowAux.GetSaveFilename("Save Flipped File");
+            if (sf != null)
+                await this.Game.WriteFlippedGame(sf);
+        }
+
 
         //// Looks like win8 is old school and have to manage state of key presses.
         //// These fields and mainWin_keyup manage whether modifier keys are down
@@ -969,10 +975,7 @@ F1 produces this help.
             else if (e.Key == VirtualKey.F &&
                      this.IsKeyPressed(VirtualKey.Control) && this.IsKeyPressed(VirtualKey.Menu) &&
                      this.commentBox.FocusState != FocusState.Keyboard) {
-                var sf = await MainWindowAux.GetSaveFilename("Save Flipped File");
-                if (sf != null)
-                    await this.Game.WriteFlippedGame(sf);
-                this.FocusOnStones();
+                await SaveFlippedFile();
                 e.Handled = true;
             }
             // New file
@@ -988,6 +991,7 @@ F1 produces this help.
                                            "Confirm cutting move", new List<string>() {"Yes", "No"}) ==
                          GameAux.YesMessage) {
                 win.Game.CutMove();
+                this.appBarPasteButton.IsEnabled = true;
                 e.Handled = true;
             }
             // Pasting a sub tree
@@ -997,6 +1001,7 @@ F1 produces this help.
                     await win.Game.PasteMove();
                 else
                     await GameAux.Message("No cut move to paste at this time.");
+                this.appBarPasteButton.IsEnabled = true;
                 e.Handled = true;
             }
             // Help
@@ -1011,6 +1016,7 @@ F1 produces this help.
         //// navigating to the move clicked on.
         ////
         private void gameTree_mousedown (object sender, PointerRoutedEventArgs e) {
+            this.CheckTreeParsedNodes();
             // find TreeViewNode model for click locatio on canvas.
             var x = e.GetCurrentPoint(this.gameTreeView).Position.X;
             var y = e.GetCurrentPoint(this.gameTreeView).Position.Y;
@@ -1126,12 +1132,50 @@ F1 produces this help.
         }
 
         private void SetAppBarText(string kind) {
-            var txt = this.appBarText.Text;
+            var txt = this.appBarClickText.Text;
             var loc = txt.IndexOf(" ... ");
             MyDbg.Assert(loc != -1);
-            this.appBarText.Text = txt.Substring(0, loc + 5) + kind;
+            this.appBarClickText.Text = txt.Substring(0, loc + 5) + kind;
         }
 
+
+        private async void AppBarSaveAsClick(object sender, RoutedEventArgs e) {
+            await this.SaveAs();
+            this.FocusOnStones();
+        }
+
+        private async void AppBarSaveFlippedClick(object sender, RoutedEventArgs e) {
+            await this.SaveFlippedFile();
+            this.FocusOnStones();
+        }
+
+        private async void AppBarMoveUpClick(object sender, RoutedEventArgs e) {
+            await this.Game.MoveBranchUp();
+        }
+
+        private async void AppBarMoveDownClick(object sender, RoutedEventArgs e) {
+            await this.Game.MoveBranchDown();
+        }
+
+        private async void AppBarCutClick(object sender, RoutedEventArgs e) {
+            if (this.Game.CanUnwindMove() &&
+                    await GameAux.Message("Cut current move from game tree?",
+                                          "Confirm cutting move", new List<string>() { "Yes", "No" }) ==
+                              GameAux.YesMessage) {
+                this.Game.CutMove();
+                this.appBarPasteButton.IsEnabled = true;
+            }
+        }
+
+        private async void AppBarPasteClick(object sender, RoutedEventArgs e) {
+            MyDbg.Assert(this.Game.CanPaste());
+            //if (this.Game.CanPaste())
+                await this.Game.PasteMove();
+            //else
+            //    await GameAux.Message("No cut move to paste at this time.");
+            this.appBarPasteButton.IsEnabled = false;
+            this.FocusOnStones();
+        }
 
 
         ////
@@ -1161,6 +1205,50 @@ F1 produces this help.
             canvas.Height = GameAux.TreeViewGridRows * MainWindowAux.treeViewGridCellSize;
         }
 
+
+        public void CheckTreeParsedNodes () {
+            foreach (var kv in this.treeViewMoveMap) {
+                var n = kv.Value;
+                if (kv.Key != n.Node) {
+                    if (n.Kind == TreeViewNodeKind.StartBoard) {
+                        continue;
+                    }
+                    else {
+                        Debugger.Break();
+                    }
+                }
+                var pn = n.Node as ParsedNode;
+                if (! ((pn != null) ? NodeInModel(pn) : NodeInModel((Move)n.Node)))
+                    Debugger.Break();
+            }
+        }
+        private bool NodeInModel (ParsedNode n) {
+            var pg = this.Game.ParsedGame;
+            if (pg.Nodes == n) return true;
+            var cur = n;
+            var parent = cur.Previous;
+            while (parent != pg.Nodes) {
+                if (parent == null)
+                    return false;
+                cur = parent;
+                parent = parent.Previous;
+            }
+            return true;
+        }
+
+        private bool NodeInModel (Move n) {
+            var first = this.Game.FirstMove;
+            if (n == first) return true;
+            var cur = n;
+            var parent = cur.Previous;
+            while (parent != first) {
+                if (parent == null)
+                    return false;
+                cur = parent;
+                parent = parent.Previous;
+            }
+            return true;
+        }
 
         //// DrawGameTree gets a view model of the game tree, creates objects to put on the canvas,
         //// and sets up the mappings for updating the view as we move around the game tree.  This
@@ -1242,7 +1330,7 @@ F1 produces this help.
                     if (pos.Y < 0 || pos.Y > sv.ViewportHeight)
                         sv.ScrollToVerticalOffset(sv.VerticalOffset + pos.Y - MainWindow.BringIntoViewPadding);
                     if (pos.X < 0 || pos.X > sv.ViewportWidth)
-                        sv.ScrollToHorizontalOffset(sv.VerticalOffset + pos.X - MainWindow.BringIntoViewPadding);
+                        sv.ScrollToHorizontalOffset(sv.HorizontalOffset + pos.X - MainWindow.BringIntoViewPadding);
                     break;
                 }
             }
@@ -1271,6 +1359,7 @@ F1 produces this help.
                 var node = this.treeViewMoveMap[move.ParsedNode];
                 this.treeViewMoveMap.Remove(move.ParsedNode);
                 this.treeViewMoveMap[move] = node;
+                node.Node = move;
                 return node;
             }
             else

@@ -1,4 +1,13 @@
 
+get new splash screen
+pick up tree updating code
+maybe optimize for prev move not having branches and having no node next to it in the grid
+   if do this, then need new treeviewnode in grid, dict, etc.
+pick up fix for replacing parsed node in tree view dict
+write integrity checker for write game
+move parsedgamefromgame to game class
+
+
 Things to do before submitting win8 version to store:
  * test with touch and Surface
  * bug bash under real usage of editing games
@@ -37,6 +46,15 @@ Since the last release, 26 JAN, I've:
  * fixed writegame/parsedgamefromgame to store new parsedgame since we re-use parsednodes
  * fixed parsednode handling in pasting moves
  * centered title in title bar
+ * fixed bug in UpdateParsedGameFromGame to store branch for root
+ * added integrity checking code on tree view and write game structures
+ * added lots of stuff to app bar, with some code cleanups
+ * moved UpdateParsedGameFromGame to be instance method of Game
+ * did a lot of UI fixup, figured out button problems
+ * fixed copy/paste error in scrolling tree view
+ * added cleaned up icons
+
+
  ---- WPF
  * fixed jumping in tree comments preservation
  * fixed parsednode handling in paste

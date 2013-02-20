@@ -22,8 +22,8 @@
         <Grid x:Name="mainLandscapeView" Background="#C7419082">
         <!-- Background="{StaticResource ApplicationPageBackgroundThemeBrush}" -->
         <Grid.RowDefinitions>
-            <RowDefinition Height="115" />
-            <RowDefinition Height="196*" />
+            <RowDefinition Height="120" />
+            <RowDefinition Height="*" />
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="320*" />
@@ -58,52 +58,52 @@
 
 
         <!-- Define the Grid for the control buttons in the upper right ... -->
-        <Grid Grid.Column="1" Height="100" HorizontalAlignment="Stretch" Margin="2,2,2,2" Name="buttonsGrid" 
+        <Grid Grid.Column="1" HorizontalAlignment="Stretch" Margin="2,2,2,2" Name="buttonsGrid" 
                   VerticalAlignment="Stretch">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="123" />
-                <ColumnDefinition Width="126*" />
-                <ColumnDefinition Width="129*" />
-                <ColumnDefinition Width="115*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
-                <RowDefinition Height="24*" />
-                <RowDefinition Height="47*" />
-                <RowDefinition Height="29*" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="2*" />
+                <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
             <!-- Need to learn how to make a File menu ... -->
             <Button Grid.Row="0" Height="30" HorizontalAlignment="Stretch" Margin="1" Name="newButton"
-                    VerticalAlignment="Top" Width="50" Click="newButton_left_down" 
+                    VerticalAlignment="Top" Width="70" Click="newButton_left_down" 
                     BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" Foreground="Black">
-                <TextBlock FontSize="14" FontStretch="ExtraExpanded" VerticalAlignment="Center" 
-                           Margin="0,0,0,3">New</TextBlock>
+                <TextBlock FontSize="14" FontStretch="ExtraExpanded" VerticalAlignment="Center"
+                           HorizontalAlignment="Center">New</TextBlock>
             </Button>
             <Button Grid.Row="0" Grid.Column="1" Height="30" HorizontalAlignment="Stretch" Margin="1" 
-                    Name="openButton" VerticalAlignment="Top" Width="50" Click="openButton_left_down"
+                    Name="openButton" VerticalAlignment="Top" Width="70" Click="openButton_left_down"
                     BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" Foreground="Black">
                 <TextBlock FontSize="14" FontStretch="ExtraExpanded" VerticalAlignment="Center" 
                            Margin="0,0,0,3">Open</TextBlock>
             </Button>
             <Button Grid.Row="0" Grid.Column="2" Height="30" HorizontalAlignment="Stretch" Margin="1" 
-                    Name="saveButton" VerticalAlignment="Top" Width="50" Click="saveButton_left_down"
+                    Name="saveButton" VerticalAlignment="Top" Width="70" Click="saveButton_left_down"
                     BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" Foreground="Black">
                 <TextBlock FontSize="14" VerticalAlignment="Center" Margin="0,0,0,3">Save</TextBlock>
             </Button>
             <Button Grid.Row="0" Grid.Column="3" Height="30" HorizontalAlignment="Stretch" Margin="1" 
-                    Name="helpButton" VerticalAlignment="Top" Width="50" Click="helpButtonLeftDown"
+                    Name="helpButton" VerticalAlignment="Top" Width="70" Click="helpButtonLeftDown"
                     BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" Foreground="Black">
                 <TextBlock FontSize="14" VerticalAlignment="Center" Margin="0,0,0,3">Help</TextBlock>
             </Button>
 
             <Button Grid.Row="1" Height="30" HorizontalAlignment="Stretch" Margin="1" Name="passButton"
-                    VerticalAlignment="Center" Width="50" Click="passButton_left_down"
+                    VerticalAlignment="Center" Width="70" Click="passButton_left_down"
                     BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" Foreground="Black">
                 <TextBlock FontSize="14" VerticalAlignment="Center" Margin="0,0,0,3">Pass</TextBlock>
             </Button>
 
             <Button Content="&lt;&lt;" Grid.Row="2" Grid.Column="0" Height="30" HorizontalAlignment="Stretch" 
-                    Margin="1,1,1,2" Name="homeButton" VerticalAlignment="Top" IsEnabled="False" Click="homeButtonLeftDown" 
+                    Margin="1,1,1,1" Name="homeButton" VerticalAlignment="Top" IsEnabled="False" Click="homeButtonLeftDown" 
                     FontSize="14" BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" 
                     Foreground="Black"/>
             <Button Content="&lt;" Grid.Row="2" Grid.Column="1" Height="30" HorizontalAlignment="Stretch" 
@@ -122,21 +122,13 @@
                     FontSize="14" BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" 
                     Foreground="Black"/>
 
-            <StackPanel Grid.Column="2" Grid.Row="1" Background="Transparent"
+            <StackPanel Grid.Column="2" Grid.Row="1" Background="Transparent" Margin="0,2,0,2"
                             HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-                <TextBlock FontSize="14" Name="branchLabel" Margin="2,5,2,1" Width="120"
+                <TextBlock FontSize="14" Name="branchLabel" Margin="2,5,2,2" Width="120"
                            >No Branches:</TextBlock>
-                <ComboBox BorderThickness="1" Background="White" Width="120"
+                <ComboBox BorderThickness="1" Background="White" Width="120" Height="25" 
                           Name="branchCombo"  IsEnabled="False" ></ComboBox>
             </StackPanel>
-                    <!--
-            <TextBlock Text="No Branches:" Grid.Column="2" Grid.Row="1" Height="28" HorizontalAlignment="Stretch" 
-                       Margin="8" VerticalAlignment="Top" Name="branchLabel" Foreground="White" FontSize="14"/>
-            <ComboBox Grid.Column="2" Grid.Row="1"  Height="23" HorizontalAlignment="Stretch" Margin="1" 
-                      VerticalAlignment="Bottom" Width="120" Name="branchCombo"  IsEnabled="False" 
-                      SelectionChanged="branchComboSelectionChanged" BorderThickness="1" Background="White"/>
-            -->
-            <!-- IsEditable="False" IsReadOnly="True" -->
 
         </Grid>  <!-- upper right control buttons -->
 
@@ -191,9 +183,10 @@
                     <ColumnDefinition/>
                     <ColumnDefinition/>
                 </Grid.ColumnDefinitions>
-                <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" FontSize="18" x:Name="appBarText"
+                <!-- Change what clicking on the board means ... -->
+                <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" FontSize="18" x:Name="appBarClickText"
                            Margin="5,20">Clicking on board creates ... Moves</TextBlock>
-                <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal" Margin="20,0,0,5" Grid.ColumnSpan="2">
+                <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal" Margin="20,0,10,10" >
                     <Button IsEnabled="False" BorderThickness="1" Click="AppBarMoveButtonClick"
                             x:Name="appBarMoveButton"
                             >Move</Button>
@@ -203,6 +196,36 @@
                             x:Name="appBarLetterButton">Letter</Button>
                     <Button IsEnabled="True" BorderThickness="1" Click="AppBarSquareButtonClick"
                             x:Name="appBarSquareButton">Square</Button>
+                </StackPanel>
+                <!-- Save As and Save Flipped ... -->
+                <TextBlock Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2" FontSize="18"
+                           Margin="20,20">Saving files:</TextBlock>
+                <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Margin="35,0,0,10" >
+                    <Button IsEnabled="True" BorderThickness="1" Click="AppBarSaveAsClick"
+                            x:Name="appBarSaveAsButton"
+                            >Save As ...</Button>
+                    <Button IsEnabled="True" BorderThickness="1" Click="AppBarSaveFlippedClick"
+                            x:Name="appBarSaveFlippedButton">Save Flipped ...</Button>
+                </StackPanel>
+                <!-- Move Branches up or down ... -->
+                <TextBlock Grid.Row="0" Grid.Column="2" Grid.ColumnSpan="2" FontSize="18"
+                           Margin="5,20">Move branch higher or lower:</TextBlock>
+                <StackPanel Grid.Row="1" Grid.Column="2" Orientation="Horizontal" Margin="20,0,0,10" >
+                    <Button IsEnabled="True" BorderThickness="1" Click="AppBarMoveUpClick"
+                            x:Name="appBarMoveUpButton"
+                            >Move Up</Button>
+                    <Button IsEnabled="True" BorderThickness="1" Click="AppBarMoveDownClick"
+                            x:Name="appBarMoveDownButton">Move Down</Button>
+                </StackPanel>
+                <!-- Cut or Paste a sub tree of moves ... -->
+                <TextBlock Grid.Row="0" Grid.Column="3" Grid.ColumnSpan="2" FontSize="18"
+                           Margin="5,20">Cut or Paste a sub tree of moves:</TextBlock>
+                <StackPanel Grid.Row="1" Grid.Column="3" Orientation="Horizontal" Margin="20,0,0,10" >
+                    <Button IsEnabled="True" BorderThickness="1" Click="AppBarCutClick"
+                            x:Name="appBarCutButton"
+                            >Cut</Button>
+                    <Button IsEnabled="False" BorderThickness="1" Click="AppBarPasteClick"
+                            x:Name="appBarPasteButton">Paste</Button>
                 </StackPanel>
             </Grid>
         </AppBar>
