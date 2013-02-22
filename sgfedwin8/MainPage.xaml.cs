@@ -118,6 +118,7 @@ F1 produces this help.
             this.InitializeComponent();
             this.prevSetupSize = 0;
             this.Game = GameAux.CreateDefaultGame(this);
+            this.DrawGameTree();
             // fixing win8 -- tried this to always get it invoked, but the event is simply not raising
             //this.AddHandler(UIElement.KeyDownEvent, (KeyEventHandler)this.mainWin_keydown, true);
         }
@@ -235,7 +236,7 @@ F1 produces this help.
             }
             else
                 throw new Exception("Haven't implemented changing board size for new games.");
-            this.InitializeTreeView();
+            this.InitializeTreeView();  // Do not call DrawGameTree here since main win does not point to game yet.
         }
 
         //// SetupLinesGrid takes an int for the board size (as int) and returns a WPF Grid object for
@@ -460,8 +461,10 @@ F1 produces this help.
                 else {
                     MyDbg.Assert(this.whatBoardClickCreates == AdornmentKind.CurrentMove);
                     var move = await this.Game.MakeMove((int)cell.Y, (int)cell.X);
-                    if (move != null)
+                    if (move != null) {
                         this.AdvanceToStone(move);
+                        this.UpdateTreeView(move);
+                    } 
                 }
                 this.FocusOnStones();
             }
@@ -667,6 +670,7 @@ F1 produces this help.
                     popup.IsOpen = false;
                 }
             }
+            this.DrawGameTree();
             this.FocusOnStones();
         }
 
@@ -798,6 +802,7 @@ F1 produces this help.
                     g.PlayerWhite = white;
                 this.Game = g;
                 this.UpdateTitle(0, false, "unsaved");
+                this.DrawGameTree();
             }
         }
 
@@ -1302,20 +1307,33 @@ F1 produces this help.
         //// tree.  Various command handlers call this after they update the model.  Eventually,
         //// this will look at some indication to redraw whole tree (cut, paste, maybe add move).
         ////
-        private void UpdateTreeView (Move move) {
+        public void UpdateTreeView (Move move, bool wipeit = false) {
             // TODO: remove this check when fully integrated and assume tree view is always there.
             if (! this.TreeViewDisplayed())
                 return;
-            TreeViewNode item = this.TreeViewNodeForMove(move);
-            Grid itemCookie = ((Grid)item.Cookie);
-            // Update current move shading and bring into view.
-            var sitem = this.treeViewSelectedItem;
-            this.treeViewSelectedItem = itemCookie;
-            sitem.Background = new SolidColorBrush(Colors.Transparent);
-            itemCookie.Background = new SolidColorBrush(Colors.LightSkyBlue);
-            this.BringTreeElementIntoView(itemCookie);
-            //itemCookie.BringIntoView(new Rect((new Size(MainWindowAux.treeViewGridCellSize * 2,
-            //                                            MainWindowAux.treeViewGridCellSize * 2))));
+
+            if (wipeit) {
+                this.InitializeTreeView();
+                this.DrawGameTree();
+            }
+            else {
+                TreeViewNode item = this.TreeViewNodeForMove(move);
+                if (item == null) {
+                    this.InitializeTreeView();
+                    this.DrawGameTree();
+                }
+                else {
+                    Grid itemCookie = ((Grid)item.Cookie);
+                    // Update current move shading and bring into view.
+                    var sitem = this.treeViewSelectedItem;
+                    this.treeViewSelectedItem = itemCookie;
+                    sitem.Background = new SolidColorBrush(Colors.Transparent);
+                    itemCookie.Background = new SolidColorBrush(Colors.LightSkyBlue);
+                    this.BringTreeElementIntoView(itemCookie);
+                    //itemCookie.BringIntoView(new Rect((new Size(MainWindowAux.treeViewGridCellSize * 2,
+                    //                                            MainWindowAux.treeViewGridCellSize * 2))));
+                }
+            }
         }
 
         private const int BringIntoViewPadding = 10;
@@ -1345,10 +1363,11 @@ F1 produces this help.
         }
 
         //// TreeViewNodeForMove returns the TreeViewNode representing the view model for move.
-        //// Eventually this will handle having to add moves or redraw whole tree due to big
-        //// operations.
+        //// This is public because Game needs to call it when zipping through moves for gotolast,
+        //// gotomovepath, etc., to ensure treeViewMoveMap maps Move objects when they get rendered,
+        //// instead of apping the old ParseNode.
         ////
-        private TreeViewNode TreeViewNodeForMove (Move move) {
+        public TreeViewNode TreeViewNodeForMove (Move move) {
             if (move == null)
                 return this.treeViewMoveMap["start"];
             else if (this.treeViewMoveMap.ContainsKey(move))
@@ -1363,13 +1382,9 @@ F1 produces this help.
                 return node;
             }
             else
+                return null;
                 // TODO: figure out what really to do here.
-                return this.treeViewMoveMap[move] = this.NewTreeViewNode(move);
-        }
-
-        private TreeViewNode NewTreeViewNode (Move move) {
-            return this.treeViewMoveMap["start"];
-            //throw new NotImplementedException();
+                //return this.treeViewMoveMap[move] = this.NewTreeViewNode(move);
         }
 
         

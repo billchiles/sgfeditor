@@ -613,9 +613,12 @@ namespace SgfEdwin8 {
                     return null;
             }
             this.nextColor = GameAux.OppositeMoveColor(move.Color);
-            if (!move.Rendered)
+            if (! move.Rendered) {
                 // Move points to a ParsedNode and has never been displayed.
                 this.ReadyForRendering(move);
+                // 
+                this.mainWin.TreeViewNodeForMove(move);
+            }
             this.MoveCount += 1;
             this.RemoveStones(move.DeadStones);
             return move;
@@ -809,6 +812,7 @@ namespace SgfEdwin8 {
                     this.mainWin.EnableForwardButtons();
                 this.mainWin.UpdateBranchCombo(prev_move.Branches, prev_move.Next);
             }
+            this.mainWin.UpdateTreeView(prev_move, true);
         }
 
         //// _cut_next_move takes a Move that is the previous move of the second argument,
@@ -903,6 +907,7 @@ namespace SgfEdwin8 {
             GameAux.RenumberMoves(this.cutMove);
             this.cutMove = null;
             await this.mainWin.DoNextButton();
+            this.mainWin.UpdateTreeView(cur_move, true);
         }
 
 
@@ -1019,16 +1024,20 @@ namespace SgfEdwin8 {
             var res = await this.BranchesForMoving();
             var branches = res.Item1;
             var cur_index = res.Item2;
-            if (branches != null)
+            if (branches != null) {
                 await this.MoveBranch(branches, cur_index, -1);
+                this.mainWin.UpdateTreeView(this.CurrentMove, true);
+            }
         }
 
         public async Task MoveBranchDown () {
             var res = await this.BranchesForMoving();
             var branches = res.Item1;
             var cur_index = res.Item2;
-            if (branches != null)
+            if (branches != null) {
                 await this.MoveBranch(branches, cur_index, 1);
+                this.mainWin.UpdateTreeView(this.CurrentMove, true);
+            }
         }
 
         //// _branches_for_moving returns the branches list (from previous move or

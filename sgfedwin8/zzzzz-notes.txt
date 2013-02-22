@@ -1,11 +1,6 @@
 
-get new splash screen
-pick up tree updating code
 maybe optimize for prev move not having branches and having no node next to it in the grid
    if do this, then need new treeviewnode in grid, dict, etc.
-pick up fix for replacing parsed node in tree view dict
-write integrity checker for write game
-move parsedgamefromgame to game class
 
 
 Things to do before submitting win8 version to store:
