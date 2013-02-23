@@ -881,9 +881,9 @@ namespace SgfEdwin8 {
             }
             // If CheckSelfCaptureNoKill returns false, the it updates cutMove to have dead
             // stones hanging from it so that calling DoNextButton removes them.
-            if (this.CheckSelfCaptureNoKill(move)) {
+            if (this.CheckSelfCaptureNoKill(this.cutMove)) {
                 await GameAux.Message("You cannot make a move that removes a group's last liberty");
-                return null;
+                return;
             }
             var cur_move = this.CurrentMove;
             if (cur_move != null)
