@@ -99,17 +99,9 @@ F1 produces this help.
             InitializeComponent();
             this.Height = 700;
             this.Width = 1050;
-            // Add lines grid and stone hit testing grid to MainWindow root grid ...
-            // THIS NOW HAPPENS IN SetupBoardDisplay CALLED FROM 'new Game'
-            //var root = (Grid)this.Content;
-            //SetupLinesGrid(Game.MAX_BOARD_SIZE);
-            //this.SetupStonesGrid(Game.MAX_BOARD_SIZE);
-
-            //root.Children.Add(CreateStonesGrid(Game.MAX_BOARD_SIZE));
-
             this.prevSetupSize = 0;
             this.Game = GameAux.CreateDefaultGame(this);
-
+            this.DrawGameTree();
         } // Constructor
 
         
@@ -152,7 +144,7 @@ F1 produces this help.
             }
             else
                 throw new Exception("Haven't implemented changing board size for new games.");
-            this.InitializeTreeView();
+            this.InitializeTreeView(); // Do not call DrawGameTree here since main window doesn't point to game yet.
         }
 
 
@@ -234,8 +226,10 @@ F1 produces this help.
                                                       this.Game);
             else {
                 var move = this.Game.MakeMove((int)cell.Y, (int)cell.X);
-                if (move != null)
+                if (move != null) {
                     this.AdvanceToStone(move);
+                    this.UpdateTreeView(move);
+                }
             }
             this.FocusOnStones();
         }
@@ -422,6 +416,7 @@ F1 produces this help.
                     MessageBox.Show(err.Message + err.StackTrace);
                 }
             }
+            this.DrawGameTree();
             this.FocusOnStones();
         }
 
@@ -462,8 +457,8 @@ F1 produces this help.
                     g.PlayerWhite = dlg.whiteText.Text;
                 this.Game = g;
                 this.UpdateTitle(0, false, "unsaved");
+                this.DrawGameTree();
             }
-    
         }
         
         
@@ -781,19 +776,31 @@ F1 produces this help.
         //// tree.  Various command handlers call this after they update the model.  Eventually,
         //// this will look at some indication to redraw whole tree (cut, paste, maybe add move).
         ////
-        private void UpdateTreeView (Move move) {
+        public void UpdateTreeView (Move move, bool wipeit = false) {
             // TODO: remove this check when fully integrated and assume tree view is always there.
             if ( ! this.TreeViewDisplayed())
                 return;
-            TreeViewNode item = this.TreeViewNodeForMove(move);
-            Grid itemCookie = ((Grid)item.Cookie);
-            // Update current move shading and bring into view.
-            var sitem = this.treeViewSelectedItem;
-            this.treeViewSelectedItem = itemCookie;
-            sitem.Background = new SolidColorBrush(Colors.Transparent);
-            itemCookie.Background = new SolidColorBrush(Colors.LightSkyBlue);
-            itemCookie.BringIntoView(new Rect((new Size(MainWindowAux.treeViewGridCellSize * 2, 
-                                                        MainWindowAux.treeViewGridCellSize * 2))));
+            if (wipeit) {
+                this.InitializeTreeView();
+                this.DrawGameTree();
+            }
+            else {
+                TreeViewNode item = this.TreeViewNodeForMove(move);
+                if (item == null) {
+                    this.InitializeTreeView();
+                    this.DrawGameTree();
+                }
+                else {
+                    Grid itemCookie = ((Grid)item.Cookie);
+                    // Update current move shading and bring into view.
+                    var sitem = this.treeViewSelectedItem;
+                    this.treeViewSelectedItem = itemCookie;
+                    sitem.Background = new SolidColorBrush(Colors.Transparent);
+                    itemCookie.Background = new SolidColorBrush(Colors.LightSkyBlue);
+                    itemCookie.BringIntoView(new Rect((new Size(MainWindowAux.treeViewGridCellSize * 2,
+                                                                MainWindowAux.treeViewGridCellSize * 2))));
+                }
+            }
         }
 
         //// TreeViewDipslayed returns whether there is a tree view displayed, abstracting the
@@ -805,10 +812,11 @@ F1 produces this help.
         }
 
         //// TreeViewNodeForMove returns the TreeViewNode representing the view model for move.
-        //// Eventually this will handle having to add moves or redraw whole tree due to big
-        //// operations.
+        //// This is public because Game needs to call it when zipping through moves for gotolast,
+        //// gotomovepath, etc., to ensure treeViewMoveMap maps Move objects when they get rendered,
+        //// instead of apping the old ParseNode.
         ////
-        private TreeViewNode TreeViewNodeForMove (Move move) {
+        public TreeViewNode TreeViewNodeForMove (Move move) {
             if (move == null)
                 return this.treeViewMoveMap["start"];
             else if (this.treeViewMoveMap.ContainsKey(move))
@@ -819,16 +827,12 @@ F1 produces this help.
                 var node = this.treeViewMoveMap[move.ParsedNode];
                 this.treeViewMoveMap.Remove(move.ParsedNode);
                 this.treeViewMoveMap[move] = node;
+                node.Node = move;
                 return node;
             }
-            else
-                // TODO: figure out what really to do here.
-                return this.treeViewMoveMap[move] = this.NewTreeViewNode(move);
-        }
-
-        private TreeViewNode NewTreeViewNode(Move move)
-        {
- 	        throw new NotImplementedException();
+            else {
+                return null;
+            }
         }
 
         

@@ -616,7 +616,7 @@ namespace SgfEdwin8 {
             if (! move.Rendered) {
                 // Move points to a ParsedNode and has never been displayed.
                 this.ReadyForRendering(move);
-                // 
+                // Don't need view model object, but need to ensure there is one mapped by move.
                 this.mainWin.TreeViewNodeForMove(move);
             }
             this.MoveCount += 1;
@@ -772,6 +772,7 @@ namespace SgfEdwin8 {
             this.mainWin.prevButtonLeftDown(null, null);
             var prev_move = this.CurrentMove;
             cut_move.Previous = null;
+            cut_move.DeadStones.Clear();
             if (prev_move == null) {
                 // Handle initial board state.  Can't use _cut_next_move here due
                 // to special handling of initial board and this._state.
@@ -877,6 +878,12 @@ namespace SgfEdwin8 {
             if (this.cutMove.Color != this.nextColor) {
                 await GameAux.Message("Cannot paste cut move that is same color as current move.");
                 return;
+            }
+            // If CheckSelfCaptureNoKill returns false, the it updates cutMove to have dead
+            // stones hanging from it so that calling DoNextButton removes them.
+            if (this.CheckSelfCaptureNoKill(move)) {
+                await GameAux.Message("You cannot make a move that removes a group's last liberty");
+                return null;
             }
             var cur_move = this.CurrentMove;
             if (cur_move != null)

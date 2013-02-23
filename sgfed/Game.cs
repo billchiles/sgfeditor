@@ -605,9 +605,12 @@ namespace SgfEd {
                     return null;
             }
             this.nextColor = GameAux.OppositeMoveColor(move.Color);
-            if (! move.Rendered)
+            if (! move.Rendered) {
                 // Move points to a ParsedNode and has never been displayed.
                 this.ReadyForRendering(move);
+                // Don't need view model object, but need to ensure there is one mapped by move.
+                this.mainWin.TreeViewNodeForMove(move);
+            }
             this.MoveCount += 1;
             this.RemoveStones(move.DeadStones);
             return move;
@@ -761,6 +764,7 @@ namespace SgfEd {
             this.mainWin.prevButtonLeftDown(null, null);
             var prev_move = this.CurrentMove;
             cut_move.Previous = null;
+            cut_move.DeadStones.Clear();
             if (prev_move == null) {
                 // Handle initial board state.  Can't use _cut_next_move here due
                 // to special handling of initial board and this._state.
@@ -801,6 +805,7 @@ namespace SgfEd {
                     this.mainWin.EnableForwardButtons();
                 this.mainWin.UpdateBranchCombo(prev_move.Branches, prev_move.Next);
             }
+            this.mainWin.UpdateTreeView(prev_move, true);
         }
 
         //// _cut_next_move takes a Move that is the previous move of the second argument,
@@ -866,6 +871,12 @@ namespace SgfEd {
                 MessageBox.Show("Cannot paste cut move that is same color as current move.");
                 return;
             }
+            // If CheckSelfCaptureNoKill returns false, then it updates cutMove to have dead
+            // stones hanging from it so that calling nextButtonLeftDown removes them.
+            if (this.CheckSelfCaptureNoKill(this.cutMove)) {
+                MessageBox.Show("You cannot make a move that removes a group's last liberty");
+                return;
+            }
             var cur_move = this.CurrentMove;
             if (cur_move != null)
                 GameAux.PasteNextMove(cur_move, this.cutMove);
@@ -895,6 +906,7 @@ namespace SgfEd {
             GameAux.RenumberMoves(this.cutMove);
             this.cutMove = null;
             this.mainWin.nextButtonLeftDown(null, null);
+            this.mainWin.UpdateTreeView(cur_move, true);
         }
 
             
@@ -1004,16 +1016,20 @@ namespace SgfEd {
             var res = this.BranchesForMoving();
             var branches = res.Item1;
             var cur_index = res.Item2;
-            if (branches != null)
+            if (branches != null) {
                 this.MoveBranch(branches, cur_index, -1);
+                this.mainWin.UpdateTreeView(this.CurrentMove, true);
+            }
         }
 
         public void MoveBranchDown () {
             var res = this.BranchesForMoving();
             var branches = res.Item1;
             var cur_index = res.Item2;
-            if (branches != null) 
+            if (branches != null) {
                 this.MoveBranch(branches, cur_index, 1);
+                this.mainWin.UpdateTreeView(this.CurrentMove, true);
+            }
         }
 
         //// _branches_for_moving returns the branches list (from previous move or
@@ -1301,6 +1317,7 @@ namespace SgfEd {
                     branches.Add(tmp);
                     tmp.Previous = pgame.Nodes;
                 }
+                pgame.Nodes.Branches = branches;
                 pgame.Nodes.Next = branches[0];
             }
             // Need to store new game since creating the parsed game re-uses original nodes.
