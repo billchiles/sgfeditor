@@ -611,15 +611,20 @@ F1 produces this help.
         //// there by default originally.  Game also uses this.
         ////
         public void UpdateTitle (int num, bool is_pass = false, string filebase = null) {
-            var title = this.Title.Text;
+            var title = this.Title.Text.Replace("[*] ", "");
             var pass_str = is_pass ? " Pass" : "";
-            if (filebase != null)
+            if (filebase != null) {
+                filebase = this.Game.Dirty ? "[*] " + filebase : filebase;
                 this.Title.Text = "SGF Editor -- " + filebase + ";  Move " + num.ToString() + pass_str;
+            }
             else {
-                var tail = title.IndexOf("Move ");
-                MyDbg.Assert(tail != -1, "Title doesn't have move in it?!");
-                if (tail != -1)
-                    this.Title.Text = title.Substring(0, tail + 5) + num.ToString() + pass_str;
+                var tail = title.IndexOf("Move ") + 5;
+                MyDbg.Assert(tail != 4, "Title doesn't have move in it?!");
+                var filestart = title.IndexOf(" -- ") + 4;
+                this.Title.Text = title.Substring(0, filestart) + 
+                                  (this.Game.Dirty ? "[*] " : "") +
+                                  title.Substring(filestart, tail - filestart) + 
+                                  num.ToString() + pass_str;
             }
         }
 
@@ -801,7 +806,7 @@ F1 produces this help.
                 if (white != "")
                     g.PlayerWhite = white;
                 this.Game = g;
-                this.UpdateTitle(0, false, "unsaved");
+                this.UpdateTitle(0);
                 this.DrawGameTree();
             }
         }
@@ -992,8 +997,8 @@ F1 produces this help.
             else if ((e.Key == VirtualKey.Delete || (e.Key == VirtualKey.X && this.IsKeyPressed(VirtualKey.Control))) &&
                      (this.commentBox.FocusState != FocusState.Keyboard) &&
                      win.Game.CanUnwindMove() &&
-                     await GameAux.Message("Cut current move from game tree?",
-                                           "Confirm cutting move", new List<string>() {"Yes", "No"}) ==
+                     await GameAux.Message("Cut current move from game tree?", "Confirm cutting move",
+                                           new List<string>() {"Yes", "No"}, 1, 1) ==
                          GameAux.YesMessage) {
                 win.Game.CutMove();
                 this.appBarPasteButton.IsEnabled = true;
@@ -1833,7 +1838,7 @@ F1 produces this help.
                 stones_grid.Children.Add(current_stone_adornment_grid);
             }
             else {
-                var inner_grid = MainWindowAux.AddAdornmentGrid(stones_grid, move.Row, move.Column);
+                var inner_grid = MainWindowAux.AddAdornmentGrid(stones_grid, move.Row, move.Column, true, true);
                 current_stone_adornment_grid = inner_grid;
                 //
                 // Create mark
@@ -2032,7 +2037,8 @@ F1 produces this help.
         //// center the adornment in the stones grid cell and to provide a stretchy
         //// container that grows with the stones grid cell.
         ////
-        internal static Grid AddAdornmentGrid (Grid stones_grid, int row, int col, bool render = true) {
+        internal static Grid AddAdornmentGrid (Grid stones_grid, int row, int col, bool render = true,
+                                               bool smaller = false) {
             var inner_grid = new Grid();
             //inner_grid.ShowGridLines = false;  // not needed on win8
             inner_grid.Background = new SolidColorBrush(Colors.Transparent);
@@ -2041,12 +2047,13 @@ F1 produces this help.
             inner_grid.HorizontalAlignment = HorizontalAlignment.Stretch;
             inner_grid.VerticalAlignment = VerticalAlignment.Stretch;
             //inner_grid.Name = "adornmentGrid"
+            var middleSize = smaller ? 2 : 3;
             inner_grid.ColumnDefinitions.Add(MainWindowAux.def_col(1));
-            inner_grid.ColumnDefinitions.Add(def_col(2));
-            inner_grid.ColumnDefinitions.Add(def_col(1));
-            inner_grid.RowDefinitions.Add(def_row(1));
-            inner_grid.RowDefinitions.Add(def_row(2));
-            inner_grid.RowDefinitions.Add(def_row(1));
+            inner_grid.ColumnDefinitions.Add(MainWindowAux.def_col(middleSize));
+            inner_grid.ColumnDefinitions.Add(MainWindowAux.def_col(1));
+            inner_grid.RowDefinitions.Add(MainWindowAux.def_row(1));
+            inner_grid.RowDefinitions.Add(MainWindowAux.def_row(middleSize));
+            inner_grid.RowDefinitions.Add(MainWindowAux.def_row(1));
             if (render)
                 stones_grid.Children.Add(inner_grid);
             return inner_grid;

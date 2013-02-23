@@ -40,7 +40,7 @@
             </Grid.RowDefinitions>
             <!-- margin is "left, top, right, bottom"-->
             <Grid Grid.Row="0" Background="DarkKhaki">
-                <TextBlock Text="SGF Editor - unsaved Move 0" FontSize="14" Margin="2,2,1,1"
+                <TextBlock Text="SGF Editor -- Move 0" FontSize="14" Margin="2,2,1,1"
                            VerticalAlignment="Center" HorizontalAlignment="Stretch" x:Name="Title"/>
             </Grid>
             <TextBox Grid.Row="1" HorizontalAlignment="Stretch" Margin="2,2,2,1" Name="commentBox" 

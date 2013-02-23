@@ -805,6 +805,7 @@ namespace SgfEdwin8 {
                 else
                     this.mainWin.EnableForwardButtons();
                 this.mainWin.UpdateBranchCombo(this.Branches, this.FirstMove);
+                this.mainWin.UpdateTitle(0);
             }
             else {
                 if (prev_move.Next == null)
@@ -812,6 +813,7 @@ namespace SgfEdwin8 {
                 else
                     this.mainWin.EnableForwardButtons();
                 this.mainWin.UpdateBranchCombo(prev_move.Branches, prev_move.Next);
+                this.mainWin.UpdateTitle(prev_move.Number);
             }
             this.mainWin.UpdateTreeView(prev_move, true);
         }
@@ -866,10 +868,9 @@ namespace SgfEdwin8 {
         }
 
         //// paste_move makes this._cut_move be the next move of the current move
-        //// displayed.  It does not worry about duplicate next moves; it just
-        //// pastes the sub tree.  If there is a next move at the same loc, we do
-        //// not merge the trees matching moves since this would lose node
-        //// information (marked up and comments).
+        //// displayed.  This does not check consistency of all moves in sub tree since that
+        //// would involve replaying them all.  It does check a few things with the first
+        //// cut move.
         ////
         public async Task PasteMove () {
             // These debug.asserts could arguably be throw's if we think of this function
@@ -877,6 +878,11 @@ namespace SgfEdwin8 {
             MyDbg.Assert(this.cutMove != null, "There is no cut sub tree to paste.");
             if (this.cutMove.Color != this.nextColor) {
                 await GameAux.Message("Cannot paste cut move that is same color as current move.");
+                return;
+            }
+            // Need to ensure first cut move doesn't conflict, else checking self capture throws.
+            if (this.Board.HasStone(this.cutMove.Row, this.cutMove.Column)) {
+                await GameAux.Message("Cannot paste cut move that is at same location as another stone.");
                 return;
             }
             // If CheckSelfCaptureNoKill returns false, the it updates cutMove to have dead
@@ -1033,6 +1039,8 @@ namespace SgfEdwin8 {
             var cur_index = res.Item2;
             if (branches != null) {
                 await this.MoveBranch(branches, cur_index, -1);
+                this.Dirty = true;
+                this.mainWin.UpdateTitle(this.CurrentMove.Number);
                 this.mainWin.UpdateTreeView(this.CurrentMove, true);
             }
         }
@@ -1043,6 +1051,8 @@ namespace SgfEdwin8 {
             var cur_index = res.Item2;
             if (branches != null) {
                 await this.MoveBranch(branches, cur_index, 1);
+                this.Dirty = true;
+                this.mainWin.UpdateTitle(this.CurrentMove.Number);
                 this.mainWin.UpdateTreeView(this.CurrentMove, true);
             }
         }
@@ -1405,10 +1415,11 @@ namespace SgfEdwin8 {
 
 
         //// Message is a lot like WPF MessageBox.Show.  It returns the string name of the command selected.
-        //// If cmds is null, there is a simple msgbox with an OK button, which is the default and the escape/
-        //// cancel default commands.  If cmds
+        //// If cmds is null, there is a simple msgbox with an OK button, which is the default (enter) and the
+        //// cancel default (escape) commands.  If cmds
         ////
-        public static async Task<string> Message (string msg, string title = null, List<string> cmds = null) {
+        public static async Task<string> Message (string msg, string title = null, List<string> cmds = null,
+                                                  uint defaultIndex = 0, uint cancelIndex = 9999) {
             // Create the message dialog and set its content 
             var msgdlg = new MessageDialog(msg, title ?? "");
             string response = "";
@@ -1421,13 +1432,14 @@ namespace SgfEdwin8 {
             else {
                 foreach (var c in cmds)
                     msgdlg.Commands.Add(new UICommand(c, new UICommandInvokedHandler((cmd) => response = cmd.Label)));
-                   //msgdlg.Commands.Add(new UICommand("Close", new UICommandInvokedHandler(GameAux.StonesPtrPressedMsgDlgHandler)));
-                // Set the command that will be invoked by default 
-                msgdlg.DefaultCommandIndex = 0;
+                   //msgdlg.Commands.Add(new UICommand("Close", new UICommandInvokedHandler(
+                   //                                                   GameAux.StonesPtrPressedMsgDlgHandler)));
+                // Set the command that will be invoked by default (enter)
+                msgdlg.DefaultCommandIndex = defaultIndex;
                 // Set the command to be invoked when escape is pressed 
-                msgdlg.CancelCommandIndex = (uint)(cmds.Count() - 1);
-                // Show the message dialog 
+                msgdlg.CancelCommandIndex = cancelIndex == 9999 ? (uint)(cmds.Count() - 1) : cancelIndex;
             }
+            // Show the message dialog 
             await msgdlg.ShowAsync();
             return response;
         }
