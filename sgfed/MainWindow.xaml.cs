@@ -368,21 +368,25 @@ F1 produces this help.
         //// file and current move number.  "Move " is always in the title, set
         //// there by default originally.  Game also uses this.
         ////
-        public void UpdateTitle (int num, bool is_pass = false, string filebase = null) {
-            var title = this.Title;
+        public void UpdateTitle (int num, bool is_pass = false) {
+            var filebase = this.Game.Filebase;
+            var title = this.Title.Replace("[*] ", "");
             var pass_str = is_pass ? " Pass" : "";
             if (filebase != null) {
+                filebase = this.Game.Dirty ? "[*] " + filebase : filebase;
                 this.Title = "SGF Editor -- " + filebase + ";  Move " + num.ToString() + pass_str;
                 this.MyTitle.Text = filebase + ";  Move " + num.ToString() + pass_str;
             }
             else {
-                var tail = title.IndexOf("Move ");
-                Debug.Assert(tail != -1, "Title doesn't have move in it?!");
-                if (tail != -1) {
-                    this.Title = title.Substring(0, tail + 5) + num.ToString() + pass_str;
-                    // MyTitle doesn't have "SGFEd -- ".
-                    this.MyTitle.Text = title.Substring(14, (tail - 14) + 5) + num.ToString() + pass_str;
-                }
+                var tail = title.IndexOf("Move ") + 5;
+                Debug.Assert(tail != 4, "Title doesn't have move in it?!");
+                var filestart = title.IndexOf(" -- ") + 4;
+                this.Title = title.Substring(0, filestart) + 
+                             (this.Game.Dirty ? "[*] " : "") +
+                             title.Substring(filestart, tail - filestart) + 
+                             num.ToString() + pass_str;
+                // MyTitle doesn't have "SGF Editor -- " at the front.
+                this.MyTitle.Text = this.Title.Substring(14, this.Title.Length - 14);
             }
         }
 
@@ -404,7 +408,7 @@ F1 produces this help.
                     this.Game = GameAux.CreateParsedGame(pg, this);
                     this.Game.Filename = dlg.FileName;
                     this.Game.Filebase = dlg.FileName.Substring(dlg.FileName.LastIndexOf('\\') + 1);
-                    this.UpdateTitle(0, false, this.Game.Filebase);
+                    this.UpdateTitle(0);
                 }
                 catch (FileFormatException err) {
                     // Essentially handles unexpected EOF or malformed property values.
@@ -456,7 +460,7 @@ F1 produces this help.
                 if (dlg.whiteText.Text != "")
                     g.PlayerWhite = dlg.whiteText.Text;
                 this.Game = g;
-                this.UpdateTitle(0, false, "unsaved");
+                this.UpdateTitle(0);
                 this.DrawGameTree();
             }
         }
@@ -1255,7 +1259,7 @@ F1 produces this help.
                 stones_grid.Children.Add(current_stone_adornment_grid);
             }
             else {
-                var inner_grid = MainWindowAux.AddAdornmentGrid(stones_grid, move.Row, move.Column);
+                var inner_grid = MainWindowAux.AddAdornmentGrid(stones_grid, move.Row, move.Column, true, true);
                 current_stone_adornment_grid = inner_grid;
                 //
                 // Create mark
@@ -1444,7 +1448,8 @@ F1 produces this help.
         //// center the adornment in the stones grid cell and to provide a stretchy
         //// container that grows with the stones grid cell.
         ////
-        internal static Grid AddAdornmentGrid (Grid stones_grid, int row, int col, bool render=true) {
+        internal static Grid AddAdornmentGrid (Grid stones_grid, int row, int col, bool render=true,
+                                               bool smaller = false) {
             var inner_grid = new Grid();
             inner_grid.ShowGridLines = false;
             inner_grid.Background = new SolidColorBrush(Colors.Transparent);
@@ -1453,12 +1458,13 @@ F1 produces this help.
             inner_grid.HorizontalAlignment = HorizontalAlignment.Stretch;
             inner_grid.VerticalAlignment = VerticalAlignment.Stretch;
             //inner_grid.Name = "adornmentGrid"
+            var middleSize = smaller ? 2 : 3;
             inner_grid.ColumnDefinitions.Add(MainWindowAux.def_col(1));
-            inner_grid.ColumnDefinitions.Add(def_col(2));
-            inner_grid.ColumnDefinitions.Add(def_col(1));
-            inner_grid.RowDefinitions.Add(def_row(1));
-            inner_grid.RowDefinitions.Add(def_row(2));
-            inner_grid.RowDefinitions.Add(def_row(1));
+            inner_grid.ColumnDefinitions.Add(MainWindowAux.def_col(middleSize));
+            inner_grid.ColumnDefinitions.Add(MainWindowAux.def_col(1));
+            inner_grid.RowDefinitions.Add(MainWindowAux.def_row(1));
+            inner_grid.RowDefinitions.Add(MainWindowAux.def_row(middleSize));
+            inner_grid.RowDefinitions.Add(MainWindowAux.def_row(1));
             if (render)
                 stones_grid.Children.Add(inner_grid);
             return inner_grid;

@@ -797,6 +797,7 @@ namespace SgfEd {
                 else
                     this.mainWin.EnableForwardButtons();
                 this.mainWin.UpdateBranchCombo(this.Branches, this.FirstMove);
+                this.mainWin.UpdateTitle(0);
             }
             else {
                 if (prev_move.Next == null)
@@ -804,6 +805,7 @@ namespace SgfEd {
                 else
                     this.mainWin.EnableForwardButtons();
                 this.mainWin.UpdateBranchCombo(prev_move.Branches, prev_move.Next);
+                this.mainWin.UpdateTitle(prev_move.Number);
             }
             this.mainWin.UpdateTreeView(prev_move, true);
         }
@@ -858,10 +860,9 @@ namespace SgfEd {
         }
 
         //// paste_move makes this._cut_move be the next move of the current move
-        //// displayed.  It does not worry about duplicate next moves; it just
-        //// pastes the sub tree.  If there is a next move at the same loc, we do
-        //// not merge the trees matching moves since this would lose node
-        //// information (marked up and comments).
+        //// displayed.  This does not check consistency of all moves in sub tree since that
+        //// would involve replaying them all.  It does check a few things with the first
+        //// cut move.
         ////
         public void PasteMove() {
             // These debug.asserts could arguably be throw's if we think of this function
@@ -869,6 +870,11 @@ namespace SgfEd {
             Debug.Assert(this.cutMove != null, "There is no cut sub tree to paste.");
             if (this.cutMove.Color != this.nextColor) {
                 MessageBox.Show("Cannot paste cut move that is same color as current move.");
+                return;
+            }
+            // Need to ensure first cut move doesn't conflict, else checking self capture throws.
+            if (this.Board.HasStone(this.cutMove.Row, this.cutMove.Column)) {
+                MessageBox.Show("Cannot paste cut move that is at same location as another stone.");
                 return;
             }
             // If CheckSelfCaptureNoKill returns false, then it updates cutMove to have dead
@@ -1018,6 +1024,8 @@ namespace SgfEd {
             var cur_index = res.Item2;
             if (branches != null) {
                 this.MoveBranch(branches, cur_index, -1);
+                this.Dirty = true;
+                this.mainWin.UpdateTitle(this.CurrentMove.Number);
                 this.mainWin.UpdateTreeView(this.CurrentMove, true);
             }
         }
@@ -1028,6 +1036,8 @@ namespace SgfEd {
             var cur_index = res.Item2;
             if (branches != null) {
                 this.MoveBranch(branches, cur_index, 1);
+                this.Dirty = true;
+                this.mainWin.UpdateTitle(this.CurrentMove.Number);
                 this.mainWin.UpdateTreeView(this.CurrentMove, true);
             }
         }
@@ -1122,7 +1132,7 @@ namespace SgfEd {
             this.Filebase = filename.Substring(filename.LastIndexOf('\\') + 1);
             int number;
             bool is_pass;
-            if (this.CurrentMove== null) {
+            if (this.CurrentMove == null) {
                 number = 0;
                 is_pass = false;
             }
@@ -1130,7 +1140,7 @@ namespace SgfEd {
                 number = this.CurrentMove.Number;
                 is_pass = this.CurrentMove.IsPass;
             }
-            this.mainWin.UpdateTitle(number, is_pass, this.Filebase);
+            this.mainWin.UpdateTitle(number, is_pass);
             //self.Title = "SGFEd -- " + self.filebase + ";  Move " + str(number);
         }
 
@@ -1208,16 +1218,18 @@ namespace SgfEd {
                 parent = move.Previous;
             }
             moveNum -= 1;
+            // Add tuple for move zero if we need to select a branch from the empty board state.
             if (this.ParsedGame.Nodes.Branches != null) {
                 var loc = GameAux.ListFind(move, this.ParsedGame.Nodes.Branches);
                 Debug.Assert(loc != -1, "Move must be in game.");
-                res.Add(Tuple.Create(0, loc));
+                res.Add(Tuple.Create(moveNum, loc));  // moveNum becomes a zero when we fix numbers below.
             }
-            //res.Reverse();
-            var final = new List<Tuple<int, int>>();
-            foreach (var pair in res) {
-                final.Add(Tuple.Create(pair.Item1 - moveNum, pair.Item2));
-            }
+            // Fix up numbers to match move numbers.
+            var final = res.Select((pair) => Tuple.Create(pair.Item1 - moveNum, pair.Item2)).ToList();
+            //var final = new List<Tuple<int, int>>();
+            //foreach (var pair in res) {
+            //    final.Add(Tuple.Create(pair.Item1 - moveNum, pair.Item2));
+            //}
             final.Reverse();
             return final;
         }

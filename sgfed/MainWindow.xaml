@@ -1,7 +1,7 @@
 ﻿<Window x:Class="SgfEd.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="SGF Editor -- unsaved Move 0" Height="350" Width="525" Background="#C7419082"
+        Title="SGF Editor -- Move 0" Height="350" Width="525" Background="#C7419082"
         KeyDown="mainWin_keydown">
 
         <!-- Define the main UI Grid: buttons upper right, edit box below, go board down the left side ... -->
