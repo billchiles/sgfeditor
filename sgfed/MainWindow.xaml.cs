@@ -1385,7 +1385,7 @@ F1 produces this help.
             tri.Points.Add(new Point(3, 0));
             tri.Points.Add(new Point(0, 6));
             tri.Points.Add(new Point(6, 6));
-            tri.StrokeThickness = 1;
+            tri.StrokeThickness = 0.5;
             var move = game_inst.Board.MoveAt(row, col);
             Color color;
             if (move != null)
