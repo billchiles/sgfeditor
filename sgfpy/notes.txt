@@ -1,13 +1,17 @@
 
 general todo:
+ * count and report prisoners in title bar
  * handle pass move
  * pattern match ko and forbid ko take back
+ * need game info dialog for displaying and editing
  * formalize exceptions, handle them up in the UI layer, keep program running
  * handle MA property for X marks
  * provide command to see game info from root node, and allow editing.
  * handle setup moves AW/AB and change color props ... others?
- * count and report prisoners in title bar
  * make help scrolling dialog like win8
+ * look at cleaning up triangles appearance
+ * add numeric labeling annotations
+ * auto number moves on board from their move number (less useful until add printing, but could screenshot)
  * 
 
 cs code:
@@ -16,13 +20,25 @@ cs code:
  * maybe highlight next node to show active branch
  * 
 
-pycode todo:
+pycode todo (changeset refs are to mercurial sources I have, not git commits on codeplex, but the
+             changes to the sgfed dir under git also have these diffs):
  * last port back of bug fixes was changeset:   75:5555f6facde9, 11 NOV
  * throw out old tree view and port code from C# project (drawing, jumping, node highlighting, ...)
  * remove throw when SZ missing, default to 19
  * bug in saving empty board games (changeset:   82:267a3b8694bf)
  * bug in parser not storing prev ptrs correctly for nodes in branches (changeset:   83:e85d29911493)
  * bug in collecting dead stones (changeset:   84:34575a7ff8c3, 86:10e27102185b)
+ * show help abstraction (changeset 88)
+ * gotolast update title (changeset 90)
+ * fix to parsednode handling when pasting, parsedgame too in writegame/parsedgamefromgame (changeset 94)
+ * title bar between cmd buttons and comment box (changeset 95)
+ * another writegame/treeview model bug (changeset 96)
+ * cut/paste bugs with captured stones (changeset 96)
+ * updating title for cut/paste move, fix pastemove to not paste cut move that conflicts with a stone
+   on the board, moving branches marks the game dirty and updates the title, writegame updates title
+   now without passing filebase, fixed bug in getpathtomove for parsednodes (need to use moveNum, not
+   explicit zero for first node), have title including dirty status now, open and new game now update
+   title, made triangles and squares bigger (changeset 97)
  * 
 
 
