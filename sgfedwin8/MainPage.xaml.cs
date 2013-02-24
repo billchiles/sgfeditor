@@ -610,7 +610,8 @@ F1 produces this help.
         //// file and current move number.  "Move " is always in the title, set
         //// there by default originally.  Game also uses this.
         ////
-        public void UpdateTitle (int num, bool is_pass = false, string filebase = null) {
+        public void UpdateTitle (int num, bool is_pass = false) {
+            var filebase = this.Game.Filebase;
             var title = this.Title.Text.Replace("[*] ", "");
             var pass_str = is_pass ? " Pass" : "";
             if (filebase != null) {
@@ -648,6 +649,7 @@ F1 produces this help.
             try {
                 sf = await fp.PickSingleFileAsync();
             }
+            // Don't know why, but win8 randomly throws this though I always have access to my files.
             catch (UnauthorizedAccessException einfo) {
                 GameAux.Message(einfo.Message);
                 return;
@@ -655,7 +657,8 @@ F1 produces this help.
             if (sf != null) {
                 Popup popup = null;
                 try {
-                    // fixing win8 -- set flag to disable UI due to await on parsing
+                    // Need to cover UI to block user due to all the awaits from parsing and so on.
+                    // Don't want user mutating state after saving the last file and processing the new one.
                     popup = new Popup();
                     popup.Child = this.GetOpenfileUIDike();
                     popup.IsOpen = true;
@@ -689,7 +692,7 @@ F1 produces this help.
             var name = sf.Name;
             this.Game.Filename = name;
             this.Game.Filebase = name.Substring(name.LastIndexOf('\\') + 1);
-            this.UpdateTitle(0, false, this.Game.Filebase);
+            this.UpdateTitle(0);
         }
 
         private Grid openFileUIDike = null;
@@ -972,6 +975,10 @@ F1 produces this help.
             else if (e.Key == VirtualKey.S && 
                      this.IsKeyPressed(VirtualKey.Control) && this.IsKeyPressed(VirtualKey.Menu)) {
                 await this.SaveAs();
+                // There is some bug in win8 that prevents this call to FocusOnstones from working,
+                // or it seems that way.  It actually appears the app is displayed but has lost focus.
+                // If you alt-tab, the app flashes and keeps focus (does not switch to another app),
+                // and focus is in deed on the board.
                 this.FocusOnStones();
                 e.Handled = true;
             }
@@ -1026,7 +1033,8 @@ F1 produces this help.
         //// navigating to the move clicked on.
         ////
         private void gameTree_mousedown (object sender, PointerRoutedEventArgs e) {
-            this.CheckTreeParsedNodes();
+            // Integrity checking code for debugging and testing, not for release.
+            //this.CheckTreeParsedNodes();
             // find TreeViewNode model for click locatio on canvas.
             var x = e.GetCurrentPoint(this.gameTreeView).Position.X;
             var y = e.GetCurrentPoint(this.gameTreeView).Position.Y;
@@ -1252,8 +1260,12 @@ F1 produces this help.
             var cur = n;
             var parent = cur.Previous;
             while (parent != first) {
-                if (parent == null)
-                    return false;
+                if (parent == null) {
+                    if (this.Game.Branches != null && this.Game.Branches.Contains(cur))
+                        return true;
+                    else
+                        return false;
+                }
                 cur = parent;
                 parent = parent.Previous;
             }
@@ -1964,7 +1976,7 @@ F1 produces this help.
             tri.Points.Add(new Point(3, 0));
             tri.Points.Add(new Point(0, 6));
             tri.Points.Add(new Point(6, 6));
-            tri.StrokeThickness = 1;
+            tri.StrokeThickness = 0.5; // Makes it look more like square's line weight.
             var move = game_inst.Board.MoveAt(row, col);
             Color color;
             if (move != null)

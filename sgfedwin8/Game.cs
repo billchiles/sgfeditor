@@ -1159,8 +1159,7 @@ namespace SgfEdwin8 {
                 number = this.CurrentMove.Number;
                 is_pass = this.CurrentMove.IsPass;
             }
-            this.mainWin.UpdateTitle(number, is_pass, this.Filebase);
-            //self.Title = "SGFEd -- " + self.filebase + ";  Move " + str(number);
+            this.mainWin.UpdateTitle(number, is_pass);
         }
 
         //// write_flipped_game saves all the game moves as a diagonal mirror image.
@@ -1205,7 +1204,8 @@ namespace SgfEdwin8 {
             }
             // Need to store new game since creating the parsed game re-uses original nodes.
             this.ParsedGame = pgame;
-            this.mainWin.CheckTreeParsedNodes();
+            // Integrity checking code for debugging and testing, not for release.
+            //this.mainWin.CheckTreeParsedNodes();
             return pgame;
         }
 
@@ -1319,16 +1319,18 @@ namespace SgfEdwin8 {
                 parent = move.Previous;
             }
             moveNum -= 1;
+            // Add tuple for move zero if we need to select a branch from the empty oard state.
             if (this.ParsedGame.Nodes.Branches != null) {
                 var loc = GameAux.ListFind(move, this.ParsedGame.Nodes.Branches);
                 MyDbg.Assert(loc != -1, "Move must be in game.");
-                res.Add(Tuple.Create(0, loc));
+                res.Add(Tuple.Create(moveNum, loc)); // moveNum becomes a zero when we fix numbers below.
             }
-            //res.Reverse();
-            var final = new List<Tuple<int, int>>();
-            foreach (var pair in res) {
-                final.Add(Tuple.Create(pair.Item1 - moveNum, pair.Item2));
-            }
+            // Fix up numbers to match move numbers.
+            var final = res.Select((pair) => Tuple.Create(pair.Item1 - moveNum, pair.Item2)).ToList();
+            //var final = new List<Tuple<int, int>>();
+            //foreach (var pair in res) {
+            //    final.Add(Tuple.Create(pair.Item1 - moveNum, pair.Item2));
+            //}
             final.Reverse();
             return final;
         }
