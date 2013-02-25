@@ -1274,10 +1274,12 @@ F1 produces this help.
 
         //// DrawGameTree gets a view model of the game tree, creates objects to put on the canvas,
         //// and sets up the mappings for updating the view as we move around the game tree.  This
-        //// also creates a special "start" mapping to get to the first view model node.
+        //// also creates a special "start" mapping to get to the first view model node.  This is
+        //// public for app.xaml.cs's OnFileAcivated to call it, and until I clean up the check for
+        //// TreeViewDisplayed, I added a force parameter for OnFileActivated ... silly, I know.
         ////
-        private void DrawGameTree () {
-            if (this.TreeViewDisplayed())
+        public void DrawGameTree (bool force = false) {
+            if (this.TreeViewDisplayed() || force)
                 //TODO: this is temporary, should re-use objects from this.treeViewMoveMap
                 this.InitializeTreeView();
             var treeModel = GameAux.GetGameTreeModel(this.Game);

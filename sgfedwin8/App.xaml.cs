@@ -88,6 +88,7 @@ namespace SgfEdwin8
             }
             var sf = f as StorageFile;
             await mainwin.ParseAndCreateGame(sf);
+            mainwin.DrawGameTree();
             //win.FocusOnStones();
         }
 
