@@ -127,7 +127,7 @@
                 <TextBlock FontSize="14" Name="branchLabel" Margin="2,5,2,2" Width="120"
                            >No Branches:</TextBlock>
                 <ComboBox BorderThickness="1" Background="White" Width="120" Height="25" 
-                          Name="branchCombo"  IsEnabled="False" ></ComboBox>
+                          Name="branchCombo"  IsEnabled="False" SelectionChanged="branchComboSelectionChanged"></ComboBox>
             </StackPanel>
 
         </Grid>  <!-- upper right control buttons -->

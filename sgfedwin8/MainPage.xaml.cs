@@ -555,7 +555,7 @@ F1 produces this help.
         //// so that we only update when the user has taken an action as opposed to
         //// programmatically changing the selected item due to arrow keys, deleting moves, etc.
         ////
-        private void branchComboSelectionChanged(object branch_dropdown, SelectionChangedEventArgs e) {
+        private void branchComboSelectionChanged (object branch_dropdown, SelectionChangedEventArgs e) {
             if (updating_branch_combo != true) {
                 this.Game.SetCurrentBranch(((ComboBox)branch_dropdown).SelectedIndex);
                 this.FocusOnStones();
