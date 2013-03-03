@@ -72,6 +72,8 @@ namespace SgfEdwin8 {
         // player members hold strings if there are player names in record.
         public string PlayerBlack { get; set; }
         public string PlayerWhite { get; set; }
+        public int BlackPrisoners { get; set; }
+        public int WhitePrisoners { get; set; }
         // _cut_move holds the head of a sub tree that was last cut.
         // Note, the public cut_move is a method.
         private Move cutMove;
@@ -101,6 +103,8 @@ namespace SgfEdwin8 {
             this.Dirty = false;
             this.PlayerBlack = null;
             this.PlayerWhite = null;
+            this.BlackPrisoners = 0;
+            this.WhitePrisoners = 0;
             this.cutMove = null;
             main_win.SetupBoardDisplay(this);
         } // Game Constructor
@@ -234,8 +238,10 @@ namespace SgfEdwin8 {
                 // and it has a next move.
                 this.mainWin.EnableForwardButtons();
             }
-            if (move.DeadStones.Any())
+            if (move.DeadStones.Any()) {
                 this.RemoveStones(move.DeadStones);
+                this.UpdatePrisoners(move.Color, move.DeadStones.Count());
+            }
             return move;
         }
 
@@ -444,6 +450,7 @@ namespace SgfEdwin8 {
             if (!current.IsPass)
                 this.Board.RemoveStone(current);
             this.AddStones(current.DeadStones);
+            this.UpdatePrisoners(current.Color, - current.DeadStones.Count());
             this.nextColor = current.Color;
             this.MoveCount -= 1;
             var previous = current.Previous;
@@ -458,6 +465,16 @@ namespace SgfEdwin8 {
                 this.mainWin.UpdateBranchCombo(previous.Branches, current);
             this.CurrentMove = previous;
             return current;
+        }
+
+        //// UpdatePrisoners takes a positive (just captured) or negative (unwinding)
+        //// count of prisoners and updates the appropriate counter for the color.
+        ////
+        private void UpdatePrisoners (Color color, int count) {
+            if (color == Colors.Black)
+                this.BlackPrisoners += count;
+            else
+                this.WhitePrisoners += count;
         }
 
         public bool CanUnwindMove () {
@@ -488,6 +505,8 @@ namespace SgfEdwin8 {
             this.nextColor = this.HandicapMoves == null ? Colors.Black : Colors.White;
             this.CurrentMove = null;
             this.MoveCount = 0;
+            this.BlackPrisoners = 0;
+            this.WhitePrisoners = 0;
             this.mainWin.UpdateBranchCombo(this.Branches, this.FirstMove);
             this.mainWin.DisableBackwardButtons();
             this.mainWin.EnableForwardButtons();
@@ -621,6 +640,7 @@ namespace SgfEdwin8 {
             }
             this.MoveCount += 1;
             this.RemoveStones(move.DeadStones);
+            this.UpdatePrisoners(move.Color, move.DeadStones.Count());
             return move;
         }
 

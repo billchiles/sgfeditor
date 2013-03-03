@@ -616,17 +616,20 @@ F1 produces this help.
             var pass_str = is_pass ? " Pass" : "";
             if (filebase != null) {
                 filebase = this.Game.Dirty ? "[*] " + filebase : filebase;
-                this.Title.Text = "SGF Editor -- " + filebase + ";  Move " + num.ToString() + pass_str;
+                title = "SGF Editor -- " + filebase + ";  Move " + num.ToString() + pass_str;
             }
             else {
                 var tail = title.IndexOf("Move ") + 5;
                 MyDbg.Assert(tail != 4, "Title doesn't have move in it?!");
                 var filestart = title.IndexOf(" -- ") + 4;
-                this.Title.Text = title.Substring(0, filestart) + 
-                                  (this.Game.Dirty ? "[*] " : "") +
-                                  title.Substring(filestart, tail - filestart) + 
-                                  num.ToString() + pass_str;
+                title = title.Substring(0, filestart) + 
+                              (this.Game.Dirty ? "[*] " : "") +
+                              title.Substring(filestart, tail - filestart) + 
+                              num.ToString() + pass_str;
             }
+            title = title + "   B captures: " + this.Game.BlackPrisoners.ToString() +
+                    "   W captures: " + this.Game.WhitePrisoners.ToString();
+            this.Title.Text = title;
         }
 
 
