@@ -1319,7 +1319,6 @@ F1 produces this help.
             this.treeViewMoveMap["start"] = treeModel[0, 0];
             MainWindowAux.DrawGameTreeLines(canvas, treeModel[0, 0]);
             Grid cookie = (Grid)treeModel[0, 0].Cookie;
-            //cookie.Background = new SolidColorBrush(Colors.LightSkyBlue);
             // Set this to something so that UpdateTreeView doesn't deref null.
             this.treeViewSelectedItem = cookie;
             this.UpdateTreeView(this.Game.CurrentMove);
@@ -1425,7 +1424,8 @@ F1 produces this help.
             this.nextBranchGrid = itemCookie;
             if (this.nextBranchRect == null) {
                 this.nextBranchRect = new Rectangle();
-                this.nextBranchRect.Stroke = new SolidColorBrush(Colors.Black);
+                this.nextBranchRect.Stroke = new SolidColorBrush(Colors.Gray);
+                this.nextBranchRect.StrokeThickness = 0.7;
             }
             itemCookie.Children.Add(this.nextBranchRect);
         }
