@@ -1390,7 +1390,10 @@ F1 produces this help.
             return this.treeViewMoveMap.ContainsKey("start");
         }
 
-
+        //// UpdateTreeViewBranch clears the current branch move highlight if any, then
+        //// checks to see if it needs to add branching highlighting to a move.  This is
+        //// public so that Game.SetCurrentBranch can call it.
+        ////
         public void UpdateTreeViewBranch (Move move) {
             // Highlight branch if there are any.
             UpdateTreeClearBranchHighlight();
@@ -1406,7 +1409,7 @@ F1 produces this help.
             }
         }
 
-        //// UpdateTreeHighlightMove takes a move that is the next move after a move with
+        //// UpdateTreeHighlightBranch takes a move that is the next move after a move with
         //// branches.  This highlights that move with a rectangle.
         ////
         private Grid nextBranchGrid = null;
