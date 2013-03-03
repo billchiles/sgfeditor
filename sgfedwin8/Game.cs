@@ -1026,6 +1026,7 @@ namespace SgfEdwin8 {
                 var move = this.CurrentMove.Branches[cur];
                 this.CurrentMove.Next = move;
             }
+            this.mainWin.UpdateTreeViewBranch(this.CurrentMove);
         }
 
         //// move_branch_up and move_branch_down move the current move (if it

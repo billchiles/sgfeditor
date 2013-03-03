@@ -1215,6 +1215,7 @@ F1 produces this help.
             canvas.Children.Clear(); //.RemoveRange(0, canvas.Children.Count);
             this.treeViewMoveMap.Clear();
             this.SetTreeViewSize();
+            this.UpdateTreeClearBranchHighlight();
         }
 
         private void SetTreeViewSize () {
@@ -1327,31 +1328,39 @@ F1 produces this help.
         //// this will look at some indication to redraw whole tree (cut, paste, maybe add move).
         ////
         public void UpdateTreeView (Move move, bool wipeit = false) {
-            // TODO: remove this check when fully integrated and assume tree view is always there.
-            if (! this.TreeViewDisplayed())
-                return;
-
+            MyDbg.Assert(this.TreeViewDisplayed());
+            //if (! this.TreeViewDisplayed())
+            //    return;
             if (wipeit) {
                 this.InitializeTreeView();
                 this.DrawGameTree();
             }
             else {
-                TreeViewNode item = this.TreeViewNodeForMove(move);
-                if (item == null) {
-                    this.InitializeTreeView();
-                    this.DrawGameTree();
-                }
-                else {
-                    Grid itemCookie = ((Grid)item.Cookie);
-                    // Update current move shading and bring into view.
-                    var sitem = this.treeViewSelectedItem;
-                    this.treeViewSelectedItem = itemCookie;
-                    sitem.Background = new SolidColorBrush(Colors.Transparent);
-                    itemCookie.Background = new SolidColorBrush(Colors.LightSkyBlue);
-                    this.BringTreeElementIntoView(itemCookie);
-                    //itemCookie.BringIntoView(new Rect((new Size(MainWindowAux.treeViewGridCellSize * 2,
-                    //                                            MainWindowAux.treeViewGridCellSize * 2))));
-                }
+                UpdateTreeHighlightMove(move);
+            }
+            UpdateTreeViewBranch(move);
+
+        }
+
+        //// UpdateTreeHighlightMove handles the primary case of UpdateTreeView, moving the blue
+        //// highlight from the last current move the new current move.
+        ////
+        private void UpdateTreeHighlightMove (Move move) {
+            TreeViewNode item = this.TreeViewNodeForMove(move);
+            if (item == null) {
+                this.InitializeTreeView();
+                this.DrawGameTree();
+            }
+            else {
+                Grid itemCookie = ((Grid)item.Cookie);
+                // Update current move shading and bring into view.
+                var sitem = this.treeViewSelectedItem;
+                this.treeViewSelectedItem = itemCookie;
+                sitem.Background = new SolidColorBrush(Colors.Transparent);
+                itemCookie.Background = new SolidColorBrush(Colors.LightSkyBlue);
+                this.BringTreeElementIntoView(itemCookie);
+                //itemCookie.BringIntoView(new Rect((new Size(MainWindowAux.treeViewGridCellSize * 2,
+                //                                            MainWindowAux.treeViewGridCellSize * 2))));
             }
         }
 
@@ -1379,6 +1388,48 @@ F1 produces this help.
         ////
         private bool TreeViewDisplayed () {
             return this.treeViewMoveMap.ContainsKey("start");
+        }
+
+
+        public void UpdateTreeViewBranch (Move move) {
+            // Highlight branch if there are any.
+            UpdateTreeClearBranchHighlight();
+            if (move == null) {
+                if (this.Game.Branches != null) {
+                    this.UpdateTreeHighlightBranch(this.Game.FirstMove);
+                }
+            }
+            else {
+                if (move.Branches != null) {
+                    UpdateTreeHighlightBranch(move.Next);
+                }
+            }
+        }
+
+        //// UpdateTreeHighlightMove takes a move that is the next move after a move with
+        //// branches.  This highlights that move with a rectangle.
+        ////
+        private Grid nextBranchGrid = null;
+        private Rectangle nextBranchRect = null;
+        private void UpdateTreeHighlightBranch (Move move) {
+            TreeViewNode item = this.TreeViewNodeForMove(move);
+            // Should always be item here since not wiping tree, and if node were new, then no branches.
+            MyDbg.Assert(item != null);
+            Grid itemCookie = ((Grid)item.Cookie);
+            this.nextBranchGrid = itemCookie;
+            if (this.nextBranchRect == null) {
+                this.nextBranchRect = new Rectangle();
+                this.nextBranchRect.Stroke = new SolidColorBrush(Colors.Black);
+            }
+            itemCookie.Children.Add(this.nextBranchRect);
+        }
+
+        private void UpdateTreeClearBranchHighlight () {
+            // Clear current branch highlight if there is one.
+            if (this.nextBranchGrid != null) {
+                this.nextBranchGrid.Children.Remove(this.nextBranchRect);
+                this.nextBranchGrid = null;
+            }
         }
 
         //// TreeViewNodeForMove returns the TreeViewNode representing the view model for move.
