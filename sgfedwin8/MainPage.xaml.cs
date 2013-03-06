@@ -437,7 +437,7 @@ F1 produces this help.
         //// whatBoardClickCreates is set in App Bar button handlers and used by
         //// StonesPointerPressed.
         ////
-        AdornmentKind whatBoardClickCreates = AdornmentKind.CurrentMove;
+        private AdornmentKind whatBoardClickCreates = AdornmentKind.CurrentMove;
 
         //// StonesPointerPressed handles creating a move or adding adornments
         //// to the current move.
@@ -560,6 +560,14 @@ F1 produces this help.
                 this.Game.SetCurrentBranch(((ComboBox)branch_dropdown).SelectedIndex);
                 this.FocusOnStones();
             }
+        }
+
+        private AdornmentKind[] boardClickChoices = 
+            {AdornmentKind.CurrentMove, AdornmentKind.Letter, AdornmentKind.Triangle, AdornmentKind.Square};
+        private void boardClickComboSelectionChanged (object sender, SelectionChangedEventArgs e) {
+            if (this.boardClickCombo == null)
+                return; // Ignore call during initialization, clicking by default is "Move"
+            this.whatBoardClickCreates = this.boardClickChoices[this.boardClickCombo.SelectedIndex];
         }
 
 
@@ -2156,7 +2164,8 @@ F1 produces this help.
         //// treeViewGridCellSize is the number of pixels along one side of a "grid cell"
         //// on the canvas.
         ////
-        internal const int treeViewGridCellSize = 40;
+        public const int treeViewGridCellSize = 45;
+        private const int treeViewNodeSize = 30;
 
         //// DrawGameTreeLines draws all the lines from this node to its next nodes.
         //// Note, these are TreeViewNodes, not Moves, so some of the nodes simply denote
@@ -2203,8 +2212,8 @@ F1 produces this help.
             g.HorizontalAlignment = HorizontalAlignment.Stretch;
             g.VerticalAlignment = VerticalAlignment.Stretch;
             g.Background = new SolidColorBrush(Colors.Transparent);
-            g.Height = 25;
-            g.Width = 25;
+            g.Height = MainWindowAux.treeViewNodeSize;
+            g.Width = MainWindowAux.treeViewNodeSize;
             g.Margin = new Thickness(0, 2, 0, 2);
             // Get stone image
             if (model.Kind == TreeViewNodeKind.Move) {
@@ -2232,7 +2241,7 @@ F1 produces this help.
                 label.FontWeight = FontWeights.Normal;
             }
             else
-                label.FontSize = 12;
+                label.FontSize = 14;
             label.Foreground = new SolidColorBrush(model.Kind == TreeViewNodeKind.Move ?
                                                     GameAux.OppositeMoveColor(model.Color) :
                                                     Colors.Black);
