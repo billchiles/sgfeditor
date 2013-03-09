@@ -147,9 +147,10 @@ namespace SgfEdwin8 {
                     // There is only a center stone for 5, 7, and 9 handicaps.
                     if (handicap == 5)
                         make_move(10, 10);
-                    if (handicap >= 6)
+                    if (handicap >= 6) {
                         make_move(10, 4);
-                    make_move(10, 16);
+                        make_move(10, 16);
+                    }
                     // There is only a center stone for 5, 7, and 9 handicaps.
                     if (handicap == 7)
                         make_move(10, 10);

@@ -902,7 +902,7 @@ F1 produces this help.
         //// It checks whether the dialog was confirmed or cancelled, and takes
         //// appropriate action.
         ////
-        private void NewGameDialogDone (NewGameDialog dlg) {
+        private async void NewGameDialogDone (NewGameDialog dlg) {
             if (dlg.NewGameConfirmed) {
                 var white = dlg.WhiteText;
                 var black = dlg.BlackText;
@@ -914,7 +914,17 @@ F1 produces this help.
                 //var size = this.NewDialogInfo.Item3;
                 //var handicap = this.NewDialogInfo.Item4;
                 //var komi = this.NewDialogInfo.Item5;
-                var g = new Game(this, int.Parse(size), int.Parse(handicap), komi);
+                var sizeInt = int.Parse(size);
+                var handicapInt = int.Parse(handicap);
+                if (sizeInt != 19) {
+                    await GameAux.Message("Size must be 19 for now.");
+                    return;
+                }
+                if (handicapInt < 0 || handicapInt > 9) {
+                    await GameAux.Message("Handicap must be 0 to 9.");
+                    return;
+                }
+                var g = new Game(this, sizeInt, handicapInt, komi);
                 if (black != "")
                     g.PlayerBlack = black;
                 if (white != "")
