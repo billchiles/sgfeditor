@@ -1,6 +1,5 @@
 
 general todo:
- * count and report prisoners in title bar
  * handle pass move
  * pattern match ko and forbid ko take back
  * need game info dialog for displaying and editing
@@ -8,17 +7,11 @@ general todo:
  * handle MA property for X marks
  * provide command to see game info from root node, and allow editing.
  * handle setup moves AW/AB and change color props ... others?
- * make help scrolling dialog like win8
- * look at cleaning up triangles appearance
  * add numeric labeling annotations
  * auto number moves on board from their move number (less useful until add printing, but could screenshot)
+ * maybe mark nodes with comments
  * 
 
-cs code:
- * fully integrate tree view (add move, move branch, cut/paste, re-use graphics objects when redrawing)
- * maybe mark nodes with comments
- * maybe highlight next node to show active branch
- * 
 
 pycode todo (changeset refs are to mercurial sources I have, not git commits on codeplex, but the
              changes to the sgfed dir under git also have these diffs):

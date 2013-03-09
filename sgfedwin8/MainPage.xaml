@@ -130,7 +130,7 @@
                         Name="boardClickCombo"  IsEnabled="True" SelectionChanged="boardClickComboSelectionChanged">
                     <ComboBoxItem>Move</ComboBoxItem>
                     <ComboBoxItem>Letter</ComboBoxItem>
-                    <ComboBoxItem>Trianle</ComboBoxItem>
+                    <ComboBoxItem>Triangle</ComboBoxItem>
                     <ComboBoxItem>Square</ComboBoxItem>
                 </ComboBox>
             </StackPanel>
@@ -197,6 +197,7 @@
                     <ColumnDefinition/>
                 </Grid.ColumnDefinitions>
                 <!-- Change what clicking on the board means ... -->
+                <!--
                 <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" FontSize="18" x:Name="appBarClickText"
                            Margin="5,20">Clicking on board creates ... Moves</TextBlock>
                 <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal" Margin="20,0,10,10" >
@@ -210,6 +211,7 @@
                     <Button IsEnabled="True" BorderThickness="1" Click="AppBarSquareButtonClick"
                             x:Name="appBarSquareButton">Square</Button>
                 </StackPanel>
+                -->
                 <!-- Save As and Save Flipped ... -->
                 <TextBlock Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2" FontSize="18"
                            Margin="20,20">Saving files:</TextBlock>

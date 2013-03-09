@@ -4,12 +4,19 @@ maybe optimize for prev move not having branches and having no node next to it i
 
 
 Things to do before submitting win8 version to store:
- * test with touch and Surface
- * bug bash under real usage of editing games
- * add some auto saving to temp file feature
  * add appropriate try/catch to UI event handlers, write temp file
- * make game tree always up to date, maybe optimize for just adding moves in zero row
- 
+
+
+Since 23 FEB Alpha 2 release:
+ * uncommented selection changed event handler for branches combo box
+ * forgot to make tree draw all the time when activated by file double click
+ * added next branch highlighting to tree view
+ * added crude prisoner counting and reporting in title bar
+ * tweaked size of tree graph nodes
+ * added combo in command panel to select what click means on the board (more touch enabled)
+ * commented out app bar buttons for setting what clicking on the board does.
+ * auto save, no timer, just on suspend
+ *
 
 Since the last release, 26 JAN, I've:
  * cleaned up several little things in the code/comments

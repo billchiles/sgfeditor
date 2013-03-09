@@ -17,6 +17,8 @@ using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Navigation;
 
+using Windows.Storage;  // create collision options
+
 // The Blank Application template is documented at http://go.microsoft.com/fwlink/?LinkId=234227
 
 namespace SgfEdwin8
@@ -71,13 +73,15 @@ namespace SgfEdwin8
             base.OnFileActivated(args);
             MainWindow mainwin;
             // We only handle one file for now ...
-            var f = args.Files[0];
+            var sf = args.Files[0] as StorageFile;
             // Check dirty save if running already
             if (args.PreviousExecutionState == ApplicationExecutionState.Running ||
                     args.PreviousExecutionState == ApplicationExecutionState.Suspended) {
                 mainwin = ((Frame)Window.Current.Content).Content as MainWindow;
-                if (mainwin.Game.Dirty)
-                    await mainwin.CheckDirtySave();
+                // If user dbl clicked file already open, we're done.
+                if (sf.Name == mainwin.Game.Filename)
+                    return;
+                await mainwin.CheckDirtySave();
             } else {
                 // else create main UI as OnLaunched does
                 var frame = new Frame();
@@ -86,11 +90,11 @@ namespace SgfEdwin8
                 mainwin = frame.Content as MainWindow;
                 Window.Current.Activate();
             }
-            var sf = f as StorageFile;
-            await mainwin.ParseAndCreateGame(sf);
+            await mainwin.GetFileGameCheckingAutoSave(sf);
             mainwin.DrawGameTree();
             //win.FocusOnStones();
         }
+
 
 
         /// <summary>
@@ -104,9 +108,14 @@ namespace SgfEdwin8
         {
             var deferral = e.SuspendingOperation.GetDeferral();
             // Save application state and stop any background activity
-            //var mainwin = ((Frame)Window.Current.Content).Content as MainWindow;
-            //await mainwin.CheckDirtySave();
-
+            var mainwin = ((Frame)Window.Current.Content).Content as MainWindow;
+            if (mainwin.Game.Dirty) {
+                var file = mainwin.GetAutoSaveName(mainwin.Game.Filebase);
+                var tempFolder = ApplicationData.Current.TemporaryFolder;
+                var storage = await tempFolder.CreateFileAsync(file, CreationCollisionOption.ReplaceExisting);
+                await mainwin.Game.WriteGame(storage, true);
+            }
+            // Signal done.
             deferral.Complete();
         }
     }

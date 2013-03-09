@@ -1153,7 +1153,7 @@ namespace SgfEdwin8 {
         //// to an sgfparser.ParsedGame and uses its __str__ method to produce the
         //// output.
         ////
-        public async Task WriteGame (StorageFile sf = null) {
+        public async Task WriteGame (StorageFile sf = null, bool autosave = false) {
             string filename = null;
             if (sf == null) {
                 // This debug.assert could arguably be a throw if we think of this function
@@ -1166,10 +1166,10 @@ namespace SgfEdwin8 {
                 filename = sf.Name;
             var pg = this.UpdateParsedGameFromGame();
             await FileIO.WriteTextAsync(sf, pg.ToString());
-            this.Dirty = false;
-            this.Storage = sf;
-            this.Filename = filename;
-            this.Filebase = filename.Substring(filename.LastIndexOf('\\') + 1);
+            if (! autosave) {
+                this.Dirty = false;
+                SaveGameFileInfo(sf);
+            }
             int number;
             bool is_pass;
             if (this.CurrentMove == null) {
@@ -1181,6 +1181,16 @@ namespace SgfEdwin8 {
                 is_pass = this.CurrentMove.IsPass;
             }
             this.mainWin.UpdateTitle(number, is_pass);
+        }
+
+        //// SaveGameFileInfo updates the games storage object and filename properties.
+        //// This is public since it is called from MainWindow.xaml.cs and App.xaml.cs.
+        ////
+        public void SaveGameFileInfo (StorageFile sf) {
+            this.Storage = sf;
+            var filename = sf.Name;
+            this.Filename = filename;
+            this.Filebase = filename.Substring(filename.LastIndexOf('\\') + 1);
         }
 
         //// write_flipped_game saves all the game moves as a diagonal mirror image.

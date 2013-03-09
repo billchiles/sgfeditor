@@ -62,7 +62,9 @@ SGFEd can read and write .sgf files, edit game trees, etc.
 PLACING STONES AND ANNOTATIONS:
 Click on board location to place alternating colored stones.
 Shift click to place square annotations, ctrl click for triangles, and
-alt click to place letter annotations.
+alt click to place letter annotations.  If you click on an adornment location
+twice (for example shift-click twice in one spot), the second click removes
+the adornment.
 
 KEEPING FOCUS ON BOARD FOR KEY BINDINGS
 Escape will always return focus to the board so that the arrow keys work
@@ -74,7 +76,7 @@ NAVIGATING MOVES IN GAME TREE
 Right arrow moves to the next move, left moves to the previous, up arrow selects
 another branch or the main branch, down arrow selects another branch, home moves
 to the game start, and end moves to the end of the game following the currently
-selected branches.
+selected branches.  You can always click a node in the game tree graph.
 
 CREATING NEW FILES
 The new button (or ctrl-n) prompts for game info (player names, board size,
@@ -104,7 +106,8 @@ has a stone, you will not be able to advance past this position.
 MOVING BRANCHES
 You can move branches up and down in the order in which they show up in the branch
 combo, including changing what is the main line branch of the game.  To move a
-a branch up, use ctrl-uparrow, and to move a branch down, use ctrl-downarrow.
+a branch up, you must be on the first move of a branch, and then you can use
+ctrl-uparrow, and to move a branch down, use ctrl-downarrow.
 
 F1 produces this help.
 ";
@@ -125,14 +128,38 @@ F1 produces this help.
 
 
         //// 
-        //// Handling Snap View (required by store compliance)
+        //// Ensuring board is square and checking for auto saved file
         //// 
 
-        protected override void OnNavigatedTo (NavigationEventArgs e) {
+        //// OnNavigatedTo adds SizeChanged handler to ensure board is square.  It also checks for the
+        //// unnamed auto saved file, and if it exists and was written less than 12 hours earlier, this
+        //// asks the user whether to open the auto saved file or to create a new blank board.
+        //// 
+        protected override async void OnNavigatedTo (NavigationEventArgs e) {
             // Can't use e.Parameter here as in examples because it is appears to have type CSharp.Runtime.Binder?
             //MainWindow mainWin = e.Parameter as MainWindow;
             Window.Current.SizeChanged += this.MainView_SizeChanged;
             base.OnNavigatedTo(e);
+            // Check for auto saved file for unnamed game.
+            var autoSf = await this.GetAutoSaveFile(MainWindow.UnnamedAutoSaveName);
+            if (autoSf != null) {
+                if ((DateTimeOffset.Now - autoSf.DateCreated).Hours < 12 &&
+                        await GameAux.Message("Found unnamed auto saved file.", "Confirm opening auto saved file",
+                                               new List<string>() {"Open auto saved file", 
+                                                                   "Create default new board"})
+                            == "Open auto saved file") {
+                    await this.ParseAndCreateGame(autoSf);
+                    this.Game.Dirty = true; // actual file is not saved (there is no file assoc :-))
+                    // Erase auto save file info from Game so that save prompts for name.
+                    this.Game.Storage = null;
+                    this.Game.Filename = null;
+                    this.Game.Filebase = null;
+                    // Fix up title and draw tree.
+                    this.Title.Text = "SGF Editor -- Move 0";
+                    this.DrawGameTree();
+                }
+                await autoSf.DeleteAsync();
+            }
         }
 
         //// OnNavigatedFrom removes the resize handler, which was recommended in the sample I used
@@ -142,6 +169,12 @@ F1 produces this help.
             Window.Current.SizeChanged -= this.MainView_SizeChanged;
             base.OnNavigatedFrom(e);
         }
+
+
+        //// 
+        //// Handling Snap View (required by store compliance)
+        //// 
+
 
         //// MainView_SizeChanged does the work to switch from full view to snapped view.  For now
         //// this assumes the main view is good enough for filled view (complement of snapped)
@@ -651,6 +684,16 @@ F1 produces this help.
         // 'await' openButtonLeftDown since it must be 'async void'.
         private async Task DoOpenButton () {
             await this.CheckDirtySave();
+            var sf = await this.DoOpenGetFile();
+            if (sf == null) return;
+            await DoOpenGetFileGame(sf);
+            this.DrawGameTree();
+            this.FocusOnStones();
+        }
+
+        //// DoOpenGetFile prompts user and returns file to open, or null.
+        ////
+        private async Task<StorageFile> DoOpenGetFile () {
             var fp = new FileOpenPicker();
             fp.FileTypeFilter.Add(".sgf");
             fp.FileTypeFilter.Add(".txt");
@@ -663,8 +706,16 @@ F1 produces this help.
             // Don't know why, but win8 randomly throws this though I always have access to my files.
             catch (UnauthorizedAccessException einfo) {
                 GameAux.Message(einfo.Message);
-                return;
+                return null;
             }
+            return sf;
+        }
+
+        //// DoOpenGetFileGame covers the UI so that the user cannot mutate state, and then it
+        //// checks for a more recent auto saved file for sf, parsing and creating a game from the
+        //// appropriate file.
+        ////
+        private async Task DoOpenGetFileGame (StorageFile sf) {
             if (sf != null) {
                 Popup popup = null;
                 try {
@@ -674,7 +725,7 @@ F1 produces this help.
                     popup.Child = this.GetOpenfileUIDike();
                     popup.IsOpen = true;
                     // Process file ...
-                    await ParseAndCreateGame(sf);
+                    await this.GetFileGameCheckingAutoSave(sf); //ParseAndCreateGame(sf);
                 }
                 catch (IOException err) {
                     // Essentially handles unexpected EOF or malformed property values.
@@ -689,9 +740,61 @@ F1 produces this help.
                     popup.IsOpen = false;
                 }
             }
-            this.DrawGameTree();
-            this.FocusOnStones();
         }
+
+        //// GetFileGameCheckingAutoSave checks the auto save file and prompts user whether to
+        //// use it.  If we use the auto save file, then we need to mark game dirty since the file
+        //// is not up to date.  We also delete the auto save file at this point.  This is public
+        //// for code in app.xaml.cs to call.
+        ////
+        public async Task GetFileGameCheckingAutoSave (StorageFile sf) {
+            StorageFile autoSf = await this.GetAutoSaveFile(this.GetAutoSaveName(sf.Name));
+            if (autoSf != null) {
+                if (autoSf.DateCreated > sf.DateCreated &&
+                        await GameAux.Message("Found more recent auto saved file for " + sf.Name + ".",
+                                              "Confirm opening auto saved file",
+                                              new List<string>() {"Open newer auto saved version", 
+                                                                  "Open older original file"})
+                            == "Open newer auto saved version") {
+                    await this.ParseAndCreateGame(autoSf);
+                    this.Game.Dirty = true; // actual file is not saved up to date
+                    // Persist actual file name and storage for future save operations.
+                    this.Game.SaveGameFileInfo(sf);
+                    this.UpdateTitle(0);
+                }
+                else {
+                    await this.ParseAndCreateGame(sf);
+                }
+                await autoSf.DeleteAsync();
+            }
+            else {
+                await this.ParseAndCreateGame(sf);
+            }
+        }
+
+        //// UnnamedAutoSaveName and GetAutoSaveName determine how auto saving names the temporary file.
+        //// These are public for code in app.xaml.cs to call.
+        ////
+        public const string UnnamedAutoSaveName = "unnamed-new-game.sgf";
+        public string GetAutoSaveName (string file) {
+            if (file == null)
+                return MainWindow.UnnamedAutoSaveName;
+            else
+                return file.Substring(0, file.Length - 4) + "-autosave.sgf";
+        }
+
+        //// GetAutoSaveFile checks if the file exists, returning the StorageFile if it does.
+        ////
+        private async Task<StorageFile> GetAutoSaveFile (string autosaveName) {
+            var tempFolder = ApplicationData.Current.TemporaryFolder;
+            StorageFile autoSf = null;
+            try {
+                autoSf = await tempFolder.GetFileAsync(autosaveName);
+            }
+            catch (FileNotFoundException) { }
+            return autoSf;
+        }
+
 
         //// ParseAndCreateGame does just that.  DoOpenButton above and app.xaml.cs's OnFileActivated use this.
         ////
@@ -699,10 +802,7 @@ F1 produces this help.
             var pg = await ParserAux.ParseFile(sf);
             this.Game = await GameAux.CreateParsedGame(pg, this);
             //await Task.Delay(5000);  // Testing input blocker.
-            this.Game.Storage = sf;
-            var name = sf.Name;
-            this.Game.Filename = name;
-            this.Game.Filebase = name.Substring(name.LastIndexOf('\\') + 1);
+            this.Game.SaveGameFileInfo(sf);
             this.UpdateTitle(0);
         }
 
@@ -1124,48 +1224,52 @@ F1 produces this help.
         //// App Bar Input Handling
         ////
 
-        private void AppBarMoveButtonClick(object sender, RoutedEventArgs e) {
-            SetAppBarText("Moves");
-            this.appBarMoveButton.IsEnabled = false;
-            this.appBarTriangleButton.IsEnabled = true;
-            this.appBarLetterButton.IsEnabled = true;
-            this.appBarSquareButton.IsEnabled = true;
-            this.whatBoardClickCreates = AdornmentKind.CurrentMove;
-        }
+        //// All the handlers and helpers for the App Bar buttons that let you set what clicking
+        //// on the board does have been commented out in the xaml and here in lieu of the combo
+        //// box in the main UI (upper right command panel).
+        ////
+        //private void AppBarMoveButtonClick(object sender, RoutedEventArgs e) {
+        //    SetAppBarText("Moves");
+        //    this.appBarMoveButton.IsEnabled = false;
+        //    this.appBarTriangleButton.IsEnabled = true;
+        //    this.appBarLetterButton.IsEnabled = true;
+        //    this.appBarSquareButton.IsEnabled = true;
+        //    this.whatBoardClickCreates = AdornmentKind.CurrentMove;
+        //}
 
-        private void AppBarTriangleButtonClick(object sender, RoutedEventArgs e) {
-            SetAppBarText("Triangles");
-            this.appBarTriangleButton.IsEnabled = false;
-            this.appBarMoveButton.IsEnabled = true;
-            this.appBarLetterButton.IsEnabled = true;
-            this.appBarSquareButton.IsEnabled = true;
-            this.whatBoardClickCreates = AdornmentKind.Triangle;
-        }
+        //private void AppBarTriangleButtonClick(object sender, RoutedEventArgs e) {
+        //    SetAppBarText("Triangles");
+        //    this.appBarTriangleButton.IsEnabled = false;
+        //    this.appBarMoveButton.IsEnabled = true;
+        //    this.appBarLetterButton.IsEnabled = true;
+        //    this.appBarSquareButton.IsEnabled = true;
+        //    this.whatBoardClickCreates = AdornmentKind.Triangle;
+        //}
 
-        private void AppBarLetterButtonClick(object sender, RoutedEventArgs e) {
-            SetAppBarText("Letters");
-            this.appBarLetterButton.IsEnabled = false;
-            this.appBarTriangleButton.IsEnabled = true;
-            this.appBarMoveButton.IsEnabled = true;
-            this.appBarSquareButton.IsEnabled = true;
-            this.whatBoardClickCreates = AdornmentKind.Letter;
-        }
+        //private void AppBarLetterButtonClick(object sender, RoutedEventArgs e) {
+        //    SetAppBarText("Letters");
+        //    this.appBarLetterButton.IsEnabled = false;
+        //    this.appBarTriangleButton.IsEnabled = true;
+        //    this.appBarMoveButton.IsEnabled = true;
+        //    this.appBarSquareButton.IsEnabled = true;
+        //    this.whatBoardClickCreates = AdornmentKind.Letter;
+        //}
 
-        private void AppBarSquareButtonClick(object sender, RoutedEventArgs e) {
-            SetAppBarText("Squares");
-            this.appBarSquareButton.IsEnabled = false;
-            this.appBarLetterButton.IsEnabled = true;
-            this.appBarTriangleButton.IsEnabled = true;
-            this.appBarMoveButton.IsEnabled = true;
-            this.whatBoardClickCreates = AdornmentKind.Square;
-        }
+        //private void AppBarSquareButtonClick(object sender, RoutedEventArgs e) {
+        //    SetAppBarText("Squares");
+        //    this.appBarSquareButton.IsEnabled = false;
+        //    this.appBarLetterButton.IsEnabled = true;
+        //    this.appBarTriangleButton.IsEnabled = true;
+        //    this.appBarMoveButton.IsEnabled = true;
+        //    this.whatBoardClickCreates = AdornmentKind.Square;
+        //}
 
-        private void SetAppBarText(string kind) {
-            var txt = this.appBarClickText.Text;
-            var loc = txt.IndexOf(" ... ");
-            MyDbg.Assert(loc != -1);
-            this.appBarClickText.Text = txt.Substring(0, loc + 5) + kind;
-        }
+        //private void SetAppBarText(string kind) {
+        //    var txt = this.appBarClickText.Text;
+        //    var loc = txt.IndexOf(" ... ");
+        //    MyDbg.Assert(loc != -1);
+        //    this.appBarClickText.Text = txt.Substring(0, loc + 5) + kind;
+        //}
 
 
         private async void AppBarSaveAsClick(object sender, RoutedEventArgs e) {
