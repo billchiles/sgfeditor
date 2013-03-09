@@ -12,6 +12,11 @@ general todo:
  * maybe mark nodes with comments
  * 
 
+wpf divergence from win8
+ * did not port auto saving to wpf
+ * do not do file activation association on wpf
+ * do not have scrolling help dialog
+ 
 
 pycode todo (changeset refs are to mercurial sources I have, not git commits on codeplex, but the
              changes to the sgfed dir under git also have these diffs):

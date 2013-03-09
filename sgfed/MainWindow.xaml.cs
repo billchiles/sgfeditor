@@ -42,7 +42,9 @@ SGFEd can read and write .sgf files, edit game trees, etc.
 PLACING STONES AND ANNOTATIONS:
 Click on board location to place alternating colored stones.
 Shift click to place square annotations, ctrl click for triangles, and
-alt click to place letter annotations.
+alt click to place letter annotations.  If you click on an adornment location
+twice (for example shift-click twice in one spot), the second click removes
+the adornment.
 
 KEEPING FOCUS ON BOARD FOR KEY BINDINGS
 Escape will always return focus to the board so that the arrow keys work
@@ -54,7 +56,7 @@ NAVIGATING MOVES IN GAME TREE
 Right arrow moves to the next move, left moves to the previous, up arrow selects
 another branch or the main branch, down arrow selects another branch, home moves
 to the game start, and end moves to the end of the game following the currently
-selected branches.
+selected branches.  You can always click a node in the game tree graph.
 
 CREATING NEW FILES
 The new button (or ctrl-n) prompts for game info (player names, board size,
@@ -84,7 +86,8 @@ has a stone, you will not be able to advance past this position.
 MOVING BRANCHES
 You can move branches up and down in the order in which they show up in the branch
 combo, including changing what is the main line branch of the game.  To move a
-a branch up, use ctrl-uparrow, and to move a branch down, use ctrl-downarrow.
+a branch up, you must be on the first move of a branch, and then you can use
+ctrl-uparrow, and to move a branch down, use ctrl-downarrow.
 
 F1 produces this help.
 ";
@@ -374,20 +377,21 @@ F1 produces this help.
             var pass_str = is_pass ? " Pass" : "";
             if (filebase != null) {
                 filebase = this.Game.Dirty ? "[*] " + filebase : filebase;
-                this.Title = "SGF Editor -- " + filebase + ";  Move " + num.ToString() + pass_str;
-                this.MyTitle.Text = filebase + ";  Move " + num.ToString() + pass_str;
+                title = "SGF Editor -- " + filebase + ";  Move " + num.ToString() + pass_str;
             }
             else {
                 var tail = title.IndexOf("Move ") + 5;
                 Debug.Assert(tail != 4, "Title doesn't have move in it?!");
                 var filestart = title.IndexOf(" -- ") + 4;
-                this.Title = title.Substring(0, filestart) + 
-                             (this.Game.Dirty ? "[*] " : "") +
-                             title.Substring(filestart, tail - filestart) + 
-                             num.ToString() + pass_str;
-                // MyTitle doesn't have "SGF Editor -- " at the front.
-                this.MyTitle.Text = this.Title.Substring(14, this.Title.Length - 14);
+                title = title.Substring(0, filestart) +
+                              (this.Game.Dirty ? "[*] " : "") +
+                              title.Substring(filestart, tail - filestart) +
+                              num.ToString() + pass_str;
             }
+            title = title + "   B captures: " + this.Game.BlackPrisoners.ToString() +
+                    "   W captures: " + this.Game.WhitePrisoners.ToString();
+            this.Title = title;
+            this.MyTitle.Text = title;
         }
 
 
@@ -719,6 +723,7 @@ F1 produces this help.
             canvas.Children.RemoveRange(0, canvas.Children.Count);
             this.treeViewMoveMap.Clear();
             this.SetTreeViewSize();
+            this.UpdateTreeClearBranchHighlight();
         }
 
         private void SetTreeViewSize () {
@@ -769,7 +774,6 @@ F1 produces this help.
             this.treeViewMoveMap["start"] = treeModel[0, 0];
             MainWindowAux.DrawGameTreeLines(canvas, treeModel[0, 0]); 
             Grid cookie = (Grid)treeModel[0, 0].Cookie;
-            //cookie.Background = new SolidColorBrush(Colors.LightSkyBlue);
             // Set this to something so that UpdateTreeView doesn't deref null.
             this.treeViewSelectedItem = cookie;
             this.UpdateTreeView(this.Game.CurrentMove);
@@ -781,29 +785,38 @@ F1 produces this help.
         //// this will look at some indication to redraw whole tree (cut, paste, maybe add move).
         ////
         public void UpdateTreeView (Move move, bool wipeit = false) {
-            // TODO: remove this check when fully integrated and assume tree view is always there.
-            if ( ! this.TreeViewDisplayed())
-                return;
+            Debug.Assert(this.TreeViewDisplayed());
+            //if (! this.TreeViewDisplayed())
+            //    return;
             if (wipeit) {
                 this.InitializeTreeView();
                 this.DrawGameTree();
             }
             else {
-                TreeViewNode item = this.TreeViewNodeForMove(move);
-                if (item == null) {
-                    this.InitializeTreeView();
-                    this.DrawGameTree();
-                }
-                else {
-                    Grid itemCookie = ((Grid)item.Cookie);
-                    // Update current move shading and bring into view.
-                    var sitem = this.treeViewSelectedItem;
-                    this.treeViewSelectedItem = itemCookie;
-                    sitem.Background = new SolidColorBrush(Colors.Transparent);
-                    itemCookie.Background = new SolidColorBrush(Colors.LightSkyBlue);
-                    itemCookie.BringIntoView(new Rect((new Size(MainWindowAux.treeViewGridCellSize * 2,
-                                                                MainWindowAux.treeViewGridCellSize * 2))));
-                }
+                this.UpdateTreeHighlightMove(move);
+            }
+            this.UpdateTreeViewBranch(move);
+
+        }
+
+        //// UpdateTreeHighlightMove handles the primary case of UpdateTreeView, moving the blue
+        //// highlight from the last current move the new current move.
+        ////
+        private void UpdateTreeHighlightMove (Move move) {
+            TreeViewNode item = this.TreeViewNodeForMove(move);
+            if (item == null) {
+                this.InitializeTreeView();
+                this.DrawGameTree();
+            }
+            else {
+                Grid itemCookie = ((Grid)item.Cookie);
+                // Update current move shading and bring into view.
+                var sitem = this.treeViewSelectedItem;
+                this.treeViewSelectedItem = itemCookie;
+                sitem.Background = new SolidColorBrush(Colors.Transparent);
+                itemCookie.Background = new SolidColorBrush(Colors.LightSkyBlue);
+                itemCookie.BringIntoView(new Rect((new Size(MainWindowAux.treeViewGridCellSize * 2,
+                                                            MainWindowAux.treeViewGridCellSize * 2))));
             }
         }
 
@@ -813,6 +826,52 @@ F1 produces this help.
         ////
         private bool TreeViewDisplayed () {
             return this.treeViewMoveMap.ContainsKey("start");
+        }
+
+        //// UpdateTreeViewBranch clears the current branch move highlight if any, then
+        //// checks to see if it needs to add branching highlighting to a move.  This is
+        //// public so that Game.SetCurrentBranch can call it.
+        ////
+        public void UpdateTreeViewBranch (Move move) {
+            // Highlight branch if there are any.
+            UpdateTreeClearBranchHighlight();
+            if (move == null) {
+                if (this.Game.Branches != null) {
+                    this.UpdateTreeHighlightBranch(this.Game.FirstMove);
+                }
+            }
+            else {
+                if (move.Branches != null) {
+                    UpdateTreeHighlightBranch(move.Next);
+                }
+            }
+        }
+
+        //// UpdateTreeHighlightBranch takes a move that is the next move after a move with
+        //// branches.  This highlights that move with a rectangle.
+        ////
+        private Grid nextBranchGrid = null;
+        private Rectangle nextBranchRect = null;
+        private void UpdateTreeHighlightBranch (Move move) {
+            TreeViewNode item = this.TreeViewNodeForMove(move);
+            // Should always be item here since not wiping tree, and if node were new, then no branches.
+            Debug.Assert(item != null);
+            Grid itemCookie = ((Grid)item.Cookie);
+            this.nextBranchGrid = itemCookie;
+            if (this.nextBranchRect == null) {
+                this.nextBranchRect = new Rectangle();
+                this.nextBranchRect.Stroke = new SolidColorBrush(Colors.Gray);
+                this.nextBranchRect.StrokeThickness = 0.7;
+            }
+            itemCookie.Children.Add(this.nextBranchRect);
+        }
+
+        private void UpdateTreeClearBranchHighlight () {
+            // Clear current branch highlight if there is one.
+            if (this.nextBranchGrid != null) {
+                this.nextBranchGrid.Children.Remove(this.nextBranchRect);
+                this.nextBranchGrid = null;
+            }
         }
 
         //// TreeViewNodeForMove returns the TreeViewNode representing the view model for move.

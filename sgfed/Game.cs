@@ -65,6 +65,8 @@ namespace SgfEd {
         // player members hold strings if there are player names in record.
         public string PlayerBlack { get; set; }
         public string PlayerWhite { get; set; }
+        public int BlackPrisoners { get; set; }
+        public int WhitePrisoners { get; set; }
         // _cut_move holds the head of a sub tree that was last cut.
         // Note, the public cut_move is a method.
         private Move cutMove;
@@ -93,6 +95,8 @@ namespace SgfEd {
             this.Dirty = false;
             this.PlayerBlack = null;
             this.PlayerWhite = null;
+            this.BlackPrisoners = 0;
+            this.WhitePrisoners = 0;
             this.cutMove = null;
             main_win.SetupBoardDisplay(this);
         } // Game Constructor
@@ -227,8 +231,10 @@ namespace SgfEd {
                 // and it has a next move.
                 this.mainWin.EnableForwardButtons();
             }
-            if (move.DeadStones.Any())
+            if (move.DeadStones.Any()) {
                 this.RemoveStones(move.DeadStones);
+                this.UpdatePrisoners(move.Color, move.DeadStones.Count());
+            }
             return move;
         }
 
@@ -436,6 +442,7 @@ namespace SgfEd {
             if (! current.IsPass)
                 this.Board.RemoveStone(current);
             this.AddStones(current.DeadStones);
+            this.UpdatePrisoners(current.Color, -current.DeadStones.Count());
             this.nextColor = current.Color;
             this.MoveCount -= 1;
             var previous = current.Previous;
@@ -452,6 +459,16 @@ namespace SgfEd {
             return current;
         }
     
+        //// UpdatePrisoners takes a positive (just captured) or negative (unwinding)
+        //// count of prisoners and updates the appropriate counter for the color.
+        ////
+        private void UpdatePrisoners (Color color, int count) {
+            if (color == Colors.Black)
+                this.BlackPrisoners += count;
+            else
+                this.WhitePrisoners += count;
+        }
+
         public bool CanUnwindMove () {
             return (this.State != GameState.NotStarted) && this.CurrentMove != null;
         }
@@ -480,6 +497,8 @@ namespace SgfEd {
             this.nextColor = this.HandicapMoves == null ? Colors.Black : Colors.White;
             this.CurrentMove = null;
             this.MoveCount = 0;
+            this.BlackPrisoners = 0;
+            this.WhitePrisoners = 0;
             this.mainWin.UpdateBranchCombo(this.Branches, this.FirstMove);
             this.mainWin.DisableBackwardButtons();
             this.mainWin.EnableForwardButtons();
@@ -613,6 +632,7 @@ namespace SgfEd {
             }
             this.MoveCount += 1;
             this.RemoveStones(move.DeadStones);
+            this.UpdatePrisoners(move.Color, move.DeadStones.Count());
             return move;
         }
 
@@ -1011,6 +1031,7 @@ namespace SgfEd {
                 var move = this.CurrentMove.Branches[cur];
                 this.CurrentMove.Next = move;
             }
+            this.mainWin.UpdateTreeViewBranch(this.CurrentMove);
         }
 
         //// move_branch_up and move_branch_down move the current move (if it
