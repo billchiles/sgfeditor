@@ -82,6 +82,11 @@
             <TextBox Name="gameInfoRU" Grid.Column="1" Grid.Row="4" BorderThickness="1" BorderBrush="Black">
             </TextBox>
 
+            <!-- Size -->
+            <TextBlock FontSize="14" FontWeight="Bold" Grid.Column="2" Grid.Row="4" Margin="10">Size:</TextBlock>
+            <TextBox Name="gameInfoSZ" Grid.Column="3" Grid.Row="4" BorderThickness="1" BorderBrush="Black">
+            </TextBox>
+
             <!-- Date -->
             <TextBlock FontSize="14" FontWeight="Bold" Grid.Column="0" Grid.Row="5"
                        >Date (yyyy-mm-dd):</TextBlock>
@@ -139,10 +144,11 @@
             </TextBox>
 
             <!-- Game comment -->
-            <TextBlock FontSize="14" FontWeight="Bold" Grid.Column="0" Grid.Row="10">Game name:</TextBlock>
+            <TextBlock FontSize="14" FontWeight="Bold" Grid.Column="0" Grid.Row="10">Game comment:</TextBlock>
+            <!-- bogus text blocks to get textbox to span rows 
             <TextBlock FontSize="14" FontWeight="Bold" Grid.Column="0" Grid.Row="11"></TextBlock>
             <TextBlock FontSize="14" FontWeight="Bold" Grid.Column="0" Grid.Row="12"></TextBlock>
-            <TextBlock FontSize="14" FontWeight="Bold" Grid.Column="0" Grid.Row="13"></TextBlock>
+            <TextBlock FontSize="14" FontWeight="Bold" Grid.Column="0" Grid.Row="13"></TextBlock>-->
             <TextBox Name="gameInfoGC" Grid.Column="1" Grid.Row="10" BorderThickness="1" BorderBrush="Black" 
                      Grid.RowSpan="4" HorizontalAlignment="Stretch" 
                      TextWrapping="Wrap" AcceptsReturn="True" Height="100"

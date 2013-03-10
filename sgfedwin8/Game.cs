@@ -62,6 +62,10 @@ namespace SgfEdwin8 {
         public int MoveCount { get; set; }
         // parsed_game is not None when we opened a file to edit.
         public ParsedGame ParsedGame { get; set; }
+        // MiscGameInfo is like ParsedGame.Nodes.Properties, but this is null unless the user edits these.
+        // If there is no user edit, then the ParsedGames holds the misc properties, and we pass them through
+        // when we save the file.
+        public Dictionary<string, List<string>> MiscGameInfo { get; set; }
         // filename holds the full pathname if we read from a file or ever
         // saved this game.  Filebase is just <name>.<ext>.
         public string Filename { get; set; }
@@ -97,12 +101,13 @@ namespace SgfEdwin8 {
             this.Comments = "";
             this.MoveCount = 0;
             this.ParsedGame = null;
+            this.MiscGameInfo = null;
             this.Filename = null;
             this.Filebase = null;
             this.Storage = null;
             this.Dirty = false;
-            this.PlayerBlack = null;
-            this.PlayerWhite = null;
+            this.PlayerBlack = "";
+            this.PlayerWhite = "";
             this.BlackPrisoners = 0;
             this.WhitePrisoners = 0;
             this.cutMove = null;
@@ -1255,20 +1260,26 @@ namespace SgfEdwin8 {
         ////
         private ParsedNode GenParsedGameRoot(bool flipped) {
             var n = new ParsedNode();
-            if (this.ParsedGame != null)
-                n.Properties = GameAux.CopyProperties(this.ParsedGame.Nodes.Properties);
+            if (this.ParsedGame != null) {
+                if (this.MiscGameInfo != null)
+                    // If this is not null, then user edited properties in GameInfo dialog.
+                    n.Properties = GameAux.CopyProperties(this.MiscGameInfo);
+                else
+                    // Misc properties still in parsed structure, so pass them through for saving.
+                    n.Properties = GameAux.CopyProperties(this.ParsedGame.Nodes.Properties);
+            }
             var version = Windows.ApplicationModel.Package.Current.Id.Version;
             n.Properties["AP"] = new List<string>() {"SGFEditor:" + version.Major.ToString() + "." + 
                                                      version.Minor.ToString() + "." + version.Build.ToString()};
             n.Properties["SZ"] = new List<string>() { this.Board.Size.ToString() };
             // Comments
-            if (n.Properties.ContainsKey("GC"))
+            if (n.Properties.ContainsKey("C"))
                 // game.comments has merged GC and C comments.
-                n.Properties.Remove("GC");
-            if (this.Comments != "")
-                n.Properties["C"] = new List<string>() { this.Comments };
-            else if (n.Properties.ContainsKey("C"))
                 n.Properties.Remove("C");
+            if (this.Comments != "")
+                n.Properties["GC"] = new List<string>() { this.Comments };
+            else if (n.Properties.ContainsKey("GC"))
+                n.Properties.Remove("GC");
             // Handicap/Komi
             if (this.Handicap != 0) //&& game.handicap != "0":
                 n.Properties["HA"] = new List<string>() { this.Handicap.ToString() };
@@ -1288,8 +1299,8 @@ namespace SgfEdwin8 {
             //[goboard.get_parsed_coordinates(m, flipped) for
             //  m in game.handicap_moves]
             // Player names
-            n.Properties["PB"] = new List<string>() { this.PlayerBlack != null ? this.PlayerBlack : "Black" };
-            n.Properties["PW"] = new List<string>() { this.PlayerWhite != null ? this.PlayerWhite : "White" };
+            n.Properties["PB"] = new List<string>() { this.PlayerBlack != "" ? this.PlayerBlack : "Black" };
+            n.Properties["PW"] = new List<string>() { this.PlayerWhite != "" ? this.PlayerWhite : "White" };
             return n;
         }
 

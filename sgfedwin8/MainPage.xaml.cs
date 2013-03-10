@@ -925,10 +925,8 @@ F1 produces this help.
                     return;
                 }
                 var g = new Game(this, sizeInt, handicapInt, komi);
-                if (black != "")
-                    g.PlayerBlack = black;
-                if (white != "")
-                    g.PlayerWhite = white;
+                g.PlayerBlack = black;
+                g.PlayerWhite = white;
                 this.Game = g;
                 this.UpdateTitle(0);
                 this.DrawGameTree();
@@ -1281,8 +1279,22 @@ F1 produces this help.
         //    this.appBarClickText.Text = txt.Substring(0, loc + 5) + kind;
         //}
 
+        //// AppBarGameInfoClick sets up the misc game info users mostly never edit, displays
+        //// a big dialog to edit that stuff, and sets up event handler for when dialog is done.
+        ////
         private void AppBarGameInfoClick (object sender, RoutedEventArgs e) {
-            var newDialog = new GameInfo();
+            if (this.Game.ParsedGame != null) {
+                if (this.Game.MiscGameInfo == null) {
+                    // If misc properties still in parsed structure, capture them all to pass them through
+                    // if user saves file.  After editing them, MiscGameInfo supercedes parsed structure.
+                    this.Game.MiscGameInfo = GameAux.CopyProperties(this.Game.ParsedGame.Nodes.Properties);
+                }
+            }
+            else if (this.Game.MiscGameInfo == null)
+                this.Game.MiscGameInfo = new Dictionary<string, List<string>>();
+            // Just in case we're on the empty board state and comment is modified.
+            this.Game.SaveCurrentComment();
+            var newDialog = new GameInfo(this.Game);
             var popup = new Popup();
             newDialog.GameInfoDialogClose += (s, args) => {
                 popup.IsOpen = false;
@@ -1297,24 +1309,12 @@ F1 produces this help.
         //// It checks whether the dialog was confirmed or cancelled, and takes
         //// appropriate action.
         ////
-        private async void GameInfoDialogDone (GameInfo dlg) {
+        private void GameInfoDialogDone (GameInfo dlg) {
             if (dlg.GameInfoConfirmed) {
-                var white = dlg.WhiteText;
-                var black = dlg.BlackText;
-                var handicap = dlg.HandicapText;
-                var komi = dlg.KomiText;
-                var handicapInt = int.Parse(handicap);
-                if (handicapInt < 0 || handicapInt > 9) {
-                    await GameAux.Message("Handicap must be 0 to 9.");
-                    return;
-                }
-                var g = this.Game;
-                if (black != "")
-                    g.PlayerBlack = black;
-                if (white != "")
-                    g.PlayerWhite = white;
-                //this.UpdateTitle(0);
-                //this.DrawGameTree();
+                if (this.Game.CurrentMove == null && dlg.CommentChanged)
+                    this.commentBox.Text = this.Game.Comments;
+                // Update title in case dirty flag changed.
+                this.UpdateTitle(this.Game.CurrentMove == null ? 0 : this.Game.CurrentMove.Number);
             }
             this.theAppBar.IsOpen = false;
         }
