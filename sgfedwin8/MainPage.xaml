@@ -184,7 +184,7 @@
 
     <!-- This is just here now as example that someone added ... should move file, pass, help buttons here -->
     <Page.BottomAppBar>
-        <AppBar>
+        <AppBar x:Name="theAppBar">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition/>
@@ -212,6 +212,8 @@
                             x:Name="appBarSquareButton">Square</Button>
                 </StackPanel>
                 -->
+                <Button Grid.Row="0" Grid.Column="0" IsEnabled="True" BorderThickness="1" Click="AppBarGameInfoClick"
+                            >Game Info ...</Button>
                 <!-- Save As and Save Flipped ... -->
                 <TextBlock Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2" FontSize="18"
                            Margin="20,20">Saving files:</TextBlock>

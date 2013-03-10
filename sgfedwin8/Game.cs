@@ -1257,7 +1257,9 @@ namespace SgfEdwin8 {
             var n = new ParsedNode();
             if (this.ParsedGame != null)
                 n.Properties = GameAux.CopyProperties(this.ParsedGame.Nodes.Properties);
-            n.Properties["AP"] = new List<string>() { "SGFPy" };
+            var version = Windows.ApplicationModel.Package.Current.Id.Version;
+            n.Properties["AP"] = new List<string>() {"SGFEditor:" + version.Major.ToString() + "." + 
+                                                     version.Minor.ToString() + "." + version.Build.ToString()};
             n.Properties["SZ"] = new List<string>() { this.Board.Size.ToString() };
             // Comments
             if (n.Properties.ContainsKey("GC"))

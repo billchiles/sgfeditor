@@ -1281,6 +1281,44 @@ F1 produces this help.
         //    this.appBarClickText.Text = txt.Substring(0, loc + 5) + kind;
         //}
 
+        private void AppBarGameInfoClick (object sender, RoutedEventArgs e) {
+            var newDialog = new GameInfo();
+            var popup = new Popup();
+            newDialog.GameInfoDialogClose += (s, args) => {
+                popup.IsOpen = false;
+                this.GameInfoDialogDone(newDialog);
+            };
+            popup.Child = newDialog;
+            popup.IsOpen = true;
+
+        }
+
+        //// GameInfoDialogDone handles when the game info dialog popup is done.
+        //// It checks whether the dialog was confirmed or cancelled, and takes
+        //// appropriate action.
+        ////
+        private async void GameInfoDialogDone (GameInfo dlg) {
+            if (dlg.GameInfoConfirmed) {
+                var white = dlg.WhiteText;
+                var black = dlg.BlackText;
+                var handicap = dlg.HandicapText;
+                var komi = dlg.KomiText;
+                var handicapInt = int.Parse(handicap);
+                if (handicapInt < 0 || handicapInt > 9) {
+                    await GameAux.Message("Handicap must be 0 to 9.");
+                    return;
+                }
+                var g = this.Game;
+                if (black != "")
+                    g.PlayerBlack = black;
+                if (white != "")
+                    g.PlayerWhite = white;
+                //this.UpdateTitle(0);
+                //this.DrawGameTree();
+            }
+            this.theAppBar.IsOpen = false;
+        }
+
 
         private async void AppBarSaveAsClick(object sender, RoutedEventArgs e) {
             await this.SaveAs();
