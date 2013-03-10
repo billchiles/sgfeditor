@@ -1350,53 +1350,56 @@ F1 produces this help.
         }
 
 
-        public void CheckTreeParsedNodes () {
-            foreach (var kv in this.treeViewMoveMap) {
-                var n = kv.Value;
-                if (kv.Key != n.Node) {
-                    if (n.Kind == TreeViewNodeKind.StartBoard) {
-                        continue;
-                    }
-                    else {
-                        Debugger.Break();
-                    }
-                }
-                var pn = n.Node as ParsedNode;
-                if (! ((pn != null) ? NodeInModel(pn) : NodeInModel((Move)n.Node)))
-                    Debugger.Break();
-            }
-        }
-        private bool NodeInModel (ParsedNode n) {
-            var pg = this.Game.ParsedGame;
-            if (pg.Nodes == n) return true;
-            var cur = n;
-            var parent = cur.Previous;
-            while (parent != pg.Nodes) {
-                if (parent == null)
-                    return false;
-                cur = parent;
-                parent = parent.Previous;
-            }
-            return true;
-        }
+        //// CheckTreeParsedNodes is some integrity checking code that found some violations in the
+        //// parsednodes and tree drawing maps.  The calls to this are commented out as well as the defs.
+        ////
+        //public void CheckTreeParsedNodes () {
+        //    foreach (var kv in this.treeViewMoveMap) {
+        //        var n = kv.Value;
+        //        if (kv.Key != n.Node) {
+        //            if (n.Kind == TreeViewNodeKind.StartBoard) {
+        //                continue;
+        //            }
+        //            else {
+        //                Debugger.Break();
+        //            }
+        //        }
+        //        var pn = n.Node as ParsedNode;
+        //        if (! ((pn != null) ? NodeInModel(pn) : NodeInModel((Move)n.Node)))
+        //            Debugger.Break();
+        //    }
+        //}
+        //private bool NodeInModel (ParsedNode n) {
+        //    var pg = this.Game.ParsedGame;
+        //    if (pg.Nodes == n) return true;
+        //    var cur = n;
+        //    var parent = cur.Previous;
+        //    while (parent != pg.Nodes) {
+        //        if (parent == null)
+        //            return false;
+        //        cur = parent;
+        //        parent = parent.Previous;
+        //    }
+        //    return true;
+        //}
 
-        private bool NodeInModel (Move n) {
-            var first = this.Game.FirstMove;
-            if (n == first) return true;
-            var cur = n;
-            var parent = cur.Previous;
-            while (parent != first) {
-                if (parent == null) {
-                    if (this.Game.Branches != null && this.Game.Branches.Contains(cur))
-                        return true;
-                    else
-                        return false;
-                }
-                cur = parent;
-                parent = parent.Previous;
-            }
-            return true;
-        }
+        //private bool NodeInModel (Move n) {
+        //    var first = this.Game.FirstMove;
+        //    if (n == first) return true;
+        //    var cur = n;
+        //    var parent = cur.Previous;
+        //    while (parent != first) {
+        //        if (parent == null) {
+        //            if (this.Game.Branches != null && this.Game.Branches.Contains(cur))
+        //                return true;
+        //            else
+        //                return false;
+        //        }
+        //        cur = parent;
+        //        parent = parent.Previous;
+        //    }
+        //    return true;
+        //}
 
         //// DrawGameTree gets a view model of the game tree, creates objects to put on the canvas,
         //// and sets up the mappings for updating the view as we move around the game tree.  This
