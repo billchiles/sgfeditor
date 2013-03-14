@@ -135,12 +135,53 @@ F1 produces this help.
         //// unnamed auto saved file, and if it exists and was written less than 12 hours earlier, this
         //// asks the user whether to open the auto saved file or to create a new blank board.
         //// 
-        protected override async void OnNavigatedTo (NavigationEventArgs e) {
+        protected override void OnNavigatedTo (NavigationEventArgs e) {
             // Can't use e.Parameter here as in examples because it is appears to have type CSharp.Runtime.Binder?
             //MainWindow mainWin = e.Parameter as MainWindow;
             Window.Current.SizeChanged += this.MainView_SizeChanged;
             base.OnNavigatedTo(e);
-            // Check for auto saved file for unnamed game.
+            // Set up autosave timer.
+            var timer = new DispatcherTimer();
+            timer.Interval = TimeSpan.FromSeconds(30);
+            timer.Tick += new EventHandler<object>(async (sender, args) => { await this.MaybeAutoSave(); });
+            timer.Start();
+            // Set up one time timer to check for autosaved unnamed file, which is on timer so that
+            // it does not sometimes cause app to fail store WACK for launch time.
+            var timer2 = new DispatcherTimer();
+            timer2.Interval = TimeSpan.FromSeconds(2);
+            timer2.Tick += new EventHandler<object>(async (sender, args) => { 
+                timer2.Stop();
+                await CheckUnnamedAutoSave(); });
+            timer2.Start();
+        }
+
+        //// OnNavigatedFrom removes the resize handler, which was recommended in the sample I used
+        //// to figure out how to create a snapped view.
+        //// 
+        protected override void OnNavigatedFrom (NavigationEventArgs e) {
+            Window.Current.SizeChanged -= this.MainView_SizeChanged;
+            base.OnNavigatedFrom(e);
+        }
+
+
+        //// MaybeAutoSave saves a temp file if the game state is dirty, but this leaves the dirty flag true.
+        //// This is public since OnSuspended in app.xaml.cs calls it too.  OnNavigatedTo above creates a
+        //// DispatchTimer to invoke this every 30s.
+        ////
+        public async Task MaybeAutoSave () {
+            if (this.Game.Dirty) {
+                var file = this.GetAutoSaveName(this.Game.Filebase);
+                var tempFolder = ApplicationData.Current.TemporaryFolder;
+                var storage = await tempFolder.CreateFileAsync(file, CreationCollisionOption.ReplaceExisting);
+                await this.Game.WriteGame(storage, true);
+            }
+        }
+
+        //// CheckUnnamedAutoSave looks for an auto save of a game the user never saved to disk.
+        //// OnNavigatedTo above sets a 2s timer to invoke this so that the file probes and parsing do
+        //// no affect launch time, as measured by the WACK.
+        ////
+        private async Task CheckUnnamedAutoSave () {
             var autoSf = await this.GetAutoSaveFile(MainWindow.UnnamedAutoSaveName);
             if (autoSf != null) {
                 if ((DateTimeOffset.Now - autoSf.DateCreated).Hours < 12 &&
@@ -160,14 +201,6 @@ F1 produces this help.
                 }
                 await autoSf.DeleteAsync();
             }
-        }
-
-        //// OnNavigatedFrom removes the resize handler, which was recommended in the sample I used
-        //// to figure out how to create a snapped view.
-        //// 
-        protected override void OnNavigatedFrom (NavigationEventArgs e) {
-            Window.Current.SizeChanged -= this.MainView_SizeChanged;
-            base.OnNavigatedFrom(e);
         }
 
 

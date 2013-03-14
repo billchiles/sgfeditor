@@ -16,7 +16,7 @@ Since 23 FEB Alpha 2 release:
  * added combo in command panel to select what click means on the board (more touch enabled)
  * commented out app bar buttons for setting what clicking on the board does.
  * auto save, no timer, just on suspend
- *
+ * game info dialog for editing game metadata
 
 Since the last release, 26 JAN, I've:
  * cleaned up several little things in the code/comments

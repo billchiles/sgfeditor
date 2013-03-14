@@ -38,12 +38,6 @@ namespace SgfEdwin8
             this.Suspending += OnSuspending;
         }
 
-        /// <summary>
-        /// Invoked when the application is launched normally by the end user.  Other entry points
-        /// will be used when the application is launched to open a specific file, to display
-        /// search results, and so forth.
-        /// </summary>
-        /// <param name="args">Details about the launch request and process.</param>
         protected override void OnLaunched (LaunchActivatedEventArgs args) {
             Frame rootFrame = Window.Current.Content as Frame;
             // Do not repeat app initialization when the Window already has content,
@@ -96,27 +90,15 @@ namespace SgfEdwin8
         }
 
 
-
-        /// <summary>
-        /// Invoked when application execution is being suspended.  Application state is saved
-        /// without knowing whether the application will be terminated or resumed with the contents
-        /// of memory still intact.
-        /// </summary>
-        /// <param name="sender">The source of the suspend request.</param>
-        /// <param name="e">Details about the suspend request.</param>
         private async void OnSuspending(object sender, SuspendingEventArgs e)
         {
             var deferral = e.SuspendingOperation.GetDeferral();
             // Save application state and stop any background activity
             var mainwin = ((Frame)Window.Current.Content).Content as MainWindow;
-            if (mainwin.Game.Dirty) {
-                var file = mainwin.GetAutoSaveName(mainwin.Game.Filebase);
-                var tempFolder = ApplicationData.Current.TemporaryFolder;
-                var storage = await tempFolder.CreateFileAsync(file, CreationCollisionOption.ReplaceExisting);
-                await mainwin.Game.WriteGame(storage, true);
-            }
+            await mainwin.MaybeAutoSave();
             // Signal done.
             deferral.Complete();
         }
+
     }
 }

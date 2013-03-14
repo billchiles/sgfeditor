@@ -2,10 +2,8 @@
 general todo:
  * handle pass move
  * pattern match ko and forbid ko take back
- * need game info dialog for displaying and editing
  * formalize exceptions, handle them up in the UI layer, keep program running
  * handle MA property for X marks
- * provide command to see game info from root node, and allow editing.
  * handle setup moves AW/AB and change color props ... others?
  * add numeric labeling annotations
  * auto number moves on board from their move number (less useful until add printing, but could screenshot)
