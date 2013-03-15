@@ -1749,19 +1749,22 @@ namespace SgfEdwin8 {
             if (props.ContainsKey("HA")) {
                 // KGS saves HA[6] and then AB[]...
                 handicap = int.Parse(props["HA"][0]);
-                if (! props.ContainsKey("AB"))
+                if (handicap == 0)
+                    all_black = null;
+                else if (! props.ContainsKey("AB"))
                     throw new Exception("If parsed game has handicap, then need handicap stones.");
-                if (props["AB"].Count != handicap)
+                else if (props["AB"].Count != handicap)
                     throw new Exception("Parsed game's handicap count (HA) does not match stones (AB).");
-                all_black = props["AB"].Select((coords) => {
-                    var tmp = GoBoardAux.ParsedToModelCoordinates(coords);
-                    var row = tmp.Item1;
-                    var col = tmp.Item2;
-                    var m = new Move(row, col, Colors.Black);
-                    m.ParsedNode = pgame.Nodes;
-                    m.Rendered = false;
-                    return m;
-                }).ToList();
+                else
+                    all_black = props["AB"].Select((coords) => {
+                        var tmp = GoBoardAux.ParsedToModelCoordinates(coords);
+                        var row = tmp.Item1;
+                        var col = tmp.Item2;
+                        var m = new Move(row, col, Colors.Black);
+                        m.ParsedNode = pgame.Nodes;
+                        m.Rendered = false;
+                        return m;
+                    }).ToList();
             }
             else {
                 handicap = 0;
