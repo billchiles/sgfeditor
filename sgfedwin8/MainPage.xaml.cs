@@ -684,25 +684,40 @@ F1 produces this help.
         //// file and current move number.  "Move " is always in the title, set
         //// there by default originally.  Game also uses this.
         ////
+        private const int maxTitleLength = 75; // Tuned with file name of M's and 10.6" screen (19x10).
         public void UpdateTitle (int num, bool is_pass = false) {
             var filebase = this.Game.Filebase;
             var title = this.Title.Text.Replace("[*] ", "");
             var pass_str = is_pass ? " Pass" : "";
             if (filebase != null) {
+                // Generate title with filename.
                 filebase = this.Game.Dirty ? "[*] " + filebase : filebase;
                 title = "SGF Editor -- " + filebase + ";  Move " + num.ToString() + pass_str;
             }
             else {
-                var tail = title.IndexOf("Move ") + 5;
-                MyDbg.Assert(tail != 4, "Title doesn't have move in it?!");
-                var filestart = title.IndexOf(" -- ") + 4;
-                title = title.Substring(0, filestart) + 
-                              (this.Game.Dirty ? "[*] " : "") +
-                              title.Substring(filestart, tail - filestart) + 
-                              num.ToString() + pass_str;
+                title = "SGF Editor -- " + (this.Game.Dirty ? "[*] " : "") + "Move " +
+                        num.ToString() + pass_str;
+                //// Generate title from what's there now, doping in dirty flag, etc.
+                //var tail = title.IndexOf("Move ") + 5;
+                //MyDbg.Assert(tail != 4, "Title doesn't have move in it?!");
+                //var filestart = title.IndexOf(" -- ") + 4;
+                //title = title.Substring(0, filestart) + 
+                //              (this.Game.Dirty ? "[*] " : "") +
+                //              title.Substring(filestart, tail - filestart) + 
+                //              num.ToString() + pass_str;
             }
+            // Add prisoner info.
             title = title + "   B captures: " + this.Game.BlackPrisoners.ToString() +
                     "   W captures: " + this.Game.WhitePrisoners.ToString();
+            // Truncate filename if "too wide" to prevent prisoner info from falling off.
+            // Kind of lame, should figure out text extents and Title textbox size of bits.
+            //if (title.Length > MainWindow.maxTitleLength) {
+            //    var sgf = title.IndexOf(".sgf");
+            //    MyDbg.Assert(sgf > 0, "Title is > 75 but no file name?!");
+            //    var delta = (title.Length - MainWindow.maxTitleLength) + 3;
+            //    MyDbg.Assert(sgf - delta > 0); // That is, delta is always less than filename length.
+            //    title = title.Substring(0, sgf - delta) + "..." + title.Substring(sgf);
+            //}
             this.Title.Text = title;
         }
 
@@ -817,8 +832,9 @@ F1 produces this help.
         }
 
         //// GetAutoSaveFile checks if the file exists, returning the StorageFile if it does.
+        //// This is public so that game.writegame can use it to clean up autosave file.
         ////
-        private async Task<StorageFile> GetAutoSaveFile (string autosaveName) {
+        public async Task<StorageFile> GetAutoSaveFile (string autosaveName) {
             var tempFolder = ApplicationData.Current.TemporaryFolder;
             StorageFile autoSf = null;
             try {
@@ -1061,6 +1077,7 @@ F1 produces this help.
                 win = this;
             //var win = (MainWindow)sender;
             if (e.Key == VirtualKey.Escape) {
+                this.Game.SaveCurrentComment();
                 win.FocusOnStones();
                 e.Handled = true;
                 return;

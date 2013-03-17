@@ -1176,6 +1176,12 @@ namespace SgfEdwin8 {
                 this.Dirty = false;
                 SaveGameFileInfo(sf);
             }
+            // Clean up auto save file
+            StorageFile autoSf = await this.mainWin.GetAutoSaveFile(this.mainWin.GetAutoSaveName(sf.Name));
+            if (autoSf != null) {
+                await autoSf.DeleteAsync();
+            }
+            // Get number and is_pass, then set title
             int number;
             bool is_pass;
             if (this.CurrentMove == null) {
