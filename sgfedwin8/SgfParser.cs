@@ -365,9 +365,15 @@ namespace SgfEdwin8 {
                     if (newline)
                         // Only map newline sequences according to keep_newlines.
                         if (keep_newlines) {
-                            res.Append(c);
-                            if (c2 != ((char)0))
-                                res.Append(c2);
+                            //res.Append(c);
+                            //if (c2 != ((char)0))
+                            //    res.Append(c2);
+                            //
+                            // Canonicalize newlines because 1) would write mixed newline sequences in different places
+                            // in .sgf depending on comments vs. other syntax, and 2) winRT textbox converts all line
+                            // endings with no option to preserve them.
+                            res.Append('\r');
+                            res.Append('\n');
                         }
                         else
                             res.Append(" "); //convert newline to space to separate words

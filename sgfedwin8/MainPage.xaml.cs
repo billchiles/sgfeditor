@@ -1072,6 +1072,7 @@ F1 produces this help.
             //var win = (MainWindow)sender;
             if (e.Key == VirtualKey.Escape) {
                 this.Game.SaveCurrentComment();
+                this.UpdateTitle(this.Game.CurrentMove == null ? 0 : this.Game.CurrentMove.Number);
                 win.FocusOnStones();
                 e.Handled = true;
                 return;
@@ -1582,9 +1583,11 @@ F1 produces this help.
                 if (sv != null) {
                     var transform = g.TransformToVisual(sv);
                     var pos = transform.TransformPoint(new Point(0, 0));
-                    if (pos.Y < 0 || pos.Y > sv.ViewportHeight)
+                    var gheight = g.ActualHeight;
+                    if (pos.Y < 0 || (pos.Y + gheight) > sv.ViewportHeight)
                         sv.ScrollToVerticalOffset(sv.VerticalOffset + pos.Y - MainWindow.BringIntoViewPadding);
-                    if (pos.X < 0 || pos.X > sv.ViewportWidth)
+                    var gwidth = g.ActualWidth;
+                    if (pos.X < 0 || (pos.X + gwidth) > sv.ViewportWidth)
                         sv.ScrollToHorizontalOffset(sv.HorizontalOffset + pos.X - MainWindow.BringIntoViewPadding);
                     break;
                 }
