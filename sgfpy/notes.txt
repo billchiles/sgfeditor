@@ -14,6 +14,13 @@ wpf divergence from win8
  * did not port auto saving to wpf
  * do not do file activation association on wpf
  * do not have scrolling help dialog
+ * do not have game metadata editing dialog
+ * do not have canonicalized newline sequences in comments or tolerating HA[0]
+ * do not have esc saving comment and updating title if dirty
+ * do not have tree drawing tweaks for bigger nodes or bringing nodes into view better
+ * do not have handicap stone placement tweak (broke when added code review updates)
+ * do not have simplified UpdateTitle code
+ *
  
 
 pycode todo (changeset refs are to mercurial sources I have, not git commits on codeplex, but the
@@ -35,8 +42,18 @@ pycode todo (changeset refs are to mercurial sources I have, not git commits on 
    now without passing filebase, fixed bug in getpathtomove for parsednodes (need to use moveNum, not
    explicit zero for first node), have title including dirty status now, open and new game now update
    title, made triangles and squares bigger (changeset 97)
- * 
-
+ * did not port auto saving to wpf
+ * do not do file activation association on wpf
+ * do not have scrolling help dialog
+ * do not have game metadata editing dialog
+ * do not have canonicalized newline sequences in comments
+ * do not have esc saving comment and updating title if dirty
+ * do not have tree drawing tweaks for bigger nodes or bringing nodes into view better
+ * do not have next branch node highlighting
+ * do not have prisoner counting
+ * do not have handicap stone placement tweak (broke when added code review updates)
+ * do not have simplified UpdateTitle code
+ *
 
 Architectural references ...
 General notes:

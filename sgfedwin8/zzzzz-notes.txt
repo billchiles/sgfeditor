@@ -3,8 +3,8 @@ maybe optimize for prev move not having branches and having no node next to it i
    if do this, then need new treeviewnode in grid, dict, etc.
 
 
-Things to do before submitting win8 version to store:
- * add appropriate try/catch to UI event handlers, write temp file
+To do:
+ * add appropriate try/catch to UI event handlers, call auto save
 
 
 Since 23 FEB Alpha 2 release:
@@ -15,8 +15,15 @@ Since 23 FEB Alpha 2 release:
  * tweaked size of tree graph nodes
  * added combo in command panel to select what click means on the board (more touch enabled)
  * commented out app bar buttons for setting what clicking on the board does.
- * auto save, no timer, just on suspend
+ * auto save on suspend and on 30s timer
  * game info dialog for editing game metadata
+ * made file parsing tolerant of supplying a handicap of zero
+ * made file parsing canonicalize newline endings in comments
+ * fixed handicap stone placement bug introduced from DEC code review updates
+ * cleaned up and simplified UpdateTitle code and fixed bug
+ * fixed esc to check if comment text dirty
+ * improved tree update code to move nodes into view better
+ 
 
 Since the last release, 26 JAN, I've:
  * cleaned up several little things in the code/comments
