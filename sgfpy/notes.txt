@@ -18,8 +18,6 @@ wpf divergence from win8
  * do not have canonicalized newline sequences in comments or tolerating HA[0]
  * do not have esc saving comment and updating title if dirty
  * do not have tree drawing tweaks for bigger nodes or bringing nodes into view better
- * do not have next branch node highlighting
- * do not have prisoner counting
  * do not have handicap stone placement tweak (broke when added code review updates)
  * do not have simplified UpdateTitle code
  *
