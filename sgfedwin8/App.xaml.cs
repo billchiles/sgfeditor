@@ -8,7 +8,7 @@ using Windows.ApplicationModel;
 using Windows.ApplicationModel.Activation;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
-using Windows.Storage; // StorageFile for OnFileActivated()
+using Windows.Storage; // StorageFile for OnFileActivated(), create collision options
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Controls.Primitives;
@@ -17,7 +17,6 @@ using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Navigation;
 
-using Windows.Storage;  // create collision options
 
 // The Blank Application template is documented at http://go.microsoft.com/fwlink/?LinkId=234227
 
