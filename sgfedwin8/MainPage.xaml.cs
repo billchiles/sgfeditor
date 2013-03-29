@@ -526,11 +526,26 @@ F1 produces this help.
                                                              AdornmentKind.Letter, this.Game);
                 else {
                     MyDbg.Assert(this.whatBoardClickCreates == AdornmentKind.CurrentMove);
-                    var move = await this.Game.MakeMove((int)cell.Y, (int)cell.X);
-                    if (move != null) {
-                        this.AdvanceToStone(move);
-                        this.UpdateTreeView(move);
-                    } 
+                    var curmove = this.Game.CurrentMove;
+                    var row = (int)cell.Y;
+                    var col = (int)cell.X;
+                    if (curmove != null && curmove.Row == row && curmove.Column == col) {
+                        // Light UI affordance to undo misclicks
+                        // Note, this does not undo persisting previous move comment.
+                        if (curmove.Next == null)
+                            this.Game.CutMove();
+                        else
+                            await GameAux.Message("Tapping last move to undo only works if there is no sub tree " +
+                                                  "hanging from it.\nPlease use delete/Cut Move.");
+                    }
+                    else {
+                        // Normal situation, just make move.
+                        var move = await this.Game.MakeMove(row, col);
+                        if (move != null) {
+                            this.AdvanceToStone(move);
+                            this.UpdateTreeView(move);
+                        }
+                    }
                 }
                 this.FocusOnStones();
             }
