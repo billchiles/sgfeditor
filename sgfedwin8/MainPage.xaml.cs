@@ -303,6 +303,7 @@ F1 produces this help.
             else
                 throw new Exception("Haven't implemented changing board size for new games.");
             this.InitializeTreeView();  // Do not call DrawGameTree here since main win does not point to game yet.
+            this.MoveButtonClick(null, null);
         }
 
         //// SetupLinesGrid takes an int for the board size (as int) and returns a WPF Grid object for
@@ -614,6 +615,7 @@ F1 produces this help.
         ////
         private void homeButtonLeftDown (object home_button, RoutedEventArgs e) {
             this.Game.GotoStart();
+            MainWindowAux.RestoreAdornments(this.stonesGrid, this.Game.SetupAdornments);
             this.UpdateTitle(0);
             this.UpdateTreeView(null);
             this.FocusOnStones();
@@ -643,13 +645,13 @@ F1 produces this help.
             }
         }
 
-        private AdornmentKind[] boardClickChoices = 
-            {AdornmentKind.CurrentMove, AdornmentKind.Letter, AdornmentKind.Triangle, AdornmentKind.Square};
-        private void boardClickComboSelectionChanged (object sender, SelectionChangedEventArgs e) {
-            if (this.boardClickCombo == null)
-                return; // Ignore call during initialization, clicking by default is "Move"
-            this.whatBoardClickCreates = this.boardClickChoices[this.boardClickCombo.SelectedIndex];
-        }
+        //private AdornmentKind[] boardClickChoices = 
+        //    {AdornmentKind.CurrentMove, AdornmentKind.Letter, AdornmentKind.Triangle, AdornmentKind.Square};
+        //private void boardClickComboSelectionChanged (object sender, SelectionChangedEventArgs e) {
+        //    if (this.boardClickCombo == null)
+        //        return; // Ignore call during initialization, clicking by default is "Move"
+        //    this.whatBoardClickCreates = this.boardClickChoices[this.boardClickCombo.SelectedIndex];
+        //}
 
 
         //// _advance_to_stone displays move, which as already been added to the
@@ -1231,8 +1233,10 @@ F1 produces this help.
             if (! found) return; // User did not click on node.
             // Reset board before advancing to move.
             var move = n.Node as Move;
-            if (this.Game.CurrentMove != null)
+            if (this.Game.CurrentMove != null) {
                 this.Game.GotoStart();
+                MainWindowAux.RestoreAdornments(this.stonesGrid, this.Game.SetupAdornments);
+            }
             else
                 this.Game.SaveCurrentComment();
             if (move != null) {
@@ -1285,6 +1289,82 @@ F1 produces this help.
                 this.UpdateBranchCombo(null, null);
             }
             this.CurrentComment = move.Comments;
+        }
+
+
+        ////
+        //// Handling button panel for what clicking on the board does
+        ////
+
+        //// All the handlers and helpers for the App Bar buttons that let you set what clicking
+        //// on the board does have been commented out in the xaml and here in lieu of the combo
+        //// box in the main UI (upper right command panel).
+        ////
+        private void MoveButtonClick (object sender, RoutedEventArgs e) {
+            // If null args, then called while setting up new game and just ensuring board clicks make moves is default.
+            this.MoveButton.IsEnabled = false;
+            this.MoveButton.BorderThickness = new Thickness(1);
+            this.TriangleButton.IsEnabled = true;
+            this.LetterButton.IsEnabled = true;
+            this.SquareButton.IsEnabled = true;
+            if (! (sender == null && e == null && this.whatBoardClickCreates == AdornmentKind.CurrentMove))
+                // Ensure we clear the border when some other button was selected and NOT when we're just
+                // calling this explicitly to ensure new games have the move button selected.
+                this.ClearBoardClickButtonBorder();
+            this.whatBoardClickCreates = AdornmentKind.CurrentMove;
+        }
+
+        private void TriangleButtonClick (object sender, RoutedEventArgs e) {
+            this.TriangleButton.IsEnabled = false;
+            this.TriangleButton.BorderThickness = new Thickness(1);
+            this.MoveButton.IsEnabled = true;
+            this.LetterButton.IsEnabled = true;
+            this.SquareButton.IsEnabled = true;
+            this.ClearBoardClickButtonBorder();
+            this.whatBoardClickCreates = AdornmentKind.Triangle;
+        }
+
+        private void LetterButtonClick (object sender, RoutedEventArgs e) {
+            // Do not disable this button because winRT insists on changing foreground after I set it to white.
+            //this.LetterButton.IsEnabled = false;
+            this.LetterButton.BorderThickness = new Thickness(1);
+            this.LetterButton.Foreground = new SolidColorBrush(Colors.White);
+            this.TriangleButton.IsEnabled = true;
+            this.MoveButton.IsEnabled = true;
+            this.SquareButton.IsEnabled = true;
+            // Hack test if we're already the selected button since we never disable this one.
+            // Since we do not disable, we need to make sure tapping it twice does not remove border.
+            if (this.whatBoardClickCreates != AdornmentKind.Letter) {
+                this.ClearBoardClickButtonBorder();
+                this.whatBoardClickCreates = AdornmentKind.Letter;
+            }
+        }
+
+        private void SquareButtonClick (object sender, RoutedEventArgs e) {
+            this.SquareButton.IsEnabled = false;
+            this.SquareButton.BorderThickness = new Thickness(1);
+            this.LetterButton.IsEnabled = true;
+            this.TriangleButton.IsEnabled = true;
+            this.MoveButton.IsEnabled = true;
+            this.ClearBoardClickButtonBorder();
+            this.whatBoardClickCreates = AdornmentKind.Square;
+        }
+
+        private void ClearBoardClickButtonBorder () {
+            switch (this.whatBoardClickCreates) {
+                case AdornmentKind.CurrentMove:
+                    this.MoveButton.BorderThickness = new Thickness(0);
+                    break;
+                case AdornmentKind.Triangle:
+                    this.TriangleButton.BorderThickness = new Thickness(0);
+                    break;
+                case AdornmentKind.Square:
+                    this.SquareButton.BorderThickness = new Thickness(0);
+                    break;
+                case AdornmentKind.Letter:
+                    this.LetterButton.BorderThickness = new Thickness(0);
+                    break;
+            }
         }
 
 
