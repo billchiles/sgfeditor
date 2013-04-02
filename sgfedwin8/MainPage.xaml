@@ -88,25 +88,22 @@
             -->
 
                 <!-- Grid for Save, Help, Branches, and move/triangle/square/letter palette -->
-                <Grid Grid.Column="0" Grid.Row="0" Grid.ColumnSpan="2" Grid.RowSpan="2"
+                <Grid Grid.Column="0" Grid.Row="0" Grid.ColumnSpan="4" 
                       HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
                     <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="3*" />
+                        <ColumnDefinition Width="2*" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="40*" />
-                        <RowDefinition Height="70*" />
-                        <RowDefinition Height="40*" />
-                    </Grid.RowDefinitions>
 
-                    <Button Grid.Row="0" Grid.Column="0" Height="40" HorizontalAlignment="Stretch" Margin="1" 
-                            Name="saveButton" VerticalAlignment="Top" Width="70" Click="saveButton_left_down"
+                    <Button Grid.Row="0" Grid.Column="2" Height="40" HorizontalAlignment="Stretch" Margin="1" 
+                            Name="saveButton" VerticalAlignment="Center" Width="70" Click="saveButton_left_down"
                             BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" Foreground="Black">
                         <TextBlock FontSize="16" VerticalAlignment="Center" Margin="0,0,0,3">Save</TextBlock>
                     </Button>
-                    <Button Grid.Row="0" Grid.Column="1" Height="40" HorizontalAlignment="Stretch" Margin="1" 
-                            Name="helpButton" VerticalAlignment="Top" Width="70" Click="helpButtonLeftDown"
+                    <Button Grid.Row="0" Grid.Column="3" Height="40" HorizontalAlignment="Stretch" Margin="1" 
+                            Name="helpButton" VerticalAlignment="Center" Width="70" Click="helpButtonLeftDown"
                             BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" Foreground="Black">
                         <TextBlock FontSize="16" VerticalAlignment="Center" Margin="0,0,0,3">Help</TextBlock>
                     </Button>
@@ -125,21 +122,22 @@
                         </ComboBox>
                     </StackPanel>
                     -->
-                    
-                    <StackPanel Grid.Column="0" Grid.Row="1" Background="Transparent" Margin="0,5,0,2" Height="70"
-                                Grid.ColumnSpan="2" HorizontalAlignment="Center">
+
+                    <StackPanel Grid.Column="1" Grid.Row="0" Background="Transparent" Margin="0,5,20,2" Height="70"
+                                HorizontalAlignment="Center">
                         <TextBlock FontSize="14" Name="branchLabel" Margin="2,5,2,2" Width="120"
                                >No Branches:</TextBlock>
                         <ComboBox BorderThickness="1" Background="White" Width="120" Height="30" 
-                              Name="branchCombo"  IsEnabled="False" SelectionChanged="branchComboSelectionChanged"></ComboBox>
+                              Name="branchCombo"  IsEnabled="False" SelectionChanged="branchComboSelectionChanged">
+                        </ComboBox>
                     </StackPanel>
 
-                    <Grid Grid.Row="2" Grid.Column="0"  Grid.ColumnSpan="2" Height="40" Margin="20,0,20,0">
+                    <Grid Grid.Row="0" Grid.Column="0"  Height="40" Margin="20,0,0,0">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="2*" />
+                            <ColumnDefinition Width="2*" />
+                            <ColumnDefinition Width="2*" />
+                            <ColumnDefinition Width="3*" />
                         </Grid.ColumnDefinitions>
                         <Button IsEnabled="False" BorderThickness="1" Click="MoveButtonClick" Grid.Column="0"
                                 HorizontalAlignment="Center"
@@ -167,7 +165,7 @@
                             <Rectangle Height="20" Width="20" StrokeThickness="1" Stroke="White"/>
                         </Button>
                         <Button IsEnabled="True" BorderThickness="0" Click="LetterButtonClick" Grid.Column="3"
-                                HorizontalAlignment="Center" x:Name="LetterButton" Foreground="White"
+                                HorizontalAlignment="Left" x:Name="LetterButton" Foreground="White"
                                 >A,B,C</Button>
                     </Grid>
 
@@ -180,22 +178,22 @@
             </Button>
             -->
             
-            <Button Content="&lt;&lt;" Grid.Row="0" Grid.Column="2" HorizontalAlignment="Stretch" 
+            <Button Content="&lt;&lt;" Grid.Row="1" Grid.Column="0" HorizontalAlignment="Stretch" 
                     Margin="1,1,1,1" Name="homeButton" VerticalAlignment="Stretch" IsEnabled="False" 
                     Click="homeButtonLeftDown" 
                     FontSize="30" BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" 
                     Foreground="Black"/>
-            <Button Content="&lt;" Grid.Row="0" Grid.Column="3" HorizontalAlignment="Stretch" 
+            <Button Content="&lt;" Grid.Row="1" Grid.Column="1" HorizontalAlignment="Stretch" 
                     Margin="1,1,1,1" 
                     Name="prevButton" VerticalAlignment="Stretch" IsEnabled="False" Click="prevButtonLeftDown" 
                     FontSize="30" BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" 
                     Foreground="Black"/>
-            <Button Content="&gt;" Grid.Row="1" Grid.Column="3" HorizontalAlignment="Stretch" 
+            <Button Content="&gt;" Grid.Row="1" Grid.Column="2" HorizontalAlignment="Stretch" 
                     Margin="1,1,1,1" 
                     Name="nextButton" VerticalAlignment="Stretch"  IsEnabled="False" Click="nextButtonLeftDown"
                     FontSize="30" BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" 
                     Foreground="Black"/>
-            <Button Content="&gt;&gt;" Grid.Row="1" Grid.Column="2" HorizontalAlignment="Stretch" 
+            <Button Content="&gt;&gt;" Grid.Row="1" Grid.Column="3" HorizontalAlignment="Stretch" 
                     Margin="1,1,1,1" Name="endButton" VerticalAlignment="Stretch" IsEnabled="False" 
                     Click="endButtonLeftDown"
                     FontSize="30" BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" 

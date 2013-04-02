@@ -1328,7 +1328,7 @@ F1 produces this help.
             // Do not disable this button because winRT insists on changing foreground after I set it to white.
             //this.LetterButton.IsEnabled = false;
             this.LetterButton.BorderThickness = new Thickness(1);
-            this.LetterButton.Foreground = new SolidColorBrush(Colors.White);
+            //this.LetterButton.Foreground = new SolidColorBrush(Colors.White);
             this.TriangleButton.IsEnabled = true;
             this.MoveButton.IsEnabled = true;
             this.SquareButton.IsEnabled = true;
