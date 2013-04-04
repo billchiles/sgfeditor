@@ -60,7 +60,8 @@ namespace SgfEdwin8 {
 SGFEd can read and write .sgf files, edit game trees, etc.
 
 PLACING STONES AND ANNOTATIONS:
-Click on board location to place alternating colored stones.
+Click on board location to place alternating colored stones.  If the last move
+is a misclick (at the end of a branch), click the last move again to undo it.
 Shift click to place square annotations, ctrl click for triangles, and
 alt click to place letter annotations.  If you click on an adornment location
 twice (for example shift-click twice in one spot), the second click removes
@@ -76,7 +77,10 @@ NAVIGATING MOVES IN GAME TREE
 Right arrow moves to the next move, left moves to the previous, up arrow selects
 another branch or the main branch, down arrow selects another branch, home moves
 to the game start, and end moves to the end of the game following the currently
-selected branches.  You can always click a node in the game tree graph.
+selected branches.  You can always click a node in the game tree graph.  If the
+current move has branches following it, the selected branch's first node has a
+light grey square outlining it. Nodes that have comments have a light green
+highlight, and the current node has a light blue highlight.
 
 CREATING NEW FILES
 The new button (or ctrl-n) prompts for game info (player names, board size,
@@ -1509,7 +1513,7 @@ F1 produces this help.
         //// yeah, Adornments have a cookie, but oh well, and they are arguably viewmodel :-).
         ////
         private Dictionary<object, TreeViewNode> treeViewMoveMap = new Dictionary<object, TreeViewNode>();
-        private Grid treeViewSelectedItem;
+        private TreeViewNode treeViewSelectedItem;
 
         //// InitializeTreeView is used by SetupBoardDisplay.  It clears the canvas and sets its size.
         ////
@@ -1597,19 +1601,17 @@ F1 produces this help.
                 for (var j = 0; j < GameAux.TreeViewGridColumns; j++) {
                     var curModel = treeModel[i, j];
                     if (curModel != null) {
-                        //TODO: get previous grid from uncleared tree view map copy and update it
-                        // appropriately.  Also, probably want some flag or control that if did cut/paste
-                        // operation, then remove objects, handle renumbering of labels in grids, etc.
-                        // probably just toss whole tree on paste and re-gen for simplicity.
-                        //if (this.treeViewMoveMap.ContainsKey(curModel.Node)
-                        //    eltGrid = ((TreeViewNode)this.treeViewMoveMap[curModel.Node]).Cookie;
                         if (curModel.Kind != TreeViewNodeKind.LineBend) {
                             var eltGrid = MainWindowAux.NewTreeViewItemGrid(curModel);
                             curModel.Cookie = eltGrid;
                             var node = curModel.Node;
-                            //if (node != null)
-                            //    // If node is null, then it is a line bend node.
-                            this.treeViewMoveMap[curModel.Node] = curModel;
+                            var pnode = node as ParsedNode;
+                            var mnode = node as Move;
+                            if ((pnode != null && pnode.Properties.ContainsKey("C")) ||
+                                (mnode != null && mnode.Comments != "")) {
+                                eltGrid.Background = new SolidColorBrush(Colors.LightGreen);
+                            }
+                            this.treeViewMoveMap[node] = curModel;
                             Canvas.SetLeft(eltGrid, curModel.Column * MainWindowAux.treeViewGridCellSize);
                             Canvas.SetTop(eltGrid, curModel.Row * MainWindowAux.treeViewGridCellSize);
                             Canvas.SetZIndex(eltGrid, 1);
@@ -1621,9 +1623,9 @@ F1 produces this help.
             this.treeViewMoveMap.Remove(treeModel[0, 0].Node);
             this.treeViewMoveMap["start"] = treeModel[0, 0];
             MainWindowAux.DrawGameTreeLines(canvas, treeModel[0, 0]);
-            Grid cookie = (Grid)treeModel[0, 0].Cookie;
+            //Grid cookie = (Grid)treeModel[0, 0].Cookie;
             // Set this to something so that UpdateTreeView doesn't deref null.
-            this.treeViewSelectedItem = cookie;
+            this.treeViewSelectedItem = treeModel[0, 0]; // cookie;
             this.UpdateTreeView(this.Game.CurrentMove);
         }
 
@@ -1648,24 +1650,40 @@ F1 produces this help.
         }
 
         //// UpdateTreeHighlightMove handles the primary case of UpdateTreeView, moving the blue
-        //// highlight from the last current move the new current move.
+        //// highlight from the last current move the new current move, and managing if the old
+        //// current move gets a green highlight for having a comment.
         ////
         private void UpdateTreeHighlightMove (Move move) {
             TreeViewNode item = this.TreeViewNodeForMove(move);
             if (item == null) {
+                // move is not in tree view node map, so it is new.  For simplicity, just redraw entire tree.
+                // This is fast enough to 300 moves at least, but could add optimization to notice adding move
+                // to end of branch with no node in the way for adding new node.
                 this.InitializeTreeView();
                 this.DrawGameTree();
             }
             else {
                 Grid itemCookie = ((Grid)item.Cookie);
+                // Get previous current move node (snode) and save new current move node (item)
+                var snode = this.treeViewSelectedItem;
+                var sitem = (Grid)snode.Cookie;
+                this.treeViewSelectedItem = item; // itemCookie;
+                // Get model object and see if previous current move has comments
+                var pnode = snode.Node as ParsedNode;
+                var mnode = snode.Node as Move;
+                if ((pnode != null && pnode.Properties.ContainsKey("C")) ||
+                    (mnode != null && (mnode.Comments != "" ||
+                                       // or mnode is dummy node representing empty board
+                                       (mnode.Row == -1 && mnode.Column == -1 && this.Game.Comments != "")))) {
+                    // Nodes with comments are green
+                    sitem.Background = new SolidColorBrush(Colors.LightGreen);
+                }
+                else
+                    // Those without comments are transparent
+                    sitem.Background = new SolidColorBrush(Colors.Transparent);
                 // Update current move shading and bring into view.
-                var sitem = this.treeViewSelectedItem;
-                this.treeViewSelectedItem = itemCookie;
-                sitem.Background = new SolidColorBrush(Colors.Transparent);
                 itemCookie.Background = new SolidColorBrush(Colors.LightSkyBlue);
                 this.BringTreeElementIntoView(itemCookie);
-                //itemCookie.BringIntoView(new Rect((new Size(MainWindowAux.treeViewGridCellSize * 2,
-                //                                            MainWindowAux.treeViewGridCellSize * 2))));
             }
         }
 
@@ -1711,7 +1729,7 @@ F1 produces this help.
             }
             else {
                 if (move.Branches != null) {
-                    UpdateTreeHighlightBranch(move.Next);
+                    this.UpdateTreeHighlightBranch(move.Next);
                 }
             }
         }

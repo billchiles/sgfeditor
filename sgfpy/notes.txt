@@ -20,6 +20,11 @@ wpf divergence from win8
  * do not have tree drawing tweaks for bigger nodes or bringing nodes into view better
  * do not have handicap stone placement tweak (broke when added code review updates)
  * do not have simplified UpdateTitle code
+ * tap last move to undo misclick
+ * fixed home key and tapping start node to restore empty board adornments
+ * reworked command panel, putting some stuff in app bar
+ * green highlights on game tree nodes with comments
+ * comment cleanups
  *
  
 

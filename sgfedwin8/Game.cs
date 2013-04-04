@@ -2028,9 +2028,9 @@ namespace SgfEdwin8 {
             set { _treeGridRows = value; }
         }
 
-        //// show_tree displays a grid of node objects that represent moves in the game tree,
-        //// where lines between moves need to bend, or where lines need to descend straight
-        //// downward before angling to draw next move in a branch.
+        //// GetGameTreeModel returns a matrix of node objects that represent moves in the game
+        //// tree view, as well as where lines between moves need to bend, or where lines need
+        //// to descend straight downward before angling to draw next move in a branch.
         ////
         public static TreeViewNode[,] GetGameTreeModel (Game game) {
             dynamic start = null;

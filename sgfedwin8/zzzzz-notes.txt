@@ -7,6 +7,15 @@ To do:
  * add appropriate try/catch to UI event handlers, call auto save
 
 
+ Since store v1, b35b1502515c, 9:51 p.m. 25 MAR 2013:
+  * tap last move to undo misclick
+  * fixed home key and tapping start node to restore empty board adornments
+  * reworked command panel, putting some stuff in app bar
+  * green highlights on game tree nodes with comments
+  * comment cleanups
+  *
+
+
 Since 23 FEB Alpha 2 release:
  * uncommented selection changed event handler for branches combo box
  * forgot to make tree draw all the time when activated by file double click
