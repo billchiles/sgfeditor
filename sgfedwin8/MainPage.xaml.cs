@@ -582,11 +582,11 @@ F1 produces this help.
             if (this.Game.CurrentMove != null) {
                 var m = this.Game.CurrentMove;
                 this.UpdateTreeView(m);
-                this.UpdateTitle(m.Number, m.IsPass);
+                this.UpdateTitle();
             }
             else {
                 this.UpdateTreeView(null);
-                this.UpdateTitle(0);
+                this.UpdateTitle();
             }
             this.FocusOnStones();
         }
@@ -620,7 +620,7 @@ F1 produces this help.
         private void homeButtonLeftDown (object home_button, RoutedEventArgs e) {
             this.Game.GotoStart();
             MainWindowAux.RestoreAdornments(this.stonesGrid, this.Game.SetupAdornments);
-            this.UpdateTitle(0);
+            this.UpdateTitle();
             this.UpdateTreeView(null);
             this.FocusOnStones();
         }
@@ -632,7 +632,7 @@ F1 produces this help.
         private async void endButtonLeftDown (object end_button, RoutedEventArgs e) {
             await this.Game.GotoLastMove();
             var cur = this.Game.CurrentMove;
-            this.UpdateTitle(cur == null ? 0 : cur.Number);
+            this.UpdateTitle();
             this.UpdateTreeView(cur);
             this.FocusOnStones();
         }
@@ -666,7 +666,7 @@ F1 produces this help.
         private void AdvanceToStone (Move move) {
             this.AddNextStoneNoCurrent(move);
             this.AddCurrentAdornments(move);
-            this.UpdateTitle(move.Number, move.IsPass);
+            this.UpdateTitle();
         }
 
         //// add_next_stone_no_current adds a stone to the stones grid for move,
@@ -705,33 +705,16 @@ F1 produces this help.
         //// file and current move number.  "Move " is always in the title, set
         //// there by default originally.  Game also uses this.
         ////
-        public void UpdateTitle (int numm, bool is_passs = false) {
+        public void UpdateTitle () {
             var curMove = this.Game.CurrentMove;
             var num = curMove == null ? 0 : curMove.Number;
-            // Transitioning code to have no args for UpdateTitle, just checking assumptions for now.
-            MyDbg.Assert(num == numm);
             var filebase = this.Game.Filebase;
-            //var title = this.Title.Text.Replace("[*] ", "");
             var pass_str = (curMove != null && curMove.IsPass) ? " Pass" : "";
-
             var title = "SGF Editor -- " + (this.Game.Dirty ? "[*] Move " : "Move ") + num.ToString() + pass_str;
             title = title + "   B captures: " + this.Game.BlackPrisoners.ToString() +
                     "   W captures: " + this.Game.WhitePrisoners.ToString();
             if (filebase != null)
                 title = title + ";   " + filebase;
-
-            //if (filebase != null) {
-            //    // Generate title with filename.
-            //    filebase = this.Game.Dirty ? "[*] " + filebase : filebase;
-            //    title = "SGF Editor -- " + filebase + ";  Move " + num.ToString() + pass_str;
-            //}
-            //else {
-            //    title = "SGF Editor -- " + (this.Game.Dirty ? "[*] " : "") + "Move " +
-            //            num.ToString() + pass_str;
-            //}
-            //// Add prisoner info.
-            //title = title + "   B captures: " + this.Game.BlackPrisoners.ToString() +
-            //        "   W captures: " + this.Game.WhitePrisoners.ToString();
             this.Title.Text = title;
         }
 
@@ -823,7 +806,7 @@ F1 produces this help.
                     // Persist actual file name and storage for future save operations.
                     this.Game.SaveGameFileInfo(sf);
                     // Though ParseAndCreateGame updates title, do it again with correct file name.
-                    this.UpdateTitle(0);
+                    this.UpdateTitle();
                 }
                 else {
                     await this.ParseAndCreateGame(sf);
@@ -867,7 +850,7 @@ F1 produces this help.
             this.Game = await GameAux.CreateParsedGame(pg, this);
             //await Task.Delay(5000);  // Testing input blocker.
             this.Game.SaveGameFileInfo(sf);
-            this.UpdateTitle(0);
+            this.UpdateTitle();
         }
 
         private Grid openFileUIDike = null;
@@ -992,7 +975,7 @@ F1 produces this help.
                 g.PlayerBlack = black;
                 g.PlayerWhite = white;
                 this.Game = g;
-                this.UpdateTitle(0);
+                this.UpdateTitle();
                 this.DrawGameTree();
             }
         }
@@ -1093,7 +1076,7 @@ F1 produces this help.
             //var win = (MainWindow)sender;
             if (e.Key == VirtualKey.Escape) {
                 this.Game.SaveCurrentComment();
-                this.UpdateTitle(this.Game.CurrentMove == null ? 0 : this.Game.CurrentMove.Number);
+                this.UpdateTitle();
                 win.FocusOnStones();
                 e.Handled = true;
                 return;
@@ -1251,7 +1234,7 @@ F1 produces this help.
             else
                 // Move is ParsedNode, not a move that's been rendered.
                 this.GotoGameTreeMove((ParsedNode)n.Node);
-            this.UpdateTitle(this.Game.CurrentMove == null ? 0 : this.Game.CurrentMove.Number);
+            this.UpdateTitle();
             this.UpdateTreeView(this.Game.CurrentMove);
             this.FocusOnStones();
         }
@@ -1458,7 +1441,7 @@ F1 produces this help.
                 if (this.Game.CurrentMove == null && dlg.CommentChanged)
                     this.commentBox.Text = this.Game.Comments;
                 // Update title in case dirty flag changed.
-                this.UpdateTitle(this.Game.CurrentMove == null ? 0 : this.Game.CurrentMove.Number);
+                this.UpdateTitle();
             }
             this.theAppBar.IsOpen = false;
         }

@@ -831,7 +831,7 @@ namespace SgfEdwin8 {
                 else
                     this.mainWin.EnableForwardButtons();
                 this.mainWin.UpdateBranchCombo(this.Branches, this.FirstMove);
-                this.mainWin.UpdateTitle(0);
+                this.mainWin.UpdateTitle();
             }
             else {
                 if (prev_move.Next == null)
@@ -839,7 +839,7 @@ namespace SgfEdwin8 {
                 else
                     this.mainWin.EnableForwardButtons();
                 this.mainWin.UpdateBranchCombo(prev_move.Branches, prev_move.Next);
-                this.mainWin.UpdateTitle(prev_move.Number);
+                this.mainWin.UpdateTitle();
             }
             this.mainWin.UpdateTreeView(prev_move, true);
         }
@@ -1067,7 +1067,7 @@ namespace SgfEdwin8 {
             if (branches != null) {
                 await this.MoveBranch(branches, cur_index, -1);
                 this.Dirty = true;
-                this.mainWin.UpdateTitle(this.CurrentMove.Number);
+                this.mainWin.UpdateTitle();
                 this.mainWin.UpdateTreeView(this.CurrentMove, true);
             }
         }
@@ -1079,7 +1079,7 @@ namespace SgfEdwin8 {
             if (branches != null) {
                 await this.MoveBranch(branches, cur_index, 1);
                 this.Dirty = true;
-                this.mainWin.UpdateTitle(this.CurrentMove.Number);
+                this.mainWin.UpdateTitle();
                 this.mainWin.UpdateTreeView(this.CurrentMove, true);
             }
         }
@@ -1192,7 +1192,7 @@ namespace SgfEdwin8 {
                 number = this.CurrentMove.Number;
                 is_pass = this.CurrentMove.IsPass;
             }
-            this.mainWin.UpdateTitle(number, is_pass);
+            this.mainWin.UpdateTitle();
         }
 
         //// SaveGameFileInfo updates the games storage object and filename properties.
