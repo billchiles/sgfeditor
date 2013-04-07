@@ -139,9 +139,10 @@ namespace SgfEd {
                     // There is only a center stone for 5, 7, and 9 handicaps.
                     if (handicap == 5)
                         make_move(10, 10);
-                    if (handicap >= 6)
+                    if (handicap >= 6) {
                         make_move(10, 4);
-                    make_move(10, 16);
+                        make_move(10, 16);
+                    }
                     // There is only a center stone for 5, 7, and 9 handicaps.
                     if (handicap == 7)
                         make_move(10, 10);
@@ -817,7 +818,7 @@ namespace SgfEd {
                 else
                     this.mainWin.EnableForwardButtons();
                 this.mainWin.UpdateBranchCombo(this.Branches, this.FirstMove);
-                this.mainWin.UpdateTitle(0);
+                this.mainWin.UpdateTitle();
             }
             else {
                 if (prev_move.Next == null)
@@ -825,7 +826,7 @@ namespace SgfEd {
                 else
                     this.mainWin.EnableForwardButtons();
                 this.mainWin.UpdateBranchCombo(prev_move.Branches, prev_move.Next);
-                this.mainWin.UpdateTitle(prev_move.Number);
+                this.mainWin.UpdateTitle();
             }
             this.mainWin.UpdateTreeView(prev_move, true);
         }
@@ -1046,7 +1047,7 @@ namespace SgfEd {
             if (branches != null) {
                 this.MoveBranch(branches, cur_index, -1);
                 this.Dirty = true;
-                this.mainWin.UpdateTitle(this.CurrentMove.Number);
+                this.mainWin.UpdateTitle();
                 this.mainWin.UpdateTreeView(this.CurrentMove, true);
             }
         }
@@ -1058,7 +1059,7 @@ namespace SgfEd {
             if (branches != null) {
                 this.MoveBranch(branches, cur_index, 1);
                 this.Dirty = true;
-                this.mainWin.UpdateTitle(this.CurrentMove.Number);
+                this.mainWin.UpdateTitle();
                 this.mainWin.UpdateTreeView(this.CurrentMove, true);
             }
         }
@@ -1161,7 +1162,7 @@ namespace SgfEd {
                 number = this.CurrentMove.Number;
                 is_pass = this.CurrentMove.IsPass;
             }
-            this.mainWin.UpdateTitle(number, is_pass);
+            this.mainWin.UpdateTitle();
             //self.Title = "SGFEd -- " + self.filebase + ";  Move " + str(number);
         }
 
@@ -1655,18 +1656,21 @@ namespace SgfEd {
             if (props.ContainsKey("HA")) {
                 // KGS saves HA[6] and then AB[]...
                 handicap = int.Parse(props["HA"][0]);
-                if (! props.ContainsKey("AB"))
+                if (handicap == 0)
+                    all_black = null;
+                else if (! props.ContainsKey("AB"))
                     throw new Exception("If parsed game has handicap, then need handicap stones.");
-                if (props["AB"].Count != handicap)
+                else if (props["AB"].Count != handicap)
                     throw new Exception("Parsed game's handicap count (HA) does not match stones (AB).");
-                all_black = props["AB"].Select((coords) => 
-                                {var tmp = GoBoardAux.ParsedToModelCoordinates(coords);
-                                 var row = tmp.Item1;
-                                 var col = tmp.Item2;
-                                 var m = new Move(row, col, Colors.Black);
-                                 m.ParsedNode = pgame.Nodes;
-                                 m.Rendered = false;
-                                 return m;}).ToList();
+                else
+                    all_black = props["AB"].Select((coords) => 
+                                    {var tmp = GoBoardAux.ParsedToModelCoordinates(coords);
+                                     var row = tmp.Item1;
+                                     var col = tmp.Item2;
+                                     var m = new Move(row, col, Colors.Black);
+                                     m.ParsedNode = pgame.Nodes;
+                                     m.Rendered = false;
+                                     return m;}).ToList();
             }
             else {
                 handicap = 0;
@@ -1925,9 +1929,9 @@ namespace SgfEd {
             set { _treeGridRows = value; }
         }
 
-        //// show_tree displays a grid of node objects that represent moves in the game tree,
-        //// where lines between moves need to bend, or where lines need to descend straight
-        //// downward before angling to draw next move in a branch.
+        //// GetGameTreeModel returns a matrix of node objects that represent moves in the game   
+        //// tree view, as well as where lines between moves need to bend, or where lines need   
+        //// to descend straight downward before angling to draw next move in a branch.  
         ////
         public static TreeViewNode[,] GetGameTreeModel (Game game) {
             dynamic start = null;

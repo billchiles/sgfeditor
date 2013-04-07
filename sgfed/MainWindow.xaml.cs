@@ -40,7 +40,8 @@ namespace SgfEd {
 SGFEd can read and write .sgf files, edit game trees, etc.
 
 PLACING STONES AND ANNOTATIONS:
-Click on board location to place alternating colored stones.
+Click on board location to place alternating colored stones.  If the last move   
+is a misclick (at the end of a branch), click the last move again to undo it.  
 Shift click to place square annotations, ctrl click for triangles, and
 alt click to place letter annotations.  If you click on an adornment location
 twice (for example shift-click twice in one spot), the second click removes
@@ -56,7 +57,10 @@ NAVIGATING MOVES IN GAME TREE
 Right arrow moves to the next move, left moves to the previous, up arrow selects
 another branch or the main branch, down arrow selects another branch, home moves
 to the game start, and end moves to the end of the game following the currently
-selected branches.  You can always click a node in the game tree graph.
+selected branches.  You can always click a node in the game tree graph.  If the   
+current move has branches following it, the selected branch's first node has a   
+light grey square outlining it. Nodes that have comments have a light green   
+highlight, and the current node has a light blue highlight.  
 
 CREATING NEW FILES
 The new button (or ctrl-n) prompts for game info (player names, board size,
@@ -228,10 +232,25 @@ F1 produces this help.
                 MainWindowAux.AddOrRemoveAdornment(this.stonesGrid, (int)cell.Y, (int)cell.X, AdornmentKind.Letter,
                                                       this.Game);
             else {
-                var move = this.Game.MakeMove((int)cell.Y, (int)cell.X);
-                if (move != null) {
-                    this.AdvanceToStone(move);
-                    this.UpdateTreeView(move);
+                var curmove = this.Game.CurrentMove;   
+                var row = (int)cell.Y;   
+                var col = (int)cell.X;
+                if (curmove != null && curmove.Row == row && curmove.Column == col) {
+                    // Light UI affordance to undo misclicks   
+                    // Note, this does not undo persisting previous move comment.   
+                    if (curmove.Next == null)
+                        this.Game.CutMove();
+                    else
+                        MessageBox.Show("Tapping last move to undo only works if there is no sub tree " +
+                                        "hanging from it.\nPlease use delete/Cut Move.");
+                }
+                else {
+                    // Normal situation, just make move.   
+                    var move = this.Game.MakeMove(row, col);
+                    if (move != null) {
+                        this.AdvanceToStone(move);
+                        this.UpdateTreeView(move);
+                    }
                 }
             }
             this.FocusOnStones();
@@ -262,11 +281,11 @@ F1 produces this help.
             if (this.Game.CurrentMove != null) {
                 var m = this.Game.CurrentMove;
                 this.UpdateTreeView(m);
-                this.UpdateTitle(m.Number, m.IsPass);
+                this.UpdateTitle();
             }
             else {
                 this.UpdateTreeView(null);
-                this.UpdateTitle(0);
+                this.UpdateTitle();
             }
             this.FocusOnStones();
         }
@@ -294,7 +313,8 @@ F1 produces this help.
         ////
         private void homeButtonLeftDown(object home_button, RoutedEventArgs e) {
             this.Game.GotoStart();
-            this.UpdateTitle(0);
+            MainWindowAux.RestoreAdornments(this.stonesGrid, this.Game.SetupAdornments);
+            this.UpdateTitle();
             this.UpdateTreeView(null);
             this.FocusOnStones();
         }
@@ -306,7 +326,7 @@ F1 produces this help.
         private void endButtonLeftDown(object end_button, RoutedEventArgs e) {
             this.Game.GotoLastMove();
             var cur = this.Game.CurrentMove;
-            this.UpdateTitle(cur == null ? 0 : cur.Number);
+            this.UpdateTitle();
             this.UpdateTreeView(cur);
             this.FocusOnStones();
         }
@@ -332,7 +352,7 @@ F1 produces this help.
         private void AdvanceToStone (Move move) {
             this.AddNextStoneNoCurrent(move);
             this.AddCurrentAdornments(move);
-            this.UpdateTitle(move.Number, move.IsPass);
+            this.UpdateTitle();
         }
         
         //// add_next_stone_no_current adds a stone to the stones grid for move,
@@ -371,28 +391,23 @@ F1 produces this help.
         //// file and current move number.  "Move " is always in the title, set
         //// there by default originally.  Game also uses this.
         ////
-        public void UpdateTitle (int num, bool is_pass = false) {
+        public void UpdateTitle () {
+            var curMove = this.Game.CurrentMove;
+            var num = curMove == null ? 0 : curMove.Number;
             var filebase = this.Game.Filebase;
-            var title = this.Title.Replace("[*] ", "");
-            var pass_str = is_pass ? " Pass" : "";
-            if (filebase != null) {
-                filebase = this.Game.Dirty ? "[*] " + filebase : filebase;
-                title = "SGF Editor -- " + filebase + ";  Move " + num.ToString() + pass_str;
-            }
-            else {
-                var tail = title.IndexOf("Move ") + 5;
-                Debug.Assert(tail != 4, "Title doesn't have move in it?!");
-                var filestart = title.IndexOf(" -- ") + 4;
-                title = title.Substring(0, filestart) +
-                              (this.Game.Dirty ? "[*] " : "") +
-                              title.Substring(filestart, tail - filestart) +
-                              num.ToString() + pass_str;
-            }
+            var pass_str = (curMove != null && curMove.IsPass) ? " Pass" : "";
+            var title = "SGF Editor -- " + (this.Game.Dirty ? "[*] Move " : "Move ") + num.ToString() + pass_str;
             title = title + "   B captures: " + this.Game.BlackPrisoners.ToString() +
                     "   W captures: " + this.Game.WhitePrisoners.ToString();
+            if (filebase != null)
+                title = title + ";   " + filebase;
             this.Title = title;
             this.MyTitle.Text = title;
         }
+
+
+
+
 
 
         //// openButton_left_down prompts to save current game if dirty and then
@@ -412,7 +427,7 @@ F1 produces this help.
                     this.Game = GameAux.CreateParsedGame(pg, this);
                     this.Game.Filename = dlg.FileName;
                     this.Game.Filebase = dlg.FileName.Substring(dlg.FileName.LastIndexOf('\\') + 1);
-                    this.UpdateTitle(0);
+                    this.UpdateTitle();
                 }
                 catch (FileFormatException err) {
                     // Essentially handles unexpected EOF or malformed property values.
@@ -464,7 +479,7 @@ F1 produces this help.
                 if (dlg.whiteText.Text != "")
                     g.PlayerWhite = dlg.whiteText.Text;
                 this.Game = g;
-                this.UpdateTitle(0);
+                this.UpdateTitle();
                 this.DrawGameTree();
             }
         }
@@ -511,6 +526,8 @@ F1 produces this help.
         private void mainWin_keydown (object sender, KeyEventArgs e) {
             var win = (MainWindow)sender;
             if (e.Key == Key.Escape) {
+                this.Game.SaveCurrentComment();
+                this.UpdateTitle();
                 win.FocusOnStones();
                 e.Handled = true;
                 return;
@@ -647,8 +664,10 @@ F1 produces this help.
             if (! found) return; // User did not click on node
             // Reset board before advancing to move.
             var move = n.Node as Move;
-            if (this.Game.CurrentMove != null)
+            if (this.Game.CurrentMove != null) {
                 this.Game.GotoStart();
+                MainWindowAux.RestoreAdornments(this.stonesGrid, this.Game.SetupAdornments);
+            }
             else
                 this.Game.SaveCurrentComment();
             if (move != null) {
@@ -659,7 +678,7 @@ F1 produces this help.
             else
                 // Move is ParsedNode, not a move that's been rendered.
                 this.GotoGameTreeMove((ParsedNode)n.Node);
-            this.UpdateTitle(this.Game.CurrentMove == null ? 0 : this.Game.CurrentMove.Number);
+            this.UpdateTitle();
             this.UpdateTreeView(this.Game.CurrentMove);
             this.FocusOnStones();
         }
@@ -714,7 +733,7 @@ F1 produces this help.
         //// yeah, Adornments have a cookie, but oh well, and they are arguably viewmodel :-).
         ////
         private Dictionary<object, TreeViewNode> treeViewMoveMap = new Dictionary<object, TreeViewNode>();
-        private Grid treeViewSelectedItem;
+        private TreeViewNode treeViewSelectedItem;
 
         //// InitializeTreeView is used by SetupBoardDisplay.  It clears the canvas and sets its size.
         ////
@@ -749,19 +768,17 @@ F1 produces this help.
                 for (var j = 0; j < GameAux.TreeViewGridColumns; j++) {
                     var curModel = treeModel[i, j];
                     if (curModel != null) {
-                        //TODO: get previous grid from uncleared tree view map copy and update it
-                        // appropriately.  Also, probably want some flag or control that if did cut/paste
-                        // operation, then remove objects, handle renumbering of labels in grids, etc.
-                        // probably just toss whole tree on paste and re-gen for simplicity.
-                        //if (this.treeViewMoveMap.ContainsKey(curModel.Node)
-                        //    eltGrid = ((TreeViewNode)this.treeViewMoveMap[curModel.Node]).Cookie;
                         if (curModel.Kind != TreeViewNodeKind.LineBend) {
                             var eltGrid = MainWindowAux.NewTreeViewItemGrid(curModel);
                             curModel.Cookie = eltGrid;
                             var node = curModel.Node;
-                            //if (node != null)
-                            //    // If node is null, then it is a line bend node.
-                                this.treeViewMoveMap[curModel.Node] = curModel;
+                            var pnode = node as ParsedNode;   
+                            var mnode = node as Move; // Can be null for faux move representing start node.
+                            if ((pnode != null && pnode.Properties.ContainsKey("C")) ||   
+                                (mnode != null && mnode.Comments != "")) {   
+                                eltGrid.Background = new SolidColorBrush(Colors.LightGreen);   
+                            }   
+                            this.treeViewMoveMap[node] = curModel;  
                             Canvas.SetLeft(eltGrid, curModel.Column * MainWindowAux.treeViewGridCellSize);
                             Canvas.SetTop(eltGrid, curModel.Row * MainWindowAux.treeViewGridCellSize);
                             Canvas.SetZIndex(eltGrid, 1);
@@ -773,9 +790,8 @@ F1 produces this help.
             this.treeViewMoveMap.Remove(treeModel[0, 0].Node);
             this.treeViewMoveMap["start"] = treeModel[0, 0];
             MainWindowAux.DrawGameTreeLines(canvas, treeModel[0, 0]); 
-            Grid cookie = (Grid)treeModel[0, 0].Cookie;
             // Set this to something so that UpdateTreeView doesn't deref null.
-            this.treeViewSelectedItem = cookie;
+            this.treeViewSelectedItem = treeModel[0, 0];
             this.UpdateTreeView(this.Game.CurrentMove);
         }
 
@@ -800,20 +816,38 @@ F1 produces this help.
         }
 
         //// UpdateTreeHighlightMove handles the primary case of UpdateTreeView, moving the blue
-        //// highlight from the last current move the new current move.
+        //// highlight from the last current move the new current move, and managing if the old   
+        //// current move gets a green highlight for having a comment.  
         ////
         private void UpdateTreeHighlightMove (Move move) {
             TreeViewNode item = this.TreeViewNodeForMove(move);
             if (item == null) {
+                // move is not in tree view node map, so it is new.  For simplicity, just redraw entire tree.   
+                // This is fast enough to 300 moves at least, but could add optimization to notice adding move   
+                // to end of branch with no node in the way for adding new node.  
                 this.InitializeTreeView();
                 this.DrawGameTree();
             }
             else {
                 Grid itemCookie = ((Grid)item.Cookie);
+                // Get previous current move node (snode) and save new current move node (item)   
+                var snode = this.treeViewSelectedItem;   
+                var sitem = (Grid)snode.Cookie;   
+                this.treeViewSelectedItem = item; // itemCookie;   
+                // Get model object and see if previous current move has comments   
+                var pnode = snode.Node as ParsedNode;   
+                var mnode = snode.Node as Move;   
+                if ((pnode != null && pnode.Properties.ContainsKey("C")) ||   
+                    (mnode != null && (mnode.Comments != "" ||   
+                                       // or mnode is dummy node representing empty board   
+                                       (mnode.Row == -1 && mnode.Column == -1 && this.Game.Comments != "")))) {   
+                    // Nodes with comments are green   
+                    sitem.Background = new SolidColorBrush(Colors.LightGreen);   
+                }   
+                else   
+                    // Those without comments are transparent   
+                    sitem.Background = new SolidColorBrush(Colors.Transparent);  
                 // Update current move shading and bring into view.
-                var sitem = this.treeViewSelectedItem;
-                this.treeViewSelectedItem = itemCookie;
-                sitem.Background = new SolidColorBrush(Colors.Transparent);
                 itemCookie.Background = new SolidColorBrush(Colors.LightSkyBlue);
                 itemCookie.BringIntoView(new Rect((new Size(MainWindowAux.treeViewGridCellSize * 2,
                                                             MainWindowAux.treeViewGridCellSize * 2))));
@@ -842,7 +876,7 @@ F1 produces this help.
             }
             else {
                 if (move.Branches != null) {
-                    UpdateTreeHighlightBranch(move.Next);
+                    this.UpdateTreeHighlightBranch(move.Next);
                 }
             }
         }
@@ -1556,6 +1590,7 @@ F1 produces this help.
         //// on the canvas.
         ////
         internal const int treeViewGridCellSize = 40;
+        private const int treeViewNodeSize = 25;
 
         //// DrawGameTreeLines draws all the lines from this node to its next nodes.
         //// Note, these are TreeViewNodes, not Moves, so some of the nodes simply denote
@@ -1602,8 +1637,8 @@ F1 produces this help.
             g.HorizontalAlignment = HorizontalAlignment.Stretch;
             g.VerticalAlignment = VerticalAlignment.Stretch;
             g.Background = new SolidColorBrush(Colors.Transparent);
-            g.Height = 25;
-            g.Width = 25;
+            g.Height = MainWindowAux.treeViewNodeSize;
+            g.Width = MainWindowAux.treeViewNodeSize;
             g.Margin = new Thickness(0, 2, 0, 2);
             // Get stone image
             if (model.Kind == TreeViewNodeKind.Move) {
