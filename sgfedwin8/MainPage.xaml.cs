@@ -917,16 +917,8 @@ F1 produces this help.
         //// newButtonLeftDown since it must be 'async void' due to being an event handler.
         ////
         private async Task DoNewButton () {
-            // Hack while seplunking how to build a popup dialog in win8.
-            //await GameAux.Message("For now, create an .sgf file with this line and use the Open command:\n" +
-            //                      "    ;GM[1]FF[4]SZ[19]KM[6.5]PW[WhiteName]PB[BlackName])\n" +
-            //                      "For handicaps, change KM to 0.0 and add stones before the close paren:\n" +
-            //                      "   2: AB[pd][dp]\n" +
-            //                      "   3: AB[pd][dp][pp]\n" +
-            //                      "   4: AB[pd][dp][pp][dd]\n" +
-            //                      "   5: AB[pd][dp][pp][dd][jj]" +
-            //                      "   6: AB[pd][dp][pp][dd][dj][pj]");
             await this.CheckDirtySave();
+            // Setup new dialog and show it
             var newDialog = new NewGameDialog();
             var popup = new Popup();
             newDialog.NewGameDialogClose += (s, e) => { 
@@ -935,6 +927,11 @@ F1 produces this help.
             };
             popup.Child = newDialog;
             popup.IsOpen = true;
+            // Put focus into dialog, good for user, but also stops mainwindow from handling kbd events
+            ((NewGameDialog)popup.Child).WhiteTextBox.IsEnabled = true;
+            ((NewGameDialog)popup.Child).WhiteTextBox.IsTabStop = true;
+            ((NewGameDialog)popup.Child).WhiteTextBox.IsHitTestVisible = true;
+            ((NewGameDialog)popup.Child).WhiteTextBox.Focus(FocusState.Keyboard);
             // This was used when tried to navigate to new dialog as a page, but win8 tears
             // down MainWindow when we navigated to the dialog, requiring jumping through multiple hoops.
             //this.Frame.Navigate(typeof(NewGameDialog), this);
@@ -950,12 +947,16 @@ F1 produces this help.
         //// appropriate action.
         ////
         private async void NewGameDialogDone (NewGameDialog dlg) {
+            if (this.theAppBar.IsOpen)
+                // If launched from appbar, and it remained open, close it.
+                this.theAppBar.IsOpen = false;
             if (dlg.NewGameConfirmed) {
                 var white = dlg.WhiteText;
                 var black = dlg.BlackText;
                 var size = dlg.SizeText;
                 var handicap = dlg.HandicapText;
                 var komi = dlg.KomiText;
+                // Old code used when trying to do new dlg as page transition, too awkward, see notes above.
                 //var white = this.NewDialogInfo.Item1;
                 //var black = this.NewDialogInfo.Item2;
                 //var size = this.NewDialogInfo.Item3;
@@ -1429,7 +1430,11 @@ F1 produces this help.
             };
             popup.Child = newDialog;
             popup.IsOpen = true;
-
+            // Put focus into dialog, good for user, but also stops mainwindow from handling kbd events
+            ((GameInfo)popup.Child).PlayerBlackTextBox.IsEnabled = true;
+            ((GameInfo)popup.Child).PlayerBlackTextBox.IsTabStop = true;
+            ((GameInfo)popup.Child).PlayerBlackTextBox.IsHitTestVisible = true;
+            ((GameInfo)popup.Child).PlayerBlackTextBox.Focus(FocusState.Keyboard);
         }
 
         //// GameInfoDialogDone handles when the game info dialog popup is done.
@@ -1437,6 +1442,9 @@ F1 produces this help.
         //// appropriate action.
         ////
         private void GameInfoDialogDone (GameInfo dlg) {
+            if (this.theAppBar.IsOpen)
+                // If launched from appbar, and it remained open, close it.
+                this.theAppBar.IsOpen = false;
             if (dlg.GameInfoConfirmed) {
                 if (this.Game.CurrentMove == null && dlg.CommentChanged)
                     this.commentBox.Text = this.Game.Comments;

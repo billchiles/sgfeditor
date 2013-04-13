@@ -5,10 +5,18 @@ general todo:
  * formalize exceptions, handle them up in the UI layer, keep program running
  * handle MA property for X marks
  * handle setup moves AW/AB and change color props ... others?
+ * handle bogus empty nodes that some older game records have sometimes for branches and whatnot
  * add numeric labeling annotations
  * auto number moves on board from their move number (less useful until add printing, but could screenshot)
  * maybe mark nodes with comments
  * 
+
+since last release:
+ * checked in app manifest file used in release
+ * finished cleaning up UpdateTitle so no calls pass args
+ * ported lots of features to wpf, see below
+ * fixed bug in new dlg and game info dlg where enter/esc didn't work, and mainwin still handled kbd input
+ *
 
 wpf divergence from win8
  * meh

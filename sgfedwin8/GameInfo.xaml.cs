@@ -1,26 +1,23 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using Windows.Foundation;
-using Windows.Foundation.Collections;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Controls.Primitives;
-using Windows.UI.Xaml.Data;
 using Windows.UI.Xaml.Input;
-using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Navigation;
+
+using Windows.System; // VirtualKeyModifiers
 
 
 namespace SgfEdwin8 {
 
     public sealed partial class GameInfo : Page {
-
+        // Indicates whether ok or cancel hit
         public bool GameInfoConfirmed { get; set; }
         public Game Game { get; set; }
         // CommentChanged lets dialog inform main window may need to replace commentbox text.
         public bool CommentChanged { get; set; }
+        // Expose a control so that main UI can put focus into dialog and stop main ui kbd handling.
+        public TextBox PlayerBlackTextBox { get { return this.gameInfoPB; } }
 
         public GameInfo (Game g) {
             this.CommentChanged = false;
@@ -58,6 +55,7 @@ namespace SgfEdwin8 {
             this.gameInfoGC.Text = g.Comments;
         }
 
+
         /// <summary>
         /// Invoked when this page is about to be displayed in a Frame.
         /// </summary>
@@ -65,6 +63,7 @@ namespace SgfEdwin8 {
         /// property is typically used to configure the page.</param>
         protected override void OnNavigatedTo (NavigationEventArgs e) {
         }
+
 
         //// GameInfoDialogClose is called by Ok and Cancel clicks to signal owner.
         ////
@@ -289,6 +288,23 @@ namespace SgfEdwin8 {
             this.GameInfoConfirmed = false;
             if (this.GameInfoDialogClose != null)
                 this.GameInfoDialogClose(this, EventArgs.Empty);
+        }
+
+        private void GameInfoKeydown (object sender, KeyRoutedEventArgs e) {
+            GameInfo win;
+            if (sender.GetType() == typeof(GameInfo))
+                win = (GameInfo)sender;
+            else
+                win = this;
+            if (e.Key == VirtualKey.Escape) {
+                e.Handled = true;
+                this.cancelButton_click(null, null);
+                return;
+            }
+            else if (e.Key == VirtualKey.Enter) {
+                e.Handled = true;
+                this.okButton_click(null, null);
+            }
         }
 
     }

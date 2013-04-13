@@ -1,31 +1,26 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using Windows.Foundation;
-using Windows.Foundation.Collections;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Controls.Primitives;
-using Windows.UI.Xaml.Data;
 using Windows.UI.Xaml.Input;
-using Windows.UI.Xaml.Media;
-using Windows.UI.Xaml.Navigation;
 
-// The Blank Page item template is documented at http://go.microsoft.com/fwlink/?LinkId=234238
+using Windows.System; // VirtualKeyModifiers
+
 
 namespace SgfEdwin8 {
     /// <summary>
     /// An empty page that can be used on its own or navigated to within a Frame.
     /// </summary>
     public sealed partial class NewGameDialog : Page {
-
+        // Indicates whether ok or cancel button hit.
         public bool NewGameConfirmed { get; set; }
+        // Expose values since members are by default private.
         public string WhiteText { get; set; }
         public string BlackText { get; set; }
         public string SizeText { get; set; }
         public string HandicapText { get; set; }
         public string KomiText { get; set; }
+        // Expose a control so that main UI can put focus into dialog and stop main ui kbd handling.
+        public TextBox WhiteTextBox { get { return this.whiteText; } }
 
         public NewGameDialog () {
             this.InitializeComponent();
@@ -85,6 +80,26 @@ namespace SgfEdwin8 {
             //if (this.Frame.CanGoBack) {
             //    this.Frame.GoBack();
             //}
+        }
+
+        //// NewGameKeydown just handles enter and escape for Ok and Cancel buttons.
+        ////
+        private void NewGameKeydown (object sender, KeyRoutedEventArgs e) {
+            NewGameDialog win;
+            if (sender.GetType() == typeof(NewGameDialog))
+                win = (NewGameDialog)sender;
+            else
+                win = this;
+            if (e.Key == VirtualKey.Escape) {
+                e.Handled = true;
+                this.cancelButton_click(null, null);
+                return;
+            }
+            else if (e.Key == VirtualKey.Enter) {
+                e.Handled = true;
+                this.okButton_click(null, null);
+            }
+
         }
     }
 }

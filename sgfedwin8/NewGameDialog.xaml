@@ -6,7 +6,8 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
-    Background="#C7419082" >
+    Background="#C7419082" 
+    KeyDown="NewGameKeydown">
 
     <Grid Background="#C7419082" x:Name="newDlgGrid" >
         <!-- Need inner grid so that outer grid overlays app, disabling it, while inner grid
