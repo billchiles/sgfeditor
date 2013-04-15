@@ -93,6 +93,11 @@ combo, including changing what is the main line branch of the game.  To move a
 a branch up, you must be on the first move of a branch, and then you can use
 ctrl-uparrow, and to move a branch down, use ctrl-downarrow.
 
+GAME INFORMATION
+You can bring up a dialog with lots of game metadata by typing ctrl-i.  You can
+edit it.  The game comment is the same as the empty board comment, so you can edit
+it in either the comment box or the game info dialog.
+
 F1 produces this help.
 ";
 
@@ -473,18 +478,26 @@ F1 produces this help.
             dlg.ShowDialog();
             // Not sure why result is nullable, nothing in docs, does not distinguish cancel from red X.
             if (dlg.DialogResult.HasValue && dlg.DialogResult.Value) {
-                var g = new Game(this, int.Parse(dlg.sizeText.Text), int.Parse(dlg.handicapText.Text), dlg.komiText.Text);
-                if (dlg.blackText.Text != "")
-                    g.PlayerBlack = dlg.blackText.Text;
-                if (dlg.whiteText.Text != "")
-                    g.PlayerWhite = dlg.whiteText.Text;
+                var sizeInt = int.Parse(dlg.sizeText.Text);
+                var handicapInt = int.Parse(dlg.handicapText.Text);
+                if (sizeInt != 19) {
+                    MessageBox.Show("Size must be 19 for now.");
+                    return;
+                }
+                if (handicapInt < 0 || handicapInt > 9) {
+                    MessageBox.Show("Handicap must be 0 to 9.");
+                    return;
+                }
+                var g = new Game(this, sizeInt, handicapInt, dlg.komiText.Text);
+                g.PlayerBlack = dlg.blackText.Text;
+                g.PlayerWhite = dlg.whiteText.Text;
                 this.Game = g;
                 this.UpdateTitle();
                 this.DrawGameTree();
             }
         }
-        
-        
+
+
         //// saveButton_left_down saves if game has a file name and is dirty.  If
         //// there's a filename, but the file is up to date, then ask to save-as to
         //// a new name.  Kind of lame to not have explicit save-as button, but work
@@ -587,6 +600,11 @@ F1 produces this help.
             // Testing Game Tree Layout
             else if (e.Key == Key.T && Keyboard.Modifiers == ModifierKeys.Control) {
                 this.DrawGameTree();
+                e.Handled = true;
+            }
+            // Game Info
+            else if (e.Key == Key.I && Keyboard.Modifiers == ModifierKeys.Control) {
+                DoGameInfo();
                 e.Handled = true;
             }
             // Explicit Save As
@@ -722,7 +740,36 @@ F1 produces this help.
             this.CurrentComment = move.Comments;
         }
 
-        
+
+        //// DoGameInfo sets up the misc game info users mostly never edit and displays
+        //// a big dialog to edit that stuff.
+        ////
+        private void DoGameInfo () {
+            if (this.Game.ParsedGame != null) {
+                if (this.Game.MiscGameInfo == null) {
+                    // If misc properties still in parsed structure, capture them all to pass them through
+                    // if user saves file.  After editing them, MiscGameInfo supercedes parsed structure.
+                    this.Game.MiscGameInfo = GameAux.CopyProperties(this.Game.ParsedGame.Nodes.Properties);
+                }
+            }
+            else if (this.Game.MiscGameInfo == null)
+                this.Game.MiscGameInfo = new Dictionary<string, List<string>>();
+            // Just in case we're on the empty board state and comment is modified.
+            this.Game.SaveCurrentComment();
+            // Set up dialog.
+            var dlg = new GameInfo(this.Game);
+            dlg.Owner = this;
+            dlg.ShowDialog();
+            // Not sure why result is nullable, nothing in docs, does not distinguish cancel from red X.
+            if (dlg.DialogResult.HasValue && dlg.DialogResult.Value) {
+                if (this.Game.CurrentMove == null && dlg.CommentChanged)
+                    this.commentBox.Text = this.Game.Comments;
+                // Update title in case dirty flag changed.
+                this.UpdateTitle();
+            }
+        }
+
+
         ////
         //// Tree View of Game Tree
         ////

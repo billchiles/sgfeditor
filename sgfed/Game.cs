@@ -56,6 +56,10 @@ namespace SgfEd {
         public int MoveCount { get; set; }
         // parsed_game is not None when we opened a file to edit.
         public ParsedGame ParsedGame { get; set; }
+        // MiscGameInfo is like ParsedGame.Nodes.Properties, but this is null unless the user edits these.
+        // If there is no user edit, then the ParsedGames holds the misc properties, and we pass them through
+        // when we save the file.
+        public Dictionary<string, List<string>> MiscGameInfo { get; set; }
         // filename holds the full pathname if we read from a file or ever
         // saved this game.  Filebase is just <name>.<ext>.
         public string Filename { get; set; }
@@ -90,11 +94,12 @@ namespace SgfEd {
             this.Comments = "";
             this.MoveCount = 0;
             this.ParsedGame = null;
+            this.MiscGameInfo = null;
             this.Filename = null;
             this.Filebase = null;
             this.Dirty = false;
-            this.PlayerBlack = null;
-            this.PlayerWhite = null;
+            this.PlayerBlack = "";
+            this.PlayerWhite = "";
             this.BlackPrisoners = 0;
             this.WhitePrisoners = 0;
             this.cutMove = null;
@@ -1145,7 +1150,7 @@ namespace SgfEd {
                 Debug.Assert(this.Filename != null, "Need filename to write file.");
                 filename = this.Filename;
             }
-            var pg = GameAux.UpdateParsedGameFromGame(this);
+            var pg = this.UpdateParsedGameFromGame();
             var f = new StreamWriter(filename);
             f.Write(pg.ToString());
             f.Close();
@@ -1174,11 +1179,105 @@ namespace SgfEd {
         //// file may be out of date with the state of the game.
         ////
         public void WriteFlippedGame (string filename) {
-            var pg = GameAux.UpdateParsedGameFromGame(this, true); // True = flipped
+            var savepg = this.ParsedGame; // Save unflipped, unrendered parsed nodes if any.
+            var pg = this.UpdateParsedGameFromGame(true); // True = flipped
+            this.ParsedGame = savepg;
+            // Re-gen tree view and view model that points to ParsedNodes to ensure sound model.
+            // Don't really need this since all ParsedNodes cloned when flipping, no sharing or prev ptrs messed with
+            //this.mainWin.UpdateTreeView(this.CurrentMove, true);
             var f = new StreamWriter(filename);
             f.Write(pg.ToString());
             f.Close();
             this.Dirty = false;
+        }
+
+        //// UpdateParsedGameFromGame returns a ParsedGame representing game, re-using
+        //// existing parsed node properties where appropriate to avoid losing any we
+        //// ignore from parsed files.  This stores the new ParsedGame into Game
+        //// because re-using ParsedNode objects changes some previous pointners.
+        //// We just keep the new one for consistency.  If flipped is true, then move
+        //// and adornment indexes are diagonally mirrored; see write_flipped_game.
+        ////
+        internal ParsedGame UpdateParsedGameFromGame (bool flipped = false) {
+            var pgame = new ParsedGame();
+            pgame.Nodes = this.GenParsedGameRoot(flipped);
+            if (this.Branches == null) {
+                if (this.FirstMove != null) {
+                    pgame.Nodes.Next = GameAux.GenParsedNodes(this.FirstMove, flipped);
+                    pgame.Nodes.Next.Previous = pgame.Nodes;
+                }
+            }
+            else {
+                var branches = new List<ParsedNode>();
+                foreach (var m in this.Branches) {
+                    var tmp = GameAux.GenParsedNodes(m, flipped);
+                    branches.Add(tmp);
+                    tmp.Previous = pgame.Nodes;
+                }
+                pgame.Nodes.Branches = branches;
+                pgame.Nodes.Next = branches[0];
+            }
+            // Need to store new game since creating the parsed game re-uses original nodes.
+            this.ParsedGame = pgame;
+            return pgame;
+        }
+
+        //// _gen_parsed_game_root returns a ParsedNode that is based on the Game object
+        //// and that represents the first node in a ParsedGame.  It grabs any existing
+        //// root node properties if there's an existing ParsedGame root node.  If
+        //// flipped is true, then moves and adornment indexes are diagonally mirrored;
+        //// see write_flipped_game.
+        ////
+        //// NOTE, this function needs to overwrite any node properties that the UI
+        //// supports editing.  For example, if the end user can change the players
+        //// names or rank, then this function needs to overwrite the node properties
+        //// value with the game object's value.  It also needs to write properties from
+        //// new games.
+        ////
+        private ParsedNode GenParsedGameRoot (bool flipped) {
+            var n = new ParsedNode();
+            if (this.ParsedGame != null) {
+                if (this.MiscGameInfo != null)
+                    // If this is not null, then user edited properties in GameInfo dialog.
+                    n.Properties = GameAux.CopyProperties(this.MiscGameInfo);
+                else
+                    // Misc properties still in parsed structure, so pass them through for saving.
+                    n.Properties = GameAux.CopyProperties(this.ParsedGame.Nodes.Properties);
+            }
+            var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+            n.Properties["AP"] = new List<string>() { "SGFEditor (WPF): " + version.Major.ToString() + "." + 
+                                                      version.Minor.ToString() + "." + version.Build.ToString()};
+            n.Properties["SZ"] = new List<string>() { this.Board.Size.ToString() };
+            // Comments
+            if (n.Properties.ContainsKey("C"))
+                // game.comments has merged GC and C comments.
+                n.Properties.Remove("C");
+            if (this.Comments != "")
+                n.Properties["GC"] = new List<string>() { this.Comments };
+            else if (n.Properties.ContainsKey("GC"))
+                n.Properties.Remove("GC");
+            // Handicap/Komi
+            if (this.Handicap != 0) //&& this.handicap != "0":
+                n.Properties["HA"] = new List<string>() { this.Handicap.ToString() };
+            else if (n.Properties.ContainsKey("HA"))
+                n.Properties.Remove("HA");
+            n.Properties["KM"] = new List<string>() { this.Komi };
+            if (n.Properties.ContainsKey("AB")) {
+                if (flipped)
+                    n.Properties["AB"] = GameAux.FlipCoordinates(n.Properties["AB"]);
+                // else leave them as-is
+            }
+            else
+                if (this.Handicap != 0) //and this.handicap != "0")
+                    n.Properties["AB"] =
+                        this.HandicapMoves.Select((m) => GoBoardAux.GetParsedCoordinates(m, flipped))
+                                           .ToList();
+            //[goboard.get_parsed_coordinates(m, flipped) for
+            //  m in this.handicap_moves]
+            // Player names
+            n.Properties["PB"] = new List<string>() { this.PlayerBlack != "" ? this.PlayerBlack : "Black" };
+            n.Properties["PW"] = new List<string>() { this.PlayerWhite != "" ? this.PlayerWhite : "White" };
+            return n;
         }
 
 
@@ -1330,89 +1429,11 @@ namespace SgfEd {
         //// Mapping Games to ParsedGames (for printing)
         ////
 
-        //// parsed_game_from_game returns a ParsedGame representing game, re-using
-        //// existing parsed node properties where appropriate to avoid losing any we
-        //// ignore from parsed files.  If flipped is true, then moves and adornment
-        //// indexes are diagonally mirrored; see write_flipped_game.
-        ////
-        internal static ParsedGame UpdateParsedGameFromGame (Game game, bool flipped = false) {
-            var pgame = new ParsedGame();
-            pgame.Nodes = GenParsedGameRoot(game, flipped);
-            if (game.Branches == null) {
-                if (game.FirstMove != null) {
-                    pgame.Nodes.Next = GenParsedNodes(game.FirstMove, flipped);
-                    pgame.Nodes.Next.Previous = pgame.Nodes;
-                }
-            }
-            else {
-                var branches = new List<ParsedNode>();
-                foreach (var m in game.Branches) {
-                    var tmp = GenParsedNodes(m, flipped);
-                    branches.Add(tmp);
-                    tmp.Previous = pgame.Nodes;
-                }
-                pgame.Nodes.Branches = branches;
-                pgame.Nodes.Next = branches[0];
-            }
-            // Need to store new game since creating the parsed game re-uses original nodes.
-            game.ParsedGame = pgame;
-            return pgame;
-        }
-
-        //// _gen_parsed_game_root returns a ParsedNode that is based on the Game object
-        //// and that represents the first node in a ParsedGame.  It grabs any existing
-        //// root node properties if there's an existing ParsedGame root node.  If
-        //// flipped is true, then moves and adornment indexes are diagonally mirrored;
-        //// see write_flipped_game.
-        ////
-        //// NOTE, this function needs to overwrite any node properties that the UI
-        //// supports editing.  For example, if the end user can change the players
-        //// names or rank, then this function needs to overwrite the node properties
-        //// value with the game object's value.  It also needs to write properties from
-        //// new games.
-        ////
-        private static ParsedNode GenParsedGameRoot (Game game, bool flipped) {
-            var n = new ParsedNode();
-            if (game.ParsedGame != null)
-                n.Properties = CopyProperties(game.ParsedGame.Nodes.Properties);
-            n.Properties["AP"] = new List<string>() {"SGFPy"};
-            n.Properties["SZ"] = new List<string>() {game.Board.Size.ToString()};
-            // Comments
-            if (n.Properties.ContainsKey("GC"))
-                // game.comments has merged GC and C comments.
-                n.Properties.Remove("GC");
-            if (game.Comments != "")
-                n.Properties["C"] = new List<string>() {game.Comments};
-            else if (n.Properties.ContainsKey("C"))
-                n.Properties.Remove("C");
-            // Handicap/Komi
-            if (game.Handicap != 0) //&& game.handicap != "0":
-                n.Properties["HA"] = new List<string>() {game.Handicap.ToString()};
-            else if (n.Properties.ContainsKey("HA"))
-                n.Properties.Remove("HA");
-            n.Properties["KM"] = new List<string>() {game.Komi};
-            if (n.Properties.ContainsKey("AB")) {
-                if (flipped)
-                    n.Properties["AB"] = GameAux.FlipCoordinates(n.Properties["AB"]);
-                // else leave them as-is
-            }
-            else
-                if (game.Handicap != 0) //and game.handicap != "0")
-                    n.Properties["AB"] = 
-                        game.HandicapMoves.Select((m) => GoBoardAux.GetParsedCoordinates(m, flipped))
-                                           .ToList();
-                                        //[goboard.get_parsed_coordinates(m, flipped) for
-                                        //  m in game.handicap_moves]
-            // Player names
-            n.Properties["PB"] = new List<string>() {game.PlayerBlack != null ? game.PlayerBlack : "Black"};
-            n.Properties["PW"] = new List<string>() {game.PlayerWhite != null ? game.PlayerWhite: "White"};
-            return n;
-        }
 
         //// CopyProperties returns a mostly shallow copy of props.  The returned dictionary is new, and
         //// the list of string values is new, but the strings are shared.
         ////
-        private static Dictionary<string, List<string>> CopyProperties (Dictionary<string, List<string>> props) {
+        public static Dictionary<string, List<string>> CopyProperties (Dictionary<string, List<string>> props) {
             var res = new Dictionary<string, List<string>>();
             foreach (var kv in props)
                 res[kv.Key] = kv.Value.GetRange(0, kv.Value.Count);
@@ -1426,11 +1447,11 @@ namespace SgfEd {
         //// with branches.  If flipped is true, then moves and adornment indexes are
         //// diagonally mirrored; see write_flipped_game.
         ////
-        private static ParsedNode GenParsedNodes (Move move, bool flipped) {
-            if (!move.Rendered) {
+        public static ParsedNode GenParsedNodes (Move move, bool flipped) {
+            if (! move.Rendered) {
                 // If move exists and not rendered, then must be ParsedNode.
                 if (flipped)
-                    return CloneAndFlipNodes(move.ParsedNode);
+                    return GameAux.CloneAndFlipNodes(move.ParsedNode);
                 else
                     // Note: result re-uses original parsed nodes, and callers change this node
                     // to point to new parents.
@@ -1478,7 +1499,7 @@ namespace SgfEd {
             if (! move.Rendered) {
                 // If move exists and not rendered, then must be ParsedNode.
                 if (flipped)
-                    return CloneAndFlipNodes(move.ParsedNode);
+                    return GameAux.CloneAndFlipNodes(move.ParsedNode);
                 else
                     // Note: result re-uses original parsed nodes, and callers change this node
                     // to point to new parents.
@@ -1542,12 +1563,12 @@ namespace SgfEd {
         //// branches.
         ////
         private static ParsedNode CloneAndFlipNodes (ParsedNode nodes) {
-            var first = CloneAndFlipNode(nodes);
+            var first = GameAux.CloneAndFlipNode(nodes);
             var cur_node = first;
             if (nodes.Branches == null) {
                 nodes = nodes.Next;
                 while (nodes != null) {
-                    cur_node.Next = CloneAndFlipNode(nodes);
+                    cur_node.Next = GameAux.CloneAndFlipNode(nodes);
                     cur_node.Next.Previous = cur_node;
                     if (nodes.Branches == null) {
                         cur_node = cur_node.Next;
@@ -1563,7 +1584,7 @@ namespace SgfEd {
             if (nodes != null) {
                 cur_node.Branches = new List<ParsedNode>();
                 foreach (var m in nodes.Branches) {
-                    var tmp = CloneAndFlipNodes(m);
+                    var tmp = GameAux.CloneAndFlipNodes(m);
                     cur_node.Branches.Add(tmp);
                     tmp.Previous = cur_node;
                 }
@@ -1601,7 +1622,7 @@ namespace SgfEd {
         //// same kind of list with the coorindates diagonally flipped (see
         //// write_flipped_game).
         ////
-        private static List<string> FlipCoordinates (List<string> coords, bool labels = false) {
+        public static List<string> FlipCoordinates (List<string> coords, bool labels = false) {
             if (labels)
                 // coords elts are "<col><row>:<letter>"
                 return GameAux.FlipCoordinates(coords.Select((c) => c.Substring(0, c.Length - 2)).ToList())

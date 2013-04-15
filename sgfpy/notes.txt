@@ -21,11 +21,9 @@ since last release:
 wpf divergence from win8
  * meh
    * did not port auto saving to wpf
- * ???
    * do not do file activation association on wpf
-   * reworked command panel, needs menus then for buttons in app bar,
-        some missing already anyway (cut, paste, move branch, etc.)
- * do not have game metadata editing dialog
+   * reworked command panel, needs menus then in lieu of app bar,
+        some cmds kbd only anyway (cut, paste, move branch, etc.)
  * do not have scrolling help dialog
 ported ...
  * do not have esc saving comment and updating title if dirty
@@ -37,6 +35,7 @@ ported ...
  * tap last move to undo misclick
  * fixed home key and tapping start node to restore empty board adornments
  * green highlights on game tree nodes with comments
+ * do not have game metadata editing dialog
 
  
 

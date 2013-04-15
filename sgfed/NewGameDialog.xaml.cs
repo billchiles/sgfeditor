@@ -12,9 +12,7 @@ using System.Windows; // Window, RoutedEventArgs
 //using System.Windows.Shapes;
 
 namespace SgfEd {
-    /// <summary>
-    /// Interaction logic for Window1.xaml
-    /// </summary>
+
     public partial class NewGameDialog : Window {
 
         public NewGameDialog() {
