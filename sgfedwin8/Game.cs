@@ -1214,7 +1214,11 @@ namespace SgfEdwin8 {
         ////
         public async Task WriteFlippedGame (StorageFile sf) {
             MyDbg.Assert(sf != null, "Must call WriteFlippedGame with non-null file.");
+            var savepg = this.ParsedGame; // Save unflipped, unrendered parsed nodes if any.
             var pg = this.UpdateParsedGameFromGame(true); // True = flipped
+            this.ParsedGame = savepg;
+            // Considered but don't seem to need to re-gen entire tree view model to ensure view model soundness.
+            //this.mainWin.UpdateTreeView(this.CurrentMove, true);
             await FileIO.WriteTextAsync(sf, pg.ToString());
         }
 
