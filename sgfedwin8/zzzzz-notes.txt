@@ -3,8 +3,14 @@ maybe optimize for prev move not having branches and having no node next to it i
    if do this, then need new treeviewnode in grid, dict, etc.
 
 
-To do:
- * add appropriate try/catch to UI event handlers, call auto save
+
+Since store v 1.1, 
+ * checked in app manifest file used in release
+ * finished cleaning up UpdateTitle so no calls pass args
+ * ported lots of features to wpf
+ * fixed bug in new dlg and game info dlg where enter/esc didn't work, and mainwin still handled kbd input
+ * enhanced highlighting of current node in tree view
+ * fixed bug in writing flipped view files
 
 
  Since store v1, b35b1502515c, 9:51 p.m. 25 MAR 2013:
@@ -13,7 +19,6 @@ To do:
   * reworked command panel, putting some stuff in app bar
   * green highlights on game tree nodes with comments
   * comment cleanups
-  *
 
 
 Since 23 FEB Alpha 2 release:

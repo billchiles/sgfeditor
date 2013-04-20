@@ -8,7 +8,6 @@ general todo:
  * handle bogus empty nodes that some older game records have sometimes for branches and whatnot
  * add numeric labeling annotations
  * auto number moves on board from their move number (less useful until add printing, but could screenshot)
- * maybe mark nodes with comments
  * 
 
 since last release:
@@ -16,7 +15,9 @@ since last release:
  * finished cleaning up UpdateTitle so no calls pass args
  * ported lots of features to wpf, see below
  * fixed bug in new dlg and game info dlg where enter/esc didn't work, and mainwin still handled kbd input
- *
+ * enhanced highlighting of current node in tree view
+ * fixed bug in writing flipped view files
+ * 
 
 wpf divergence from win8
  * meh

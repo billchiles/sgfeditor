@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Package xmlns="http://schemas.microsoft.com/appx/2010/manifest">
-  <Identity Name="62410Billchi.SgfEditor" Publisher="CN=ED344A36-FC9A-41AF-8E3D-0DD808A5E54E" Version="1.0.0.2" />
+  <Identity Name="62410Billchi.SgfEditor" Publisher="CN=ED344A36-FC9A-41AF-8E3D-0DD808A5E54E" Version="1.0.0.4" />
   <Properties>
     <DisplayName>SgfEditor</DisplayName>
     <PublisherDisplayName>Billchi</PublisherDisplayName>
