@@ -155,7 +155,10 @@ F1 produces this help.
             timer2.Interval = TimeSpan.FromSeconds(2);
             timer2.Tick += new EventHandler<object>(async (sender, args) => { 
                 timer2.Stop();
-                await CheckUnnamedAutoSave(); });
+                if (! this.inOpenFileDialog)
+                    // Users can launch app, type c-o, and be in open file dialog when we're checking for an auto-saved,
+                    // unnamed file.  If user launched and hit c-o that fast, assume we can forgo auto-save check.
+                    await CheckUnnamedAutoSave(); });
             timer2.Start();
         }
 
@@ -736,23 +739,36 @@ F1 produces this help.
             this.FocusOnStones();
         }
 
+
+        //// inOpenFileDialog helps handle the situation when the user launches the app and types c-o fast enough
+        //// that then the check for an auto-save of an unnamed file puts up a "recursive" dialog, which throws
+        //// a System.UnauthorizedAccessException. The OnNavigatedTo lambda that calls CheckUnnamedAutoSave checks
+        //// this flag and forgoes the auto-save check on launch if we're already in this function.
+        ////
+        private bool inOpenFileDialog = false;
         //// DoOpenGetFile prompts user and returns file to open, or null.
         ////
         private async Task<StorageFile> DoOpenGetFile () {
             var fp = new FileOpenPicker();
             fp.FileTypeFilter.Add(".sgf");
             fp.FileTypeFilter.Add(".txt");
-            // This randomly throws HRESULT: 0x80070005 (E_ACCESSDENIED))
-            // UnauthorizedAccessException, seems to be when comment box has focus.
+            // This randomly throws HRESULT: 0x80070005 (E_ACCESSDENIED)) UnauthorizedAccessException,
+            // which I believe is a race condition with CheckUnnamedAutoSave.  See comment for inOpenFileDialog and
+            // note if the error occurs here, the check for an auto saved file must have put up a dialog first, or
+            // some other dialog showed.  May be able to harden this later if it ever occurs again so that there's
+            // a repro case.
             StorageFile sf;
             try {
+                this.inOpenFileDialog = true;
                 sf = await fp.PickSingleFileAsync();
             }
-            // Don't know why, but win8 randomly throws this though I always have access to my files.
             catch (UnauthorizedAccessException einfo) {
-                GameAux.Message(einfo.Message);
+                GameAux.Message("\"recursive\" dialogs up, probably checking for unnamed auto save on launch"
+                                + " and you typed c-o or used Open command quickly after launching app.\n\n"
+                                + einfo.Message);
                 return null;
             }
+            finally { this.inOpenFileDialog = false; }
             return sf;
         }
 
