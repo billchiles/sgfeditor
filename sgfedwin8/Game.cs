@@ -55,10 +55,11 @@ namespace SgfEdwin8 {
         // depends on.
         public string Comments { get; set; }
         // handicap is the number of stones, and handicap_moves is the explicit placement moves.
+        // HandicapMoves also models any All Black (AB) property on the root parsed node, even if no handicap (HA) prop.
         public int Handicap { get; set; }
         public List<Move> HandicapMoves { get; set; }
-        // Move count is just a counter in case we add a feature to number
-        // moves or show the move # in the title bar or something.
+        public List<Move> AllWhiteMoves { get; set; }
+        // Move count is just a counter to show the move # in the title bar.
         public int MoveCount { get; set; }
         // parsed_game is not None when we opened a file to edit.
         public ParsedGame ParsedGame { get; set; }
@@ -83,15 +84,20 @@ namespace SgfEdwin8 {
         private Move cutMove;
 
 
-        public Game (MainWindow main_win, int size, int handicap, string komi, List<Move> handicap_stones = null) {
+        public Game (MainWindow main_win, int size, int handicap, string komi, List<Move> handicap_stones = null,
+                     List<Move> all_white = null) {
             if (size != Game.MaxBoardSize)
                 // Change this eventually to check min size and max size.
                 throw new Exception("Only support 19x19 games for now.");
             this.CurrentMove = null;
             this.mainWin = main_win;
             this.Board = new GoBoard(size);
-            this.HandicapMoves = null;
             this.InitHandicapNextColor(handicap, handicap_stones);
+            if (all_white != null) {
+                this.AllWhiteMoves = all_white;
+                foreach (var m in all_white)
+                    this.Board.AddStone(m);
+            }
             this.Komi = komi;
             this.State = GameState.NotStarted;
             this.FirstMove = null;
@@ -122,9 +128,13 @@ namespace SgfEdwin8 {
         ////
         private void InitHandicapNextColor (int handicap, List<Move> handicap_stones) {
             this.Handicap = handicap;
-            if (handicap == 0) { // || handicap == "0")
-                this.HandicapMoves = null;
-                this.nextColor = Colors.Black;
+            if (handicap == 0) {
+                // Even if no handicap, could have All Black (AB) property in game root, which we model as handicap.
+                if (handicap_stones != null)
+                    foreach (var m in handicap_stones)
+                        this.Board.AddStone(m);
+                this.HandicapMoves = handicap_stones;
+                this.nextColor = Colors.Black; // This is correct until we handle PL property in root parsed node.
             }
             else {
                 this.nextColor = Colors.White;
@@ -166,7 +176,7 @@ namespace SgfEdwin8 {
                     // There is only a center stone for 5, 7, and 9 handicaps.
                     if (handicap == 9)
                         make_move(10, 10);
-                }
+                } /// handicap stones == null
                 else {
                     MyDbg.Assert(handicap_stones.Count == handicap,
                                  "Handicap number is not equal to all " +
@@ -508,7 +518,7 @@ namespace SgfEdwin8 {
             this.SaveAndUpdateComments(current, null);
             this.Board.GotoStart();
             this.mainWin.ResetToStart(current);
-            this.nextColor = this.HandicapMoves == null ? Colors.Black : Colors.White;
+            this.nextColor = this.Handicap == 0 ? Colors.Black : Colors.White;
             this.CurrentMove = null;
             this.MoveCount = 0;
             this.BlackPrisoners = 0;
@@ -1290,28 +1300,52 @@ namespace SgfEdwin8 {
                 n.Properties["GC"] = new List<string>() { this.Comments };
             else if (n.Properties.ContainsKey("GC"))
                 n.Properties.Remove("GC");
-            // Handicap/Komi
-            if (this.Handicap != 0) //&& game.handicap != "0":
+            // Komi
+            n.Properties["KM"] = new List<string>() { this.Komi };
+            // Handicap, all black, and all white properties
+            this.GenParsedGameRootInitialStones(flipped, n);
+            // Player names
+            n.Properties["PB"] = new List<string>() { this.PlayerBlack != "" ? this.PlayerBlack : "Black" };
+            n.Properties["PW"] = new List<string>() { this.PlayerWhite != "" ? this.PlayerWhite : "White" };
+            return n;
+        }
+
+        //// GenParsedGameRootInitialStones sets handicap (HA), all black (AB), and all white (AW)
+        //// properties.  You can have all black with a zero handicap, that is, if a program supported
+        //// just laying down stones in a example pattern.
+        ////
+        ////
+        private void GenParsedGameRootInitialStones (bool flipped, ParsedNode n) {
+            // HA
+            if (this.Handicap != 0)
                 n.Properties["HA"] = new List<string>() { this.Handicap.ToString() };
             else if (n.Properties.ContainsKey("HA"))
                 n.Properties.Remove("HA");
-            n.Properties["KM"] = new List<string>() { this.Komi };
+            // AB
             if (n.Properties.ContainsKey("AB")) {
+                // Prefer to keep what we parsed, especially since SGFEditor doesn't support editing AB for now.
                 if (flipped)
                     n.Properties["AB"] = GameAux.FlipCoordinates(n.Properties["AB"]);
                 // else leave them as-is
             }
             else
-                if (this.Handicap != 0) //and game.handicap != "0")
+                if (this.HandicapMoves != null)
                     n.Properties["AB"] =
                         this.HandicapMoves.Select((m) => GoBoardAux.GetParsedCoordinates(m, flipped))
                                            .ToList();
-            //[goboard.get_parsed_coordinates(m, flipped) for
-            //  m in game.handicap_moves]
-            // Player names
-            n.Properties["PB"] = new List<string>() { this.PlayerBlack != "" ? this.PlayerBlack : "Black" };
-            n.Properties["PW"] = new List<string>() { this.PlayerWhite != "" ? this.PlayerWhite : "White" };
-            return n;
+            // AW
+            if (n.Properties.ContainsKey("AW")) {
+                // Prefer to keep what we parsed, especially since SGFEditor doesn't support editing AB for now.
+                if (flipped)
+                    n.Properties["AW"] = GameAux.FlipCoordinates(n.Properties["AW"]);
+                // else leave them as-is
+            }
+            // Should have AW in properties or null AllWhiteMoves since don't support adding all white setup.
+            else if (this.AllWhiteMoves != null) { 
+                n.Properties["AW"] =
+                    this.AllWhiteMoves.Select((m) => GoBoardAux.GetParsedCoordinates(m, flipped))
+                                        .ToList();
+            }
         }
 
 
@@ -1757,31 +1791,24 @@ namespace SgfEdwin8 {
             int handicap;
             List<Move> all_black;
             if (props.ContainsKey("HA")) {
-                // KGS saves HA[6] and then AB[]...
-                handicap = int.Parse(props["HA"][0]);
-                if (handicap == 0)
-                    all_black = null;
-                else if (! props.ContainsKey("AB"))
-                    throw new Exception("If parsed game has handicap, then need handicap stones.");
-                else if (props["AB"].Count != handicap)
-                    throw new Exception("Parsed game's handicap count (HA) does not match stones (AB).");
-                else
-                    all_black = props["AB"].Select((coords) => {
-                        var tmp = GoBoardAux.ParsedToModelCoordinates(coords);
-                        var row = tmp.Item1;
-                        var col = tmp.Item2;
-                        var m = new Move(row, col, Colors.Black);
-                        m.ParsedNode = pgame.Nodes;
-                        m.Rendered = false;
-                        return m;
-                    }).ToList();
+                var stuff = CreateParsedGameHandicap(pgame, props);
+                handicap = stuff.Item1;
+                all_black = stuff.Item2;
             }
             else {
                 handicap = 0;
-                all_black = null;
+                // There may be all black stone placements even if there is no handicap property since some programs
+                // allow explicit stone placements of black stones that get written to the initial board properties.
+                if (props.ContainsKey("AB"))
+                    all_black = CreateParsedGameAllBlack(pgame, props);
+                else
+                    all_black = null;
             }
-            if (props.ContainsKey("AW"))
-                throw new Exception("Don't support multiple white stones at root.");
+            List<Move> all_white = null;
+            if (props.ContainsKey("AW")) {
+                all_white = CreateParsedGameAllWhite(pgame, props);
+                //throw new Exception("Don't support multiple white stones at root.");
+            }
             // Board size
             var size = Game.MaxBoardSize;
             if (props.ContainsKey("SZ"))
@@ -1798,7 +1825,7 @@ namespace SgfEdwin8 {
             else
                 komi = handicap == 0 ? Game.DefaultKomi : "0.5";
             // Creating new game cleans up current game
-            var g = new Game(main_win, size, handicap, komi, all_black);
+            var g = new Game(main_win, size, handicap, komi, all_black, all_white);
             // Player names
             if (props.ContainsKey("PB"))
                 g.PlayerBlack = props["PB"][0];
@@ -1828,6 +1855,55 @@ namespace SgfEdwin8 {
             return g;
         }
 
+        //// CreateParsedGameHandicap helps create a Game from a ParsedGame by processing the handicap (HA)
+        //// and all black (AB) properties.  It returns the handicap number and the Moves for the stones.
+        //// This assumes there is an HA property, so check before calling.
+        ////
+        private static Tuple<int, List<Move>> CreateParsedGameHandicap (ParsedGame pgame,
+                                                                        Dictionary<string, List<string>> props) {
+            // Handicap stones
+            int handicap;
+            List<Move> all_black;
+            handicap = int.Parse(props["HA"][0]);
+            if (handicap == 0)
+                all_black = null;
+            // KGS saves HA[6] and then AB[]...
+            else if (!props.ContainsKey("AB"))
+                throw new Exception("If parsed game has handicap, then need handicap stones.");
+            else if (props["AB"].Count != handicap)
+                throw new Exception("Parsed game's handicap count (HA) does not match stones (AB).");
+            else
+                all_black = CreateParsedGameAllBlack(pgame, props);
+            return Tuple.Create(handicap, all_black);
+        }
+
+        //// CreateParsedGameAllBlack helps create a Game from a ParsedGame by processing the all black (AB)
+        //// properties.
+        ////
+        private static List<Move> CreateParsedGameAllBlack (ParsedGame pgame, Dictionary<string, List<string>> props) {
+            return props["AB"].Select((coords) => {
+                var tmp = GoBoardAux.ParsedToModelCoordinates(coords);
+                var row = tmp.Item1;
+                var col = tmp.Item2;
+                var m = new Move(row, col, Colors.Black);
+                m.ParsedNode = pgame.Nodes;
+                m.Rendered = false;
+                return m;
+            }).ToList();
+        }
+
+        private static List<Move> CreateParsedGameAllWhite (ParsedGame pgame, Dictionary<string, List<string>> props) {
+            return props["AW"].Select((coords) => {
+                var tmp = GoBoardAux.ParsedToModelCoordinates(coords);
+                var row = tmp.Item1;
+                var col = tmp.Item2;
+                var m = new Move(row, col, Colors.White);
+                m.ParsedNode = pgame.Nodes;
+                m.Rendered = false;
+                return m;
+            }).ToList();
+        }
+
 
         //// _setup_first_parsed_move takes a game and the head of ParsedNodes.  It sets
         //// up the intial move models, handling initial node branching and so on.  The
@@ -1846,8 +1922,8 @@ namespace SgfEdwin8 {
                 throw new Exception("Unexpected move in root parsed node.");
             if (props.ContainsKey("PL"))
                 throw new Exception("Do not support player-to-play for changing start color.");
-            if (props.ContainsKey("AW"))
-                throw new Exception("Do not support AW in root node.");
+            //if (props.ContainsKey("AW"))
+            //    throw new Exception("Do not support AW in root node.");
             if (props.ContainsKey("TR") || props.ContainsKey("SQ") || props.ContainsKey("LB"))
                 throw new Exception("Don't handle adornments on initial board from parsed game yet.");
             Move m;

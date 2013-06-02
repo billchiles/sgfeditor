@@ -254,7 +254,7 @@ F1 produces this help.
             }
             else
                 this.collapsedStonesGrid.Children.Clear();
-            this.AddHandicapStones(this.Game, this.collapsedStonesGrid);
+            this.AddInitialStones(this.Game, this.collapsedStonesGrid);
             var size = this.Game.Board.Size;
             for (var row = 0; row < size; row++)
                 for (var col = 0; col < size; col++) {
@@ -282,7 +282,7 @@ F1 produces this help.
                 this.SetupStonesGrid(new_game.Board.Size);
                 MainWindowAux.SetupIndexLabels(this.stonesGrid, new_game.Board.Size);
                 this.prevSetupSize = new_game.Board.Size;
-                this.AddHandicapStones(new_game);
+                this.AddInitialStones(new_game);
             }
             else if (this.prevSetupSize == new_game.Board.Size) {
                 // Clean up and re-use same sized model objects.
@@ -305,7 +305,7 @@ F1 produces this help.
                 // If opening game file, next/end set to true by game code.
                 this.DisableForwardButtons();
                 MainWindowAux.stones = new Ellipse[Game.MaxBoardSize, Game.MaxBoardSize];
-                this.AddHandicapStones(new_game);
+                this.AddInitialStones(new_game);
             }
             else
                 throw new Exception("Haven't implemented changing board size for new games.");
@@ -1855,21 +1855,29 @@ F1 produces this help.
                         g.Children.Remove(stone);
                     MainWindowAux.stones[row, col] = null;
                 }
-            this.AddHandicapStones(this.Game);
+            this.AddInitialStones(this.Game);
             this.commentBox.Text = this.Game.Comments;
         }
 
 
-        //// AddHandicapStones takes a game and adds its handicap moves to the
-        //// display.  This takes a game because it is used on new games when
+        //// AddInitialStones takes a game and adds its handicap moves or all black (AB) stones and 
+        //// all white (AW) to the display.  This takes a game because it is used on new games when
         //// setting up an initial display and when resetting to the start of this.Game.
         //// This optionally takes a grid to use instead of the main this.stonesGrid,
         //// and when we're adding stones to a one-off grid, then we do not map the
         //// added stones and screw up the main displays mapping of stone Ellispes.
+        //// An example of a one-off grid is the static snapped view required by win8.
         ////
-        private void AddHandicapStones (Game game, Grid g = null) {
+        private void AddInitialStones (Game game, Grid g = null) {
             if (game.HandicapMoves != null) {
                 foreach (var elt in game.HandicapMoves)
+                    if (g == null)
+                        MainWindowAux.AddStone(this.stonesGrid, elt.Row, elt.Column, elt.Color);
+                    else
+                        MainWindowAux.AddStoneNoMapping(g, elt.Row, elt.Column, elt.Color);
+            }
+            if (game.AllWhiteMoves != null) {
+                foreach (var elt in game.AllWhiteMoves)
                     if (g == null)
                         MainWindowAux.AddStone(this.stonesGrid, elt.Row, elt.Column, elt.Color);
                     else
