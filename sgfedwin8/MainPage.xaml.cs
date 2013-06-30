@@ -136,12 +136,11 @@ F1 produces this help.
         //// 
 
         //// OnNavigatedTo adds SizeChanged handler to ensure board is square.  It also checks for the
-        //// unnamed auto saved file, and if it exists and was written less than 12 hours earlier, this
-        //// asks the user whether to open the auto saved file or to create a new blank board.
+        //// unnamed auto saved file.
         //// 
         protected override void OnNavigatedTo (NavigationEventArgs e) {
-            // Can't use e.Parameter here as in examples because it is appears to have type CSharp.Runtime.Binder?
-            //MainWindow mainWin = e.Parameter as MainWindow;
+            // Examples use e.Parameter here, but this e.Parameter has a string or other weird types.
+            // MainWindow mainWin = e.Parameter as MainWindow;
             Window.Current.SizeChanged += this.MainView_SizeChanged;
             base.OnNavigatedTo(e);
             // Set up autosave timer.
@@ -153,13 +152,37 @@ F1 produces this help.
             // it does not sometimes cause app to fail store WACK for launch time.
             var timer2 = new DispatcherTimer();
             timer2.Interval = TimeSpan.FromSeconds(2);
-            timer2.Tick += new EventHandler<object>(async (sender, args) => { 
-                timer2.Stop();
-                if (! this.inOpenFileDialog)
-                    // Users can launch app, type c-o, and be in open file dialog when we're checking for an auto-saved,
-                    // unnamed file.  If user launched and hit c-o that fast, assume we can forgo auto-save check.
-                    await CheckUnnamedAutoSave(); });
+            timer2.Tick += 
+                new EventHandler<object>(async (sender, args) => {
+                    timer2.Stop();
+                    await this.onNavigatedToCheckAutoSave();
+                });
             timer2.Start();
+        }
+
+        //// FileActivatedNoUnnamedAutoSave is set by App.OnFileActivated so that when the user launches
+        //// on a file, we do not check for an unnamed auto saved file.
+        public static bool FileActivatedNoUnnamedAutoSave = false;
+        //// onNavigatedToCheckAutoSave checks for unnamed auto saved file from user doodling on default board.
+        //// If we file launched, then don't check since the only options from the unnamed auto save dialog are
+        //// to open auto saved file or create default board.  Don't check if in open file dialog, see comment
+        //// below.
+        //// 
+        private async Task onNavigatedToCheckAutoSave () {
+            if (MainWindow.FileActivatedNoUnnamedAutoSave) {
+                // Reset var for cleanliness.  Shouldn't matter if reset it since it is only set when launching
+                // cold from file, and when launching warm from file, then we do frame.nav to MainWindow.
+                MainWindow.FileActivatedNoUnnamedAutoSave = false;
+                await this.DeleteUnnamedAutoSave();
+            }
+            else if (! this.inOpenFileDialog)
+                // Users can launch app, type c-o, and be in open file dialog when we're checking for an
+                // auto-saved, unnamed file.  If user launched and hit c-o that fast, assume we can forgo
+                // auto-save check.
+                await CheckUnnamedAutoSave();
+            else
+                await this.DeleteUnnamedAutoSave();
+
         }
 
         //// OnNavigatedFrom removes the resize handler, which was recommended in the sample I used
@@ -186,7 +209,8 @@ F1 produces this help.
 
         //// CheckUnnamedAutoSave looks for an auto save of a game the user never saved to disk.
         //// OnNavigatedTo above sets a 2s timer to invoke this so that the file probes and parsing do
-        //// no affect launch time, as measured by the WACK.
+        //// no affect launch time, as measured by the WACK.  If the file is less than 12 hours old,
+        //// prompt to open it, but assume user doesn't care otherwise.
         ////
         private async Task CheckUnnamedAutoSave () {
             var autoSf = await this.GetAutoSaveFile(MainWindow.UnnamedAutoSaveName);
@@ -210,6 +234,14 @@ F1 produces this help.
             }
         }
 
+        //// DeleteUnnamedAutoSave is used for just cleaning up the unnamed auto save file
+        //// when OnNavigatedTo forgoes checking the file.
+        ////
+        private async Task DeleteUnnamedAutoSave () {
+            var autoSf = await this.GetAutoSaveFile(MainWindow.UnnamedAutoSaveName);
+            if (autoSf != null)
+                await autoSf.DeleteAsync();
+        }
 
         //// 
         //// Handling Snap View (required by store compliance)

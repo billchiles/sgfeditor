@@ -79,6 +79,8 @@ namespace SgfEdwin8
                 // else create main UI as OnLaunched does
                 var frame = new Frame();
                 Window.Current.Content = frame;
+                // Need to set this so that an unnamed auto save doesn't prompt to re-open when user specified file.
+                MainWindow.FileActivatedNoUnnamedAutoSave = true;
                 frame.Navigate(typeof(MainWindow));
                 mainwin = frame.Content as MainWindow;
                 Window.Current.Activate();
