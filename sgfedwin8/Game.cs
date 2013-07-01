@@ -122,19 +122,24 @@ namespace SgfEdwin8 {
 
 
         //// _init_handicap_next_color sets the next color to play and sets up any
-        //// handicap state.  If there is a handicap,the moves may be specified in a
+        //// handicap state.  If there is a handicap, the moves may be specified in a
         //// parsed game; otherwise, this fills in traditional locations.  If there
         //// is a handicap and stones are supplied, then their number must agree.
+        //// This sets nextColor based on handicap since sgfeditor ignores the PL property in root node.
         ////
         private void InitHandicapNextColor (int handicap, List<Move> handicap_stones) {
             this.Handicap = handicap;
             if (handicap == 0) {
                 // Even if no handicap, could have All Black (AB) property in game root, which we model as handicap.
-                if (handicap_stones != null)
+                if (handicap_stones != null) {
                     foreach (var m in handicap_stones)
                         this.Board.AddStone(m);
+                    this.nextColor = Colors.White;
+                }
+                else {
+                    this.nextColor = Colors.Black;
+                }
                 this.HandicapMoves = handicap_stones;
-                this.nextColor = Colors.Black; // This is correct until we handle PL property in root parsed node.
             }
             else {
                 this.nextColor = Colors.White;

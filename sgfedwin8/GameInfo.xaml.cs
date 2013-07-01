@@ -37,8 +37,13 @@ namespace SgfEdwin8 {
             this.gameInfoBT.Text = props.ContainsKey("BT") ? props["BT"][0] : "";
             this.gameInfoWT.Text = props.ContainsKey("WT") ? props["WT"][0] : "";
             this.gameInfoHA.Text = g.Handicap.ToString();
-            // We don't respond to any handicap changes at this point.
-            this.gameInfoHA.IsReadOnly = true;
+            // We don't respond to any handicap changes at this point.  It is too complicated in terms of code
+            // changes for little value.  Users can use the New Game command, and if they have already started,
+            // then can't change anyway the handicap anyway.
+            if (g.State == GameState.Started || g.Handicap != 0) {
+                this.gameInfoHA.IsReadOnly = true;
+                this.gameInfoHA.Text += " -- use new game command to set handicap";
+            }
             this.gameInfoKM.Text = g.Komi;
             this.gameInfoRU.Text = props.ContainsKey("RU") ? props["RU"][0] : "";
             this.gameInfoSZ.Text = g.Board.Size.ToString();
@@ -87,6 +92,21 @@ namespace SgfEdwin8 {
                 g.Komi = this.gameInfoKM.Text;
                 g.Dirty = true;
             }
+            // Aborted support for editing handicap in game info dialog.  Needed too much refactoring and
+            // new abstractions to re-init game depending on state, and even just supporting changing from
+            // zero just one time required complications that didn't seem worth it.
+            //if (g.State == GameState.NotStarted && g.Handicap == 0) {
+            //    var handicap = int.Parse(this.gameInfoHA.Text);
+            //    if (handicap != g.Handicap) {
+            //        if (handicap < 0 || handicap > 9) {
+            //            //await GameAux.Message("Handicap must be 0 to 9.");
+            //        }
+            //        else {
+            //            g.InitHandicapNextColor(handicap, null);
+            //            g.mainwin.AddInitialStones(... new arg for just handicap, need to handle AW ...)
+            //        }
+            //    }
+            //}
             if (this.gameInfoGC.Text != g.Comments) {
                 g.Comments = this.gameInfoGC.Text;
                 g.Dirty = true;

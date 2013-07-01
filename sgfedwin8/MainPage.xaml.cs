@@ -767,6 +767,8 @@ F1 produces this help.
             var sf = await this.DoOpenGetFile();
             if (sf == null) return;
             await DoOpenGetFileGame(sf);
+            // TODO: check whether open file threw an error, don't redraw tree.
+            // Cursory inspection says this is harmless if three on open file, but not calling InitTreeView.
             this.DrawGameTree();
             this.FocusOnStones();
         }
@@ -1630,7 +1632,7 @@ F1 produces this help.
         ////
         public void DrawGameTree (bool force = false) {
             if (this.TreeViewDisplayed() || force)
-                //TODO: this is temporary, should re-use objects from this.treeViewMoveMap
+                // considered premature optimization of re-using objects from this.treeViewMoveMap, but no need
                 this.InitializeTreeView();
             var treeModel = GameAux.GetGameTreeModel(this.Game);
             // Set canvas size in case computing tree model had to grow model structures.
