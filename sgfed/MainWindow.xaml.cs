@@ -866,9 +866,17 @@ F1 produces this help.
         //// highlight from the last current move the new current move, and managing if the old   
         //// current move gets a green highlight for having a comment.  
         ////
+        private Rectangle currentNodeRect = null;
+        private Grid currentNodeGrid = null;
         private void UpdateTreeHighlightMove (Move move) {
-            TreeViewNode item = this.TreeViewNodeForMove(move);
-            if (item == null) {
+            // Ensure we have the box that helps the current node be highlighted.
+            if (this.currentNodeRect == null) {
+                this.currentNodeRect = new Rectangle();
+                this.currentNodeRect.Stroke = new SolidColorBrush(Colors.Gray);
+                //this.currentNodeRect.StrokeThickness = 0.7;
+            }
+            TreeViewNode curMoveItem = this.TreeViewNodeForMove(move);
+            if (curMoveItem == null) {
                 // move is not in tree view node map, so it is new.  For simplicity, just redraw entire tree.   
                 // This is fast enough to 300 moves at least, but could add optimization to notice adding move   
                 // to end of branch with no node in the way for adding new node.  
@@ -876,30 +884,41 @@ F1 produces this help.
                 this.DrawGameTree();
             }
             else {
-                Grid itemCookie = ((Grid)item.Cookie);
-                // Get previous current move node (snode) and save new current move node (item)   
-                var snode = this.treeViewSelectedItem;   
-                var sitem = (Grid)snode.Cookie;   
-                this.treeViewSelectedItem = item; // itemCookie;   
-                // Get model object and see if previous current move has comments   
-                var pnode = snode.Node as ParsedNode;   
-                var mnode = snode.Node as Move;   
-                if ((pnode != null && pnode.Properties.ContainsKey("C")) ||   
-                    (mnode != null && (mnode.Comments != "" ||   
-                                       // or mnode is dummy node representing empty board   
-                                       (mnode.Row == -1 && mnode.Column == -1 && this.Game.Comments != "")))) {   
-                    // Nodes with comments are green   
-                    sitem.Background = new SolidColorBrush(Colors.LightGreen);   
-                }   
-                else   
-                    // Those without comments are transparent   
-                    sitem.Background = new SolidColorBrush(Colors.Transparent);  
-                // Update current move shading and bring into view.
-                itemCookie.Background = new SolidColorBrush(Colors.LightSkyBlue);
-                itemCookie.BringIntoView(new Rect((new Size(MainWindowAux.treeViewGridCellSize * 2,
-                                                            MainWindowAux.treeViewGridCellSize * 2))));
+                UpdateTreeHighlightMoveAux(curMoveItem);
             }
         }
+
+        private void UpdateTreeHighlightMoveAux (TreeViewNode curItem) {
+            Grid curItemCookie = ((Grid)curItem.Cookie);
+            // Get previous current move node (snode) and save new current move node (item)   
+            var prevNode = this.treeViewSelectedItem;
+            var prevItem = (Grid)prevNode.Cookie;
+            this.treeViewSelectedItem = curItem; 
+            // Clear current node box that helps you see it highlighted, but don't use sitem since the grid
+            // holding the box might have been thrown away if we wiped out the entire tree.
+            if (this.currentNodeGrid != null)
+                this.currentNodeGrid.Children.Remove(this.currentNodeRect);
+            // Get model object and see if previous current move has comments   
+            var pnode = prevNode.Node as ParsedNode;
+            var mnode = prevNode.Node as Move;
+            if ((pnode != null && pnode.Properties.ContainsKey("C")) ||   
+                (mnode != null && (mnode.Comments != "" ||   
+                                    // or mnode is dummy node representing empty board   
+                                    (mnode.Row == -1 && mnode.Column == -1 && this.Game.Comments != "")))) {   
+                // Nodes with comments are green   
+                prevItem.Background = new SolidColorBrush(Colors.LightGreen);
+            }   
+            else   
+                // Those without comments are transparent   
+                prevItem.Background = new SolidColorBrush(Colors.Transparent);
+            // Update current move shading and bring into view.
+
+            curItemCookie.Background = new SolidColorBrush(Colors.LightSkyBlue);
+            curItemCookie.Children.Add(this.currentNodeRect);
+            this.currentNodeGrid = curItemCookie; // Save grid so that we can remove the Rect correctly.
+            curItemCookie.BringIntoView(new Rect((new Size(MainWindowAux.treeViewGridCellSize * 2,
+                                                           MainWindowAux.treeViewGridCellSize * 2))));
+    }
 
         //// TreeViewDipslayed returns whether there is a tree view displayed, abstracting the
         //// somewhat informal way we determine this state.  Eventually, the tree view will always
