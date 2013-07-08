@@ -31,6 +31,10 @@ ported to wpf ...
  * finished cleaning up UpdateTitle so no calls pass args
  * enhanced highlighting of current node in tree view
  * fixed bug in writing flipped view files
+ * AW handling
+ * more general AB handling
+ * game info dialog mentions new game to change handicap
+ * [caught up to 07 JUL 13, modulo things only in win8 due to async]
 
  
 

@@ -40,7 +40,11 @@ namespace SgfEd {
             this.gameInfoBT.Text = props.ContainsKey("BT") ? props["BT"][0] : "";
             this.gameInfoWT.Text = props.ContainsKey("WT") ? props["WT"][0] : "";
             this.gameInfoHA.Text = g.Handicap.ToString();
-            // We don't respond to any handicap changes at this point.
+            // We don't respond to any handicap changes at this point.  It is too complicated in terms of code   
+            // changes for little value.  Users can use the New Game command, and if they have already started,   
+                // then can't change the handicap anyway.   
+            if (g.State == GameState.Started || g.Handicap != 0)
+                this.gameInfoHA.Text += " -- use new game command to set handicap";  
             this.gameInfoHA.IsReadOnly = true;
             this.gameInfoKM.Text = g.Komi;
             this.gameInfoRU.Text = props.ContainsKey("RU") ? props["RU"][0] : "";

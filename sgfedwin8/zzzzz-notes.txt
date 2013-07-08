@@ -4,7 +4,7 @@ maybe optimize for prev move not having branches and having no node next to it i
 
 
 
-Since store v1.3 (store calls it release 4, submitted 28 MAY 13)
+Since store v1.05 (store calls it release 4, submitted 28 MAY 13)
  * added support for AW property in initial board state
  * generalized handling of AB to support no HA
  * checked in pkg store assoc and store key files (Microsoft expects these to be checked in publicly)
@@ -12,15 +12,14 @@ Since store v1.3 (store calls it release 4, submitted 28 MAY 13)
  * fixed bug in AB handling with no HA property, was setting next color to black instead of white
  * added text to game info dialog explaining to use New Game command to set handicap
  * added and fixed comments
- * ported outlining of current move in tree view from win8 to wpf
  *
 
-Since store v1.2 (store calls it release 3, submitted 20 APR 13)
+Since store v1.04 (store calls it release 3, submitted 20 APR 13)
  * fixed bug where you could launch and c-o before unnamed auto save kicked in, dialog race (27 MAY 13)
  * checked in app manifest file with version frob for release 4
 
 
-Since store v 1.1 (store calls it release 2, submitted 04 APR 13), 
+Since store v 1.03 (store calls it release 2, submitted 04 APR 13), 
  * checked in app manifest file used in prev release
  * finished cleaning up UpdateTitle so no calls pass args
  * ported lots from win8 to wpf version 27e92681a76c 07 APR 13
