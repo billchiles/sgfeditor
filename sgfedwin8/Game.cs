@@ -1328,7 +1328,7 @@ namespace SgfEdwin8 {
                 n.Properties.Remove("HA");
             // AB
             if (n.Properties.ContainsKey("AB")) {
-                // Prefer to keep what we parsed, especially since SGFEditor doesn't support editing AB for now.
+                // Prefer to keep what we parsed.
                 if (flipped)
                     n.Properties["AB"] = GameAux.FlipCoordinates(n.Properties["AB"]);
                 // else leave them as-is
@@ -1340,7 +1340,7 @@ namespace SgfEdwin8 {
                                            .ToList();
             // AW
             if (n.Properties.ContainsKey("AW")) {
-                // Prefer to keep what we parsed, especially since SGFEditor doesn't support editing AB for now.
+                // Prefer to keep what we parsed.
                 if (flipped)
                     n.Properties["AW"] = GameAux.FlipCoordinates(n.Properties["AW"]);
                 // else leave them as-is
@@ -1927,8 +1927,6 @@ namespace SgfEdwin8 {
                 throw new Exception("Unexpected move in root parsed node.");
             if (props.ContainsKey("PL"))
                 throw new Exception("Do not support player-to-play for changing start color.");
-            //if (props.ContainsKey("AW"))
-            //    throw new Exception("Do not support AW in root node.");
             if (props.ContainsKey("TR") || props.ContainsKey("SQ") || props.ContainsKey("LB"))
                 throw new Exception("Don't handle adornments on initial board from parsed game yet.");
             Move m;

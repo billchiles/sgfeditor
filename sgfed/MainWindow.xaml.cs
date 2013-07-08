@@ -129,7 +129,7 @@ F1 produces this help.
                 this.SetupStonesGrid(new_game.Board.Size);
                 MainWindowAux.SetupIndexLabels(this.stonesGrid, new_game.Board.Size);
                 this.prevSetupSize = new_game.Board.Size;
-                this.AddHandicapStones(new_game);
+                this.AddInitialStones(new_game);
             }
             else if (this.prevSetupSize == new_game.Board.Size) {
                 // Clean up and re-use same sized model objects.
@@ -152,7 +152,7 @@ F1 produces this help.
                 this.nextButton.IsEnabled = false;
                 this.endButton.IsEnabled = false;
                 MainWindowAux.stones = new Ellipse[Game.MaxBoardSize, Game.MaxBoardSize];
-                this.AddHandicapStones(new_game);
+                this.AddInitialStones(new_game);
             }
             else
                 throw new Exception("Haven't implemented changing board size for new games.");
@@ -1041,18 +1041,21 @@ F1 produces this help.
                         g.Children.Remove(stone);
                     MainWindowAux.stones[row, col] = null;
                 }
-            this.AddHandicapStones(this.Game);
+            this.AddInitialStones(this.Game);
             this.commentBox.Text = this.Game.Comments;
         }
 
 
-        //// add_handicap_stones takes a game and adds its handicap moves to the
-        //// display.  This takes a game because it is used on new games when
-        //// setting up an initial display and when resetting to the start of self.game.
+        //// AddInitialStones takes a game and adds its handicap moves or all black (AB) stones and 
+        //// all white (AW) to the display.  This takes a game because it is used on new games when
+        //// setting up an initial display and when resetting to the start of this.Game.
         ////
-        private void AddHandicapStones (Game game) {
+        private void AddInitialStones (Game game) {
             if (game.HandicapMoves != null)
                 foreach (var elt in game.HandicapMoves)
+                    MainWindowAux.AddStone(this.stonesGrid, elt.Row, elt.Column, elt.Color);
+            if (game.AllWhiteMoves != null)
+                foreach (var elt in game.AllWhiteMoves)
                     MainWindowAux.AddStone(this.stonesGrid, elt.Row, elt.Column, elt.Color);
         }
 

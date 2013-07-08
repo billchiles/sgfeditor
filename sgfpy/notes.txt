@@ -4,20 +4,11 @@ general todo:
  * pattern match ko and forbid ko take back
  * formalize exceptions, handle them up in the UI layer, keep program running
  * handle MA property for X marks
- * handle setup moves AW/AB and change color props ... others?
  * handle bogus empty nodes that some older game records have sometimes for branches and whatnot
  * add numeric labeling annotations
  * auto number moves on board from their move number (less useful until add printing, but could screenshot)
  * 
 
-since last release:
- * checked in app manifest file used in release
- * finished cleaning up UpdateTitle so no calls pass args
- * ported lots of features to wpf, see below
- * fixed bug in new dlg and game info dlg where enter/esc didn't work, and mainwin still handled kbd input
- * enhanced highlighting of current node in tree view
- * fixed bug in writing flipped view files
- * 
 
 wpf divergence from win8
  * meh
@@ -26,7 +17,7 @@ wpf divergence from win8
    * reworked command panel, needs menus then in lieu of app bar,
         some cmds kbd only anyway (cut, paste, move branch, etc.)
  * do not have scrolling help dialog
-ported ...
+ported to wpf ...
  * do not have esc saving comment and updating title if dirty
  * do not have canonicalized newline sequences in comments 
  * do not have tolerating HA[0]
@@ -37,6 +28,9 @@ ported ...
  * fixed home key and tapping start node to restore empty board adornments
  * green highlights on game tree nodes with comments
  * do not have game metadata editing dialog
+ * finished cleaning up UpdateTitle so no calls pass args
+ * enhanced highlighting of current node in tree view
+ * fixed bug in writing flipped view files
 
  
 
@@ -154,21 +148,6 @@ C# port path:
  * clean up comments and pythonic names
 
 
-some dino C# code comments:
- * const pascal case
- * private fields with leading underscore
-
-testing notes (or basic features list):   WAY OUT OF DATE AND MANY MANY TESTS BEHIND
- * add moves
- * can't play where stone is already
- * back up and replay
- * can branch and choose branches
- * when adding move that already exists in branch list, just choose it, don't add new one
- * can branch initial state
- * can add sq and tri adornments to any board locations
- * adornments come and go as rewind and replay
- * adornments work on initial board
- * WAY OUT OF DATE FROM FEATURES :-(
 
 ------------------------------------------------
 
@@ -211,176 +190,4 @@ WL  1234  White time left move             real
 WR  1234  White rank      game-info        simpletext
 WT  --34  White team      game-info        simpletext
 
-
-
------------------------------------ snipped or old code ---------------------
-
-### SGFEd is the WPF Application object.  It serves as the main UI and
-### ultimately holds all that you see as the app.  The end of this module
-### creates and runs the app.
-###
-#class SGFEd (Application):
-#
-#    def __init__(self):
-#        Application.__init__(self)
-#        self.MainWindow = XamlReader.Load(FileStream('sgfpy.xaml', FileMode.Open)) #LoadXaml("MainWindowPy.xaml")
-#        #self.MainWindow.Title = "SGFEd -- <file>"
-#        self.MainWindow.Width = 1050
-#        self.MainWindow.Height = 700
-#        self._prev_setup_size = None
-#        self.game = game.create_default_game(self)
-#        global app_inst
-#        app_inst = self
-#        self.connect_events()
-#        self.MainWindow.Show()
-    
-
-    #def connect_events (self):
-    #    self.FindName("prevButton").Click +=     (prevButton_left_down)
-    #    self.FindName("homeButton").Click += RoutedEventHandler(homeButton_left_down)
-    #    self.FindName("nextButton").Click += RoutedEventHandler(nextButton_left_down)
-    #    self.FindName("endButton").Click += RoutedEventHandler(endButton_left_down)
-    #    self.FindName("newButton").Click += RoutedEventHandler(newButton_left_down)
-    #    self.KeyDown += mainWin_keydown
-    #    self.TextInput += mainWin_textinput
-
-
-    #def enable_branch_combo (self, move, selection):
-    #    self.branchLabel.Content = str(len(move.branches)) + " branches:"
-    #    combo = main_win.branchCombo
-    #    combo.IsEnabled = True
-    #    combo.Items.Add("main")
-    #    for i in xrange(1, len(move.branches)):
-    #        combo.Items.Add(str(i))
-    #    combo.SelectedIndex = selection
-    #
-    #def clear_branch_combo (self):
-    #    #MessageBox.Show(str(main_win.branchCombo.Items[main_win.branchCombo.SelectedIndex]))
-    #    main_win.branchLabel.Content = "No Branches:"
-    #    main_win.branchCombo.Items.Clear()
-    #    #for i in xrange(main_win.branchCombo.Items.Count):
-    #    #    main_win.branchCombo.Items.RemoveAt(0)
-    #    main_win.branchCombo.IsEnabled = False
-
-#def activatecombo ():
-#    main_win.branchLabel.Content = str(testcount) + " branches:"
-#    combo = main_win.branchCombo
-#    combo.IsEnabled = True
-#    for i in xrange(1, testcount + 1):
-#        #item = ComboBoxItem()
-#        #item.Content = str(i)
-#        combo.Items.Add(str(i)) #item)
-#    combo.SelectedIndex = 0
-#
-#def clearcombo ():
-#    MessageBox.Show(str(main_win.branchCombo.Items[main_win.branchCombo.SelectedIndex]))
-#    main_win.branchLabel.Content = "No Branches:"
-#    main_win.branchCombo.Items.Clear()
-#    #for i in xrange(main_win.branchCombo.Items.Count):
-#    #    main_win.branchCombo.Items.RemoveAt(0)
-#    main_win.branchCombo.IsEnabled = False
-        
-
-### stones_mouse_left_down takes the stonesGrid that sourced the input event and
-### a MouseButtonEventArgs.  It places a go stone on the go board.
-###
-#def stones_mouse_left_down (stones_grid,  e):
-#    col, row = grid_pixels_to_cell(stones_grid, e.GetPosition(stones_grid).X, e.GetPosition(stones_grid).Y)
-#    ## cell x,y is col, row from top left, and board is row, col.
-#    if Keyboard.Modifiers == ModifierKeys.Shift:
-#        add_new_adornment(stones_grid, main_win.game.add_adornment(row, col, Adornments.square))
-#    elif Keyboard.Modifiers == ModifierKeys.Control:
-#        add_new_adornment(stones_grid, main_win.game.add_adornment(row, col, Adornments.triangle))
-#    else:
-#        move = main_win.game.make_move(row, col)
-#        if move is not None:
-#            add_stone(stones_grid, row, col, move.color)
-#            ## Must remove current adornment before adding it elsewhere.
-#            if move.previous is not None and Adornments.current_move_adornment in move.previous.adornments:
-#                ## Move may not have current adornment since it may have been captured and already
-#                ## removed by game.make_move.
-#                remove_current_stone_adornment(stones_grid, move.previous)
-#            add_current_stone_adornment(stones_grid, move)
-#            ## Remove previous move's adornments
-#            if move.previous is not None:
-#                remove_adornments(stones_grid, move.previous.adornments)
-#            else:
-#                remove_adornments(stones_grid, main_win.game.setup_adornments)
-#                
-
-
-Making lines and stones grids ....
-
-
-### The xaml looks like this (followed by the WPF code that is equivalent):
-###   <Grid ShowGridLines="False" Background="#FFD7B264" Grid.RowSpan="2" HorizontalAlignment="Stretch" Margin="2" Name="boardGrid"
-###         VerticalAlignment="Stretch" Width="{Binding ActualHeight, RelativeSource={RelativeSource Self}}" >
-### g.ShowGridLines = False
-### g.Background = SolidColorBrush(Color.FromArgb(0xff, 0xd7, 0xb2, 0x64))
-### Grid.SetRow(g, 0)
-### Grid.SetColumn(g, 0)
-### Grid.SetRowSpan(g, 2)
-### g.HorizontalAlignment = HorizontalAlignment.Stretch
-### g.VerticalAlignment = VerticalAlignment.Stretch
-### g.Margin = Thickness(2)
-### g.Name = "boardGrid"
-### b = Binding("ActualHeight")
-### b.RelativeSource = RelativeSource.Self 
-### g.SetBinding(WidthProperty, b)
-###
-
-
-### The xaml looks like this (followed by the WPF code that is equivalent):
-### <Grid ShowGridLines="False" Background="Transparent" Grid.RowSpan="2" HorizontalAlignment="Stretch"
-###       Margin="2" Name="stonesGrid" VerticalAlignment="Stretch"
-###       Width="{Binding ActualHeight, RelativeSource={RelativeSource Self}}">
-### g.ShowGridLines = False
-### g.Background = SolidColorBrush(Colors.Transparent)
-### Grid.SetRow(g, 0)
-### Grid.SetColumn(g, 0)
-### Grid.SetRowSpan(g, 2)
-### g.HorizontalAlignment = HorizontalAlignment.Stretch
-### g.VerticalAlignment = VerticalAlignment.Stretch
-### g.Margin = Thickness(2)
-### g.Name = "stonesGrid"
-### b = Binding("ActualHeight")
-### b.RelativeSource = RelativeSource.Self
-### g.SetBinding(WidthProperty, b)
-###
-
-
-
-###
-### Input and Focus Experiments
-###
-
-    ## if lift ctrl while msg box is showing, never msg's "ctrl"
-
-
-    #MessageBox.Show("mainwin focusable: " + str(main_win.Focusable) + 
-    #                " kbd focused: " + str(main_win.IsKeyboardFocused) + 
-    #                " visible: " + str(main_win.IsVisible))
-    #MessageBox.Show("keydown  " + str(main_win.commentBox.IsKeyboardFocused))
-    #MessageBox.Show("keydown: " + str(e.Key) + " " + str(e.SystemKey))
-    #MessageBox.Show(str(Keyboard.FocusedElement))
-    #isLeft = (e.Key == Key.Left or (e.Key == Key.System and e.SystemKey == Key.LeftAlt))
-    #isAlt = Keyboard.Modifiers == ModifierKeys.Alt
-    #iscomment = main_win.commentBox.IsKeyboardFocused
-    #MessageBox.Show(str(isLeft) + str(isAlt) + str(iscomment))
-    #if isLeft and isAlt and iscomment:
-    #    Keyboard.Focus(main_win.stonesGrid)
-    #    MessageBox.Show(str(Keyboard.FocusedElement))
-    #MessageBox.Show("stones focusable: " + str(main_win.stonesGrid.Focusable) + 
-    #                " kbd focused: " + str(main_win.stonesGrid.IsKeyboardFocused) + 
-    #                " visible: " + str(main_win.stonesGrid.IsVisible))
-    #if Keyboard.Modifiers == ModifierKeys.Control:
-    #    MessageBox.Show("ctrl")
-    #if Keyboard.Modifiers == ModifierKeys.Control | ModifierKeys.Shift:
-    #    MessageBox.Show("ctrl-shift")
-
-
-## only comes with text, so shift works, but ctrl does not, arrow does not, ...
-#def mainWin_textinput (win, e):
-#    #MessageBox.Show(e.Text)
-#    pass
 
