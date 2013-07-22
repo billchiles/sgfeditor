@@ -113,6 +113,9 @@ combo, including changing what is the main line branch of the game.  To move a
 a branch up, you must be on the first move of a branch, and then you can use
 ctrl-uparrow, and to move a branch down, use ctrl-downarrow.
 
+PASSING
+The Pass button or c-p will make a pass move.
+
 F1 produces this help.
 ";
 
@@ -495,7 +498,7 @@ F1 produces this help.
             // This doesn't work because an infinite loop occurs with the scrollviewer getting focus,
             // then the sf_GotFocus handler putting it back on stones, then scrollviewer getting focus again.
             //
-            //if (!hackDone) {
+            //if (! hackDone) {
             //    d = FocusManager.GetFocusedElement() as DependencyObject;
             //    while (d.GetType() != typeof(Windows.UI.Xaml.Controls.ScrollViewer)) {
             //        d = VisualTreeHelper.GetParent(d);
@@ -595,7 +598,12 @@ F1 produces this help.
         //// mainwin_keydown calls this to handle c-p.
         ////
         private async void passButton_left_down (object sender, RoutedEventArgs e) {
-            await GameAux.Message("Need to implement passing move.");
+            this.theAppBar.IsOpen = false;
+            var move = await this.Game.MakeMove(GoBoardAux.NoIndex, GoBoardAux.NoIndex);
+            MyDbg.Assert(move != null);
+            this.AdvanceToStone(move);
+            this.UpdateTreeView(move);
+            this.FocusOnStones();
         }
 
         //// prevButton_left_down handles the rewind one move button.  Also,
@@ -607,7 +615,7 @@ F1 produces this help.
         public void prevButtonLeftDown (object self, RoutedEventArgs e) {
             var move = this.Game.UnwindMove();
             //remove_stone(main_win.FindName("stonesGrid"), move)
-            if (!move.IsPass)
+            if (! move.IsPass)
                 MainWindowAux.RemoveStone(this.stonesGrid, move);
             if (move.Previous != null)
                 this.AddCurrentAdornments(move.Previous);
@@ -711,7 +719,7 @@ F1 produces this help.
         //// adornments for pre-existing moves).  The Game class also uses this.
         ////
         public void AddNextStoneNoCurrent (Move move) {
-            if (!move.IsPass)
+            if (! move.IsPass)
                 //add_stone(main_win.FindName("stonesGrid"), m.row, m.column, m.color)
                 MainWindowAux.AddStone(this.stonesGrid, move.Row, move.Column, move.Color);
             // Must remove current adornment before adding it elsewhere.
@@ -732,7 +740,7 @@ F1 produces this help.
             // Must restore adornemnts before adding current, else error adding
             // current twice.
             MainWindowAux.RestoreAdornments(this.stonesGrid, move.Adornments);
-            if (!move.IsPass)
+            if (! move.IsPass)
                 MainWindowAux.AddCurrentStoneAdornment(this.stonesGrid, move);
         }
 
@@ -744,7 +752,7 @@ F1 produces this help.
             var curMove = this.Game.CurrentMove;
             var num = curMove == null ? 0 : curMove.Number;
             var filebase = this.Game.Filebase;
-            var pass_str = (curMove != null && curMove.IsPass) ? " Pass" : "";
+            var pass_str = (curMove != null && curMove.IsPass) ? " **PASS**" : "";
             var title = "SGF Editor -- " + (this.Game.Dirty ? "[*] Move " : "Move ") + num.ToString() + pass_str;
             title = title + "   B captures: " + this.Game.BlackPrisoners.ToString() +
                     "   W captures: " + this.Game.WhitePrisoners.ToString();
@@ -1238,6 +1246,12 @@ F1 produces this help.
                 else
                     await GameAux.Message("No cut move to paste at this time.");
                 this.appBarPasteButton.IsEnabled = true;
+                e.Handled = true;
+            }
+            // Pass move
+            else if (e.Key == VirtualKey.P && this.IsKeyPressed(VirtualKey.Control) &&
+                     this.commentBox.FocusState != FocusState.Keyboard) {
+                this.passButton_left_down(null, null);
                 e.Handled = true;
             }
             // Help

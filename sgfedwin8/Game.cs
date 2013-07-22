@@ -211,13 +211,13 @@ namespace SgfEdwin8 {
             var cur_move = this.CurrentMove;
             var maybe_branching = ((cur_move != null && cur_move.Next != null) ||
                                    (cur_move == null && this.FirstMove != null));
-            if (this.Board.HasStone(row, col)) {
+            // move may be set below to pre-existing move, tossing this new object.
+            var move = new Move(row, col, this.nextColor);
+            if (! move.IsPass && this.Board.HasStone(row, col)) {
                 await GameAux.Message("Can't play where there already is a stone.");
                 return null;
             }
-            // move may be set below to pre-existing move, tossing this new object.
-            var move = new Move(row, col, this.nextColor);
-            if (this.CheckSelfCaptureNoKill(move)) {
+            if (! move.IsPass && this.CheckSelfCaptureNoKill(move)) {
                 await GameAux.Message("You cannot make a move that removes a group's last liberty");
                 return null;
             }
@@ -244,7 +244,8 @@ namespace SgfEdwin8 {
                 this.Dirty = true;
             }
             this.SaveAndUpdateComments(cur_move, move);
-            this.Board.AddStone(move);
+            if (! move.IsPass)
+                this.Board.AddStone(move);
             this.CurrentMove = move;
             move.Number = this.MoveCount + 1;
             this.MoveCount += 1;
@@ -259,7 +260,7 @@ namespace SgfEdwin8 {
                 // and it has a next move.
                 this.mainWin.EnableForwardButtons();
             }
-            if (move.DeadStones.Any()) {
+            if (! move.IsPass && move.DeadStones.Any()) { // CheckSelfCaptureNoKill above set captured stones for new move
                 this.RemoveStones(move.DeadStones);
                 this.UpdatePrisoners(move.Color, move.DeadStones.Count());
             }
@@ -310,7 +311,7 @@ namespace SgfEdwin8 {
             List<Move> branches = game_or_move.Branches;
             if (branches == null) {
                 branches = new List<Move>() { next }; // Must pass non-null branches.
-                // Can't use'var', must decl with 'Mpve'.  C# desn't realize all MaybeUpdateBanches
+                // Can't use'var', must decl with 'Move'.  C# desn't realize all MaybeUpdateBanches
                 // definitions return a Move.
                 Move move = this.MaybeUpdateBranches(branches, new_move);
                 if (object.ReferenceEquals(move, next)) {
@@ -436,7 +437,7 @@ namespace SgfEdwin8 {
         private void CollectStones (int row, int col, Color color, List<Move> dead_stones,
                                     bool[,] visited) {
             MyDbg.Assert(visited != null, "Must call CollectStones with initial matrix of null values.");
-            if (!visited[row - 1, col - 1])
+            if (! visited[row - 1, col - 1])
                 dead_stones.Add(this.Board.MoveAt(row, col));
             else
                 return;
@@ -468,7 +469,7 @@ namespace SgfEdwin8 {
                          "Previous button should be disabled if game not started.");
             var current = this.CurrentMove;
             MyDbg.Assert(current != null, "Previous button should be disabled if no current move.");
-            if (!current.IsPass)
+            if (! current.IsPass)
                 this.Board.RemoveStone(current);
             this.AddStones(current.DeadStones);
             this.UpdatePrisoners(current.Color, - current.DeadStones.Count());
@@ -644,10 +645,10 @@ namespace SgfEdwin8 {
         //// move.
         ////
         private Move ReplayMoveUpdateModel (Move move) {
-            if (!move.IsPass) {
+            if (! move.IsPass) {
                 // Check if board has stone already since might be replaying branch
                 // that was pasted into tree (and moves could conflict).
-                if (!this.Board.HasStone(move.Row, move.Column))
+                if (! this.Board.HasStone(move.Row, move.Column))
                     this.Board.AddStone(move);
                 else
                     return null;
@@ -682,7 +683,7 @@ namespace SgfEdwin8 {
         //// for display.
         ////
         private Move ReadyForRendering (Move move) {
-            if (!move.IsPass)
+            if (! move.IsPass)
                 this.CheckForKill(move);
             var pn = move.ParsedNode;
             Move mnext = null;
@@ -815,24 +816,7 @@ namespace SgfEdwin8 {
             cut_move.Previous = null;
             cut_move.DeadStones.Clear();
             if (prev_move == null) {
-                // Handle initial board state.  Can't use _cut_next_move here due
-                // to special handling of initial board and this._state.
-                var branches = this.Branches;
-                if (branches == null) {
-                    this.FirstMove = null;
-                    this.State = GameState.NotStarted;
-                }
-                else {
-                    var cut_index = GameAux.ListFind(cut_move, branches);
-                    branches.RemoveAt(cut_index);
-                    this.FirstMove = branches[0];
-                    if (branches.Count == 1)
-                        this.Branches = null;
-                }
-                if (this.ParsedGame != null && this.ParsedGame.Nodes.Next != null)
-                    // May not be parsed node to cut since the cut move
-                    // could be new (not from parsed file)
-                    this.CutNextParsedNode(this.ParsedGame.Nodes, this.ParsedGame.Nodes.Next);
+                CutFirstMove(cut_move);
             }
             else
                 // Handle regular move.
@@ -859,8 +843,33 @@ namespace SgfEdwin8 {
             this.mainWin.UpdateTreeView(prev_move, true);
         }
 
-        //// _cut_next_move takes a Move that is the previous move of the second argument,
-        //// which is the move being cut.  This function cleans up next pointers and branches
+        //// CutFirstMove takes a Move that is a firstmove of the game.  This function cleans up next pointers
+        //// and branches lists appropriately for the move.  This is VERY similar to CutNextMove for general
+        //// nodes, but has a few tweaks due to initial board modeling ... if only C# had procedural macros :-).
+        ////
+        private void CutFirstMove (Move cut_move) {
+            // Handle initial board state.  Can't use _cut_next_move here due
+            // to special handling of initial board and this._state.
+            var branches = this.Branches;
+            if (branches == null) {
+                this.FirstMove = null;
+                this.State = GameState.NotStarted;
+            }
+            else {
+                var cut_index = GameAux.ListFind(cut_move, branches);
+                branches.RemoveAt(cut_index);
+                this.FirstMove = branches[0];
+                if (branches.Count == 1)
+                    this.Branches = null;
+            }
+            if (this.ParsedGame != null && this.ParsedGame.Nodes.Next != null)
+                // May not be parsed node to cut since the cut move
+                // could be new (not from parsed file)
+                this.CutNextParsedNode(this.ParsedGame.Nodes, cut_move.ParsedNode);
+        }
+
+        //// CutNextMove takes a Move that is the previous move of the second argument,
+        //// and the move being cut.  This function cleans up next pointers and branches
         //// lists appropriately for the move.
         ////
         private void CutNextMove (Move move, Move cut_move) {
@@ -878,7 +887,7 @@ namespace SgfEdwin8 {
                 // If we have a Move with a parsed node, then we need to cut the parsed node tree
                 // too.  If have Move for parsed node, and move does not have branches, then parsed
                 // node does not either since we create Moves for parsed nodes ahead of fully rendering.
-                this.CutNextParsedNode(move.ParsedNode, move.ParsedNode.Next);
+                this.CutNextParsedNode(move.ParsedNode, cut_move.ParsedNode);
         }
 
         //// CutNextParsedNode is the same as CutNextMove, except for ParsedNode.  I could have used
@@ -922,13 +931,13 @@ namespace SgfEdwin8 {
                 return;
             }
             // Need to ensure first cut move doesn't conflict, else checking self capture throws.
-            if (this.Board.HasStone(this.cutMove.Row, this.cutMove.Column)) {
+            if (! this.cutMove.IsPass && this.Board.HasStone(this.cutMove.Row, this.cutMove.Column)) {
                 await GameAux.Message("Cannot paste cut move that is at same location as another stone.");
                 return;
             }
             // If CheckSelfCaptureNoKill returns false, the it updates cutMove to have dead
             // stones hanging from it so that calling DoNextButton removes them.
-            if (this.CheckSelfCaptureNoKill(this.cutMove)) {
+            if (! this.cutMove.IsPass && this.CheckSelfCaptureNoKill(this.cutMove)) {
                 await GameAux.Message("You cannot make a move that removes a group's last liberty");
                 return;
             }
@@ -1563,7 +1572,7 @@ namespace SgfEdwin8 {
         //// diagonally mirrored; see write_flipped_game.
         ////
         public static ParsedNode GenParsedNodes (Move move, bool flipped) {
-            if (!move.Rendered) {
+            if (! move.Rendered) {
                 // If move exists and not rendered, then must be ParsedNode.
                 if (flipped)
                     return CloneAndFlipNodes(move.ParsedNode);
@@ -1611,7 +1620,7 @@ namespace SgfEdwin8 {
         //// supports editing.  For example, if the end user modified adornments.
         ////
         private static ParsedNode GenParsedNode (Move move, bool flipped) {
-            if (!move.Rendered) {
+            if (! move.Rendered) {
                 // If move exists and not rendered, then must be ParsedNode.
                 if (flipped)
                     return CloneAndFlipNodes(move.ParsedNode);
@@ -1873,7 +1882,7 @@ namespace SgfEdwin8 {
             if (handicap == 0)
                 all_black = null;
             // KGS saves HA[6] and then AB[]...
-            else if (!props.ContainsKey("AB"))
+            else if (! props.ContainsKey("AB"))
                 throw new Exception("If parsed game has handicap, then need handicap stones.");
             else if (props["AB"].Count != handicap)
                 throw new Exception("Parsed game's handicap count (HA) does not match stones (AB).");

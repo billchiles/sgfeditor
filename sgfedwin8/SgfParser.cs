@@ -163,7 +163,7 @@ namespace SgfEdwin8 {
                     cur_node = cur_node.Next;
                 }
                 else if (chr == '(') {
-                    if (!branching_yet) {
+                    if (! branching_yet) {
                         cur_node.Next = ParseNodes(lexer);
                         cur_node.Next.Previous = cur_node;
                         cur_node.Branches = new List<ParsedNode>() { cur_node.Next };
@@ -385,7 +385,7 @@ namespace SgfEdwin8 {
                     c = this._data[this._index];
                     this._index += 1;
                     var newline = this.CheckPropertyNewline(c).Item1;
-                    if (!newline)
+                    if (! newline)
                         res.Append(c);
                 }
                 else if (c == ']')
