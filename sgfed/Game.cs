@@ -203,13 +203,13 @@ namespace SgfEd {
             var cur_move = this.CurrentMove;
             var maybe_branching = ((cur_move != null && cur_move.Next != null) ||
                                    (cur_move == null && this.FirstMove != null));
-            if (this.Board.HasStone(row, col)) {
+            // move may be set below to pre-existing move, tossing this new object.
+            var move = new Move(row, col, this.nextColor);
+            if (! move.IsPass && this.Board.HasStone(row, col)) {
                 MessageBox.Show("Can't play where there already is a stone.");
                 return null;
             }
-            // move may be set below to pre-existing move, tossing this new object.
-            var move = new Move(row, col, this.nextColor);
-            if (this.CheckSelfCaptureNoKill(move)) {
+            if (! move.IsPass && this.CheckSelfCaptureNoKill(move)) {
                 MessageBox.Show("You cannot make a move that removes a group's last liberty");
                 return null;
             }
@@ -236,7 +236,8 @@ namespace SgfEd {
                 this.Dirty = true;
             }
             this.SaveAndUpdateComments(cur_move, move);
-            this.Board.AddStone(move);
+            if (! move.IsPass)
+                this.Board.AddStone(move);
             this.CurrentMove = move;
             move.Number = this.MoveCount + 1;
             this.MoveCount += 1;
@@ -251,7 +252,7 @@ namespace SgfEd {
                 // and it has a next move.
                 this.mainWin.EnableForwardButtons();
             }
-            if (move.DeadStones.Any()) {
+            if (! move.IsPass && move.DeadStones.Any()) { // CheckSelfCaptureNoKill above set captured stones for new move
                 this.RemoveStones(move.DeadStones);
                 this.UpdatePrisoners(move.Color, move.DeadStones.Count());
             }
@@ -806,24 +807,7 @@ namespace SgfEd {
             cut_move.Previous = null;
             cut_move.DeadStones.Clear();
             if (prev_move == null) {
-                // Handle initial board state.  Can't use _cut_next_move here due
-                // to special handling of initial board and this._state.
-                var branches = this.Branches;
-                if (branches == null) {
-                    this.FirstMove = null;
-                    this.State = GameState.NotStarted;
-                }
-                else {
-                    var cut_index = GameAux.ListFind(cut_move, branches);
-                    branches.RemoveAt(cut_index);
-                    this.FirstMove = branches[0];
-                    if (branches.Count == 1)
-                        this.Branches = null;
-                }
-                if (this.ParsedGame != null && this.ParsedGame.Nodes.Next !=null)
-                    // May not be parsed node to cut since the cut move
-                    // could be new (not from parsed file)
-                    this.CutNextParsedNode(this.ParsedGame.Nodes, this.ParsedGame.Nodes.Next);
+                CutFirstMove(cut_move);
             }
             else
                 // Handle regular move.
@@ -850,8 +834,33 @@ namespace SgfEd {
             this.mainWin.UpdateTreeView(prev_move, true);
         }
 
-        //// _cut_next_move takes a Move that is the previous move of the second argument,
-        //// which is the move being cut.  This function cleans up next pointers and branches
+        //// CutFirstMove takes a Move that is a firstmove of the game.  This function cleans up next pointers
+        //// and branches lists appropriately for the move.  This is VERY similar to CutNextMove for general
+        //// nodes, but has a few tweaks due to initial board modeling ... if only C# had procedural macros :-).
+        ////
+        private void CutFirstMove (Move cut_move) {
+            // Handle initial board state.  Can't use _cut_next_move here due
+            // to special handling of initial board and this._state.
+            var branches = this.Branches;
+            if (branches == null) {
+                this.FirstMove = null;
+                this.State = GameState.NotStarted;
+            }
+            else {
+                var cut_index = GameAux.ListFind(cut_move, branches);
+                branches.RemoveAt(cut_index);
+                this.FirstMove = branches[0];
+                if (branches.Count == 1)
+                    this.Branches = null;
+            }
+            if (this.ParsedGame != null && this.ParsedGame.Nodes.Next != null)
+                // May not be parsed node to cut since the cut move
+                // could be new (not from parsed file)
+                this.CutNextParsedNode(this.ParsedGame.Nodes, cut_move.ParsedNode);
+        }
+
+        //// CutNextMove takes a Move that is the previous move of the second argument,
+        //// and the move being cut.  This function cleans up next pointers and branches
         //// lists appropriately for the move.
         ////
         private void CutNextMove (Move move, Move cut_move) {
@@ -869,7 +878,7 @@ namespace SgfEd {
                 // If we have a Move with a parsed node, then we need to cut the parsed node tree
                 // too.  If have Move for parsed node, and move does not have branches, then parsed
                 // node does not either since we create Moves for parsed nodes ahead of fully rendering.
-                this.CutNextParsedNode(move.ParsedNode, move.ParsedNode.Next);
+                this.CutNextParsedNode(move.ParsedNode, cut_move.ParsedNode);
         }
 
         //// CutNextParsedNode is the same as CutNextMove, except for ParsedNode.  I could have used
@@ -913,13 +922,13 @@ namespace SgfEd {
                 return;
             }
             // Need to ensure first cut move doesn't conflict, else checking self capture throws.
-            if (this.Board.HasStone(this.cutMove.Row, this.cutMove.Column)) {
+            if (! this.cutMove.IsPass && this.Board.HasStone(this.cutMove.Row, this.cutMove.Column)) {
                 MessageBox.Show("Cannot paste cut move that is at same location as another stone.");
                 return;
             }
             // If CheckSelfCaptureNoKill returns false, then it updates cutMove to have dead
             // stones hanging from it so that calling nextButtonLeftDown removes them.
-            if (this.CheckSelfCaptureNoKill(this.cutMove)) {
+            if (! this.cutMove.IsPass && this.CheckSelfCaptureNoKill(this.cutMove)) {
                 MessageBox.Show("You cannot make a move that removes a group's last liberty");
                 return;
             }

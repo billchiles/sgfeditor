@@ -98,6 +98,9 @@ You can bring up a dialog with lots of game metadata by typing ctrl-i.  You can
 edit it.  The game comment is the same as the empty board comment, so you can edit
 it in either the comment box or the game info dialog.
 
+PASSING
+The Pass button or c-p will make a pass move.
+
 F1 produces this help.
 ";
 
@@ -265,7 +268,11 @@ F1 produces this help.
         //// mainwin_keydown calls this to handle c-p.
         ////
         private void passButton_left_down(object sender, RoutedEventArgs e) {
-            MessageBox.Show("Need to implement passing move.");
+            var move = this.Game.MakeMove(GoBoardAux.NoIndex, GoBoardAux.NoIndex);
+            Debug.Assert(move != null);
+            this.AdvanceToStone(move);
+            this.UpdateTreeView(move);
+            this.FocusOnStones();
         }
 
         //// prevButton_left_down handles the rewind one move button.  Also,
@@ -400,7 +407,7 @@ F1 produces this help.
             var curMove = this.Game.CurrentMove;
             var num = curMove == null ? 0 : curMove.Number;
             var filebase = this.Game.Filebase;
-            var pass_str = (curMove != null && curMove.IsPass) ? " Pass" : "";
+            var pass_str = (curMove != null && curMove.IsPass) ? " **PASS**" : "";
             var title = "SGF Editor -- " + (this.Game.Dirty ? "[*] Move " : "Move ") + num.ToString() + pass_str;
             title = title + "   B captures: " + this.Game.BlackPrisoners.ToString() +
                     "   W captures: " + this.Game.WhitePrisoners.ToString();
@@ -646,11 +653,17 @@ F1 produces this help.
             }
             // Pasting a sub tree
             else if (e.Key == Key.V && Keyboard.Modifiers == ModifierKeys.Control &&
-                     !this.commentBox.IsKeyboardFocused) {
+                     ! this.commentBox.IsKeyboardFocused) {
                 if (win.Game.CanPaste())
                     win.Game.PasteMove();
                 else
                     MessageBox.Show("No cut move to paste at this time.");
+                e.Handled = true;
+            }
+            // Pasting a sub tree
+            else if (e.Key == Key.P && Keyboard.Modifiers == ModifierKeys.Control &&
+                     ! this.commentBox.IsKeyboardFocused) {
+                this.passButton_left_down(null, null);
                 e.Handled = true;
             }
             // Help
