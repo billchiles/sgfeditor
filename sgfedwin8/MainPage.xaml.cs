@@ -116,7 +116,9 @@ ctrl-uparrow, and to move a branch down, use ctrl-downarrow.
 PASSING
 The Pass button or c-p will make a pass move.
 
-F1 produces this help.
+MISCELLANEOUS
+   F1 produces this help.
+   Ctrl-k clears the current node's comment (cause the author does that a lot :-))
 ";
 
         private int prevSetupSize = 0;
@@ -1253,6 +1255,15 @@ F1 produces this help.
                      this.commentBox.FocusState != FocusState.Keyboard) {
                 this.passButton_left_down(null, null);
                 e.Handled = true;
+            }
+            // Special Bill command because I do this ALL THE TIME
+            else if (e.Key == VirtualKey.K && this.IsKeyPressed(VirtualKey.Control)) {
+                this.CurrentComment = "";
+                this.Game.SaveCurrentComment();
+                this.UpdateTitle();
+                win.FocusOnStones();
+                e.Handled = true;
+                return;
             }
             // Help
             else if (e.Key == VirtualKey.F1) {

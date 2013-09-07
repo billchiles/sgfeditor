@@ -85,9 +85,42 @@ namespace SgfEdwin8
                 mainwin = frame.Content as MainWindow;
                 Window.Current.Activate();
             }
-            await mainwin.GetFileGameCheckingAutoSave(sf);
+            // Need to be careful in catch block when creating default game and cleaning up old game.
+            var game = mainwin.Game;
+            try {
+                await mainwin.GetFileGameCheckingAutoSave(sf);
+            }
+            catch (IOException err) {
+                // Essentially handles unexpected EOF or malformed property values.
+                FileActivatedErrorCleanup(mainwin, game);
+                GameAux.Message(err.Message + err.StackTrace);
+            }
+            catch (Exception err) {
+                // No code paths should throw from incomplete, unrecoverable state, so should be fine to continue.
+                // For example, game state should be intact (other than IsDirty) for continuing.
+                FileActivatedErrorCleanup(mainwin, game);
+                GameAux.Message(err.Message + err.StackTrace);
+            }
             mainwin.DrawGameTree();
             //win.FocusOnStones();
+        }
+
+        //// FileActivatedErrorCleanup ensures that if we hit errors reading a file when activating the app via
+        //// a file, then we restore state to a default new game.  There's a bit of a kludge here in that we don't
+        //// know if game in mainwin was properly reset or if the opened file got as far as storing a new game (which
+        //// is not likely).  Since SetupBoardDisplay assumes there's a game, mainwin.game can't be null, and if its
+        //// current move is non-null, then SetupBoardDisplay hits an error trying to remove the current move
+        //// adornment twice.  Since frame may or may not be new, with a new board drawn and everything, setting
+        //// the current move to null seemed the easiest, cleanest thing to do (might do something better later).
+        ////
+        private static void FileActivatedErrorCleanup (MainWindow mainwin, Game game) {
+            if (object.ReferenceEquals(game, mainwin.Game)) {
+                // If here, game has already been cleaned up, so this ensures SetupBoardDisplay doesn't error
+                // trying to remove current adornment twice.
+                mainwin.Game.CurrentMove = null;
+            }
+            mainwin.Game = GameAux.CreateDefaultGame(mainwin);
+            mainwin.UpdateTitle();
         }
 
 
