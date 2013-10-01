@@ -883,16 +883,18 @@ namespace SgfEdwin8 {
                 if (branches.Count == 1)
                     move.Branches = null;
             }
-            if (move.ParsedNode != null && move.ParsedNode.Next != null)
+            if (move.ParsedNode != null && move.ParsedNode.Next != null && cut_move.ParsedNode != null)
                 // If we have a Move with a parsed node, then we need to cut the parsed node tree
                 // too.  If have Move for parsed node, and move does not have branches, then parsed
-                // node does not either since we create Moves for parsed nodes ahead of fully rendering.
+                // node does not either since we create Moves for parsed nodes ahead of fully rendering
+                // and consistently delete parsed nodes if delete moves.  Need to check if cut_move.ParsedNode
+                // is null because it could have been added after parsing file and have no ParsedNode.
                 this.CutNextParsedNode(move.ParsedNode, cut_move.ParsedNode);
         }
 
         //// CutNextParsedNode is the same as CutNextMove, except for ParsedNode.  I could have used
         //// dynamic, but it required an 'is' type test (a red flag for using dynamic) to determine if
-        //// I had to check parsed nodes.
+        //// I had to check parsed nodes.  This function assumes pn and cut-move are not null.
         ////
         private void CutNextParsedNode (ParsedNode pn, ParsedNode cut_move) {
             var branches = pn.Branches;
