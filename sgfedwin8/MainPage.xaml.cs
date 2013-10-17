@@ -1196,12 +1196,17 @@ MISCELLANEOUS
                 e.Handled = true;
             }
             // Testing Game Tree Layout
-            else if (e.Key == VirtualKey.T && this.IsKeyPressed(VirtualKey.Control)) {
-                this.DrawGameTree();
+            //else if (e.Key == VirtualKey.T && this.IsKeyPressed(VirtualKey.Control)) {
+            //    this.DrawGameTree();
+            //    e.Handled = true;
+            //}
+            // Game info
+            else if (e.Key == VirtualKey.I && this.IsKeyPressed(VirtualKey.Control)) {
+                this.AppBarGameInfoClick(null, null);
                 e.Handled = true;
             }
             // Explicit Save As
-            else if (e.Key == VirtualKey.S && 
+            else if (e.Key == VirtualKey.S &&
                      this.IsKeyPressed(VirtualKey.Control) && this.IsKeyPressed(VirtualKey.Menu)) {
                 await this.SaveAs();
                 // There is some bug in win8 that prevents this call to FocusOnstones from working,
@@ -1527,6 +1532,7 @@ MISCELLANEOUS
                 this.UpdateTitle();
             }
             this.theAppBar.IsOpen = false;
+            this.FocusOnStones();
         }
 
 
