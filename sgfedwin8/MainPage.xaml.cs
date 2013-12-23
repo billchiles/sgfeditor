@@ -807,6 +807,7 @@ MISCELLANEOUS
                 sf = await fp.PickSingleFileAsync();
             }
             catch (UnauthorizedAccessException einfo) {
+                var ignoreTask = // Squelch warning that we're not awaiting Message, which we can't in catch blocks.
                 GameAux.Message("\"recursive\" dialogs up, probably checking for unnamed auto save on launch"
                                 + " and you typed c-o or used Open command quickly after launching app.\n\n"
                                 + einfo.Message);
@@ -834,11 +835,13 @@ MISCELLANEOUS
                 }
                 catch (IOException err) {
                     // Essentially handles unexpected EOF or malformed property values.
+                    var ignoreTask = // Squelch warning that we're not awaiting Message, which we can't in catch blocks.
                     GameAux.Message(err.Message + err.StackTrace);
                 }
                 catch (Exception err) {
                     // No code paths should throw from incomplete, unrecoverable state, so should be fine to continue.
                     // For example, game state should be intact (other than IsDirty) for continuing.
+                    var ignoreTask = // Squelch warning that we're not awaiting Message, which we can't in catch blocks.
                     GameAux.Message(err.Message + err.StackTrace);
                 }
                 finally {
@@ -1771,7 +1774,7 @@ MISCELLANEOUS
                 // Those without comments are transparent
                 prevItem.Background = new SolidColorBrush(Colors.Transparent);
             // Update current move shading and bring into view.
-            curItemCookie.Background = new SolidColorBrush(Colors.LightSkyBlue);
+            curItemCookie.Background = new SolidColorBrush(Colors.Fuchsia);
             curItemCookie.Children.Add(this.currentNodeRect);
             this.currentNodeGrid = curItemCookie; // Save grid so that we can remove the Rect correctly.
             this.BringTreeElementIntoView(curItemCookie);

@@ -93,12 +93,14 @@ namespace SgfEdwin8
             catch (IOException err) {
                 // Essentially handles unexpected EOF or malformed property values.
                 FileActivatedErrorCleanup(mainwin, game);
+                var ignoreTask = // Squelch warning that we're not awaiting Message, which we can't in catch blocks.
                 GameAux.Message(err.Message + err.StackTrace);
             }
             catch (Exception err) {
                 // No code paths should throw from incomplete, unrecoverable state, so should be fine to continue.
                 // For example, game state should be intact (other than IsDirty) for continuing.
                 FileActivatedErrorCleanup(mainwin, game);
+                var ignoreTask = // Squelch warning that we're not awaiting Message, which we can't in catch blocks.
                 GameAux.Message(err.Message + err.StackTrace);
             }
             mainwin.DrawGameTree();
