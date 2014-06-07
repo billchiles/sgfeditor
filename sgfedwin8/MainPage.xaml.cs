@@ -22,6 +22,7 @@ using System.Threading.Tasks; // Task<T>
 using System.Diagnostics; // Debug.Assert
 using Windows.UI.Text; // FontWeight
 using Windows.UI.ViewManagement; // ApplicationView (for snap view)
+using Windows.ApplicationModel.DataTransfer; // DataPackage and Clipboard
 
 
 namespace SgfEdwin8 {
@@ -1137,7 +1138,7 @@ MISCELLANEOUS
                 win = (MainWindow)sender;
             else
                 win = this;
-            //var win = (MainWindow)sender;
+            // Ensure focus on board where general commands are dispatched.
             if (e.Key == VirtualKey.Escape) {
                 this.Game.SaveCurrentComment();
                 this.UpdateTitle();
@@ -1146,7 +1147,8 @@ MISCELLANEOUS
                 return;
             }
             // Previous move
-            if (e.Key == VirtualKey.Left && (this.commentBox.FocusState != FocusState.Keyboard && win.Game.CanUnwindMove())) {
+            if (e.Key == VirtualKey.Left && 
+                (this.commentBox.FocusState != FocusState.Keyboard && win.Game.CanUnwindMove())) {
                 this.prevButtonLeftDown(null, null);
                 e.Handled = true;
             }
@@ -1159,12 +1161,14 @@ MISCELLANEOUS
                 e.Handled = true;
             }
             // Initial board state
-            else if (e.Key == VirtualKey.Home && (this.commentBox.FocusState != FocusState.Keyboard) && win.Game.CanUnwindMove()) {
+            else if (e.Key == VirtualKey.Home && (this.commentBox.FocusState != FocusState.Keyboard) &&
+                     win.Game.CanUnwindMove()) {
                 this.homeButtonLeftDown(null, null);
                 e.Handled = true;
             }
             // Last move
-            else if (e.Key == VirtualKey.End && (this.commentBox.FocusState != FocusState.Keyboard) && win.Game.CanReplayMove()) {
+            else if (e.Key == VirtualKey.End && (this.commentBox.FocusState != FocusState.Keyboard) &&
+                     win.Game.CanReplayMove()) {
                 this.endButtonLeftDown(null, null);
                 e.Handled = true;
             }
@@ -1198,11 +1202,6 @@ MISCELLANEOUS
                 await this.DoOpenButton();
                 e.Handled = true;
             }
-            // Testing Game Tree Layout
-            //else if (e.Key == VirtualKey.T && this.IsKeyPressed(VirtualKey.Control)) {
-            //    this.DrawGameTree();
-            //    e.Handled = true;
-            //}
             // Game info
             else if (e.Key == VirtualKey.I && this.IsKeyPressed(VirtualKey.Control)) {
                 this.AppBarGameInfoClick(null, null);
@@ -1265,10 +1264,27 @@ MISCELLANEOUS
                 e.Handled = true;
             }
             // Special Bill command because I do this ALL THE TIME
+            // Delete entire comment.
             else if (e.Key == VirtualKey.K && this.IsKeyPressed(VirtualKey.Control)) {
-                this.CurrentComment = "";
-                this.Game.SaveCurrentComment();
-                this.UpdateTitle();
+                this.UpdateCurrentComment("");
+                win.FocusOnStones();
+                e.Handled = true;
+                return;
+            }
+            // Special Bill command because I do this ALL THE TIME
+            // Delete question mark at end of first line -- c-?.
+            else if (((int)e.Key) == 191 && this.IsKeyPressed(VirtualKey.Shift) &&
+                     this.IsKeyPressed(VirtualKey.Control)) {
+                await FirstRhetoricalLineToStatement();
+                win.FocusOnStones();
+                e.Handled = true;
+                return;
+            }
+            // Special Bill command because I do this ALL THE TIME
+            // Delete line indicated by c-N keypress.
+            else if (e.Key > VirtualKey.Number0 && e.Key < VirtualKey.Number6 &&
+                     this.IsKeyPressed(VirtualKey.Control)) {
+                await DeleteCommentLine(((int)e.Key) - ((int)VirtualKey.Number0));
                 win.FocusOnStones();
                 e.Handled = true;
                 return;
@@ -1278,6 +1294,9 @@ MISCELLANEOUS
                 this.ShowHelp();
                 e.Handled = true;
             }
+            else {
+                //await GameAux.Message(e.Key.ToString() + (this.IsKeyPressed(VirtualKey.Shift)).ToString());
+                }
         } // mainWin_keydown
 
 
@@ -2042,10 +2061,83 @@ MISCELLANEOUS
             this.endButton.IsEnabled = false;
         }
 
+        
         public string CurrentComment {
             get { return this.commentBox.Text; }
             set { this.commentBox.Text = value; }
         }
+
+        /// FirstRhetoricalLineToStatement is a pet feature that converts the first line of a comment from
+        /// a question to a statement by deleting the "?" at the EOL.
+        /// 
+        private async Task FirstRhetoricalLineToStatement () {
+            var s = this.CurrentComment;
+            var i = s.IndexOf("\r\n");  //Comments canonicalized because winRT TextBox forces that with no options
+            if (i > 0 && s[i - 1] == ' ') {
+                await GameAux.Message("Got whitespace at EOL.  Generalize your code, dude :-).");
+            }
+            if (i == -1) {
+                if (s[s.Length - 1] == '?') i = s.Length;
+            }
+            if (i > 0 && s[i - 1] == '?') {
+                this.UpdateCurrentComment(s.Substring(0, i - 1) + s.Substring(i));
+            }
+        }
+
+        /// DeleteCommentLine is a pet feature that deletes the one-based numbered line in the comment.
+        ///
+        private async Task DeleteCommentLine (int num) {
+            var s = this.CurrentComment;
+            var loc = s.IndexOf("\r\n");  //Comments canonical newline because winRT TextBox forces that with no options
+            // If no newlines, delete single first line or punt
+            if (loc < 0) {
+                if (s.Length != 0 && num == 1) {
+                    this.UpdateCurrentComment("");
+                    return;
+                }
+                await GameAux.Message("There is no line numbered " + num.ToString());
+                return;
+            }
+            // Find start and end of desired line
+            int prevloc = 0;
+            for (int i = 1; i < num; i++) {
+                var tmp = s.IndexOf("\r\n", loc + 2); // loc must point to \r\n, and starting at string.len returns -1
+                if (tmp == -1) {
+                    if (i == num - 1) { // Found num lines, last one does not end in newline sequence
+                        tmp = s.Length;
+                    }
+                    else {
+                        await GameAux.Message("There is no line numbered " + num.ToString());
+                        return;
+                    }
+                }
+                prevloc = loc;
+                loc = tmp;
+            }
+            // Delete line from comment
+            if (s[prevloc] == '\r') prevloc += 2; // Might be beginning of comment, but if not leave this newline along
+            if (loc < s.Length) loc += 2; // Might be at end, but if not delete this newline
+            if (prevloc == loc) {
+                await GameAux.Message("There is no line numbered " + num.ToString());
+                return;
+            }
+            this.UpdateCurrentComment(s.Substring(0, prevloc) + s.Substring(loc, s.Length - loc));
+        }
+
+        /// UpdateCurrentComment sets the current comment to the string, pushes the change to the model, and
+        /// updates the title since the dirty bit at least may have changed.
+        /// 
+        private void UpdateCurrentComment (string s) {
+            // Stash previous text just in case.
+            var d = new DataPackage();
+            d.SetText(this.CurrentComment);
+            Clipboard.SetContent(d);
+            // Set UI, model, and title.
+            this.CurrentComment = s;
+            this.Game.SaveCurrentComment();
+            this.UpdateTitle();
+        }
+
 
     } // class MainWindow
 
@@ -2699,13 +2791,6 @@ MISCELLANEOUS
             fp.SuggestedFileName = "game01";
             var sf = await fp.PickSaveFileAsync();
             return sf;
-
-            //dlg.Title = (title != null ? title : dlg.Title);
-            //var result = dlg.ShowDialog(); // None, True, or False
-            //if (result.HasValue && result.Value)
-            //    return dlg.FileName;
-            //else
-            //    return null;
         }
 
 
