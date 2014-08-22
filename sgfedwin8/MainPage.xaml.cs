@@ -2129,9 +2129,12 @@ MISCELLANEOUS
         /// 
         private void UpdateCurrentComment (string s) {
             // Stash previous text just in case.
-            var d = new DataPackage();
-            d.SetText(this.CurrentComment);
-            Clipboard.SetContent(d);
+            var old = this.CurrentComment;
+            if (old != "") { // Clipboard throws bogus null deref exception if the string is empty.
+                var d = new DataPackage();
+                d.SetText(this.CurrentComment);
+                Clipboard.SetContent(d);
+            }
             // Set UI, model, and title.
             this.CurrentComment = s;
             this.Game.SaveCurrentComment();
