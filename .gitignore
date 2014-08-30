@@ -25,3 +25,4 @@ Thumbs.db
 obj/
 [Rr]elease*/
 AppPackages
+*_TemporaryKey.pfx

@@ -15,7 +15,7 @@
     <PackageCertificateKeyFile>SgfEdWin8_StoreKey.pfx</PackageCertificateKeyFile>
     <AppxAutoIncrementPackageRevision>True</AppxAutoIncrementPackageRevision>
     <AppxSymbolPackageEnabled>True</AppxSymbolPackageEnabled>
-    <PackageCertificateThumbprint>1291CF61C82CDD87A76E0FBCC0DF8E6E1F59E074</PackageCertificateThumbprint>
+    <PackageCertificateThumbprint>A9C827417F2C9370709ADA70B42CB6B158A96022</PackageCertificateThumbprint>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -135,6 +135,7 @@
       <SubType>Designer</SubType>
     </AppxManifest>
     <None Include="SgfEdWin8_StoreKey.pfx" />
+    <None Include="SgfEdWin8_TemporaryKey.pfx" />
     <None Include="WasApp1_TemporaryKey.pfx" />
   </ItemGroup>
   <ItemGroup>
