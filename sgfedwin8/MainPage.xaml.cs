@@ -1147,52 +1147,58 @@ MISCELLANEOUS
                 return;
             }
             // Previous move
-            if (e.Key == VirtualKey.Left && 
-                (this.commentBox.FocusState != FocusState.Keyboard && win.Game.CanUnwindMove())) {
+            if (e.Key == VirtualKey.Left && this.commentBox.FocusState != FocusState.Keyboard &&
+                // Kbd focus covers tabbing to comment box, and pointer covers clicking on it
+                this.commentBox.FocusState != FocusState.Pointer && win.Game.CanUnwindMove()) {
                 this.prevButtonLeftDown(null, null);
                 e.Handled = true;
             }
             // Next move
-            else if (e.Key == VirtualKey.Right) {
-                if (this.commentBox.FocusState == FocusState.Keyboard)
-                    return;
-                if (win.Game.CanReplayMove())
-                    await this.DoNextButton();
+            else if (e.Key == VirtualKey.Right && this.commentBox.FocusState != FocusState.Keyboard &&
+                     // Kbd focus covers tabbing to comment box, and pointer covers clicking on it
+                     this.commentBox.FocusState != FocusState.Pointer && win.Game.CanReplayMove()) {
+                await this.DoNextButton();
                 e.Handled = true;
             }
             // Initial board state
-            else if (e.Key == VirtualKey.Home && (this.commentBox.FocusState != FocusState.Keyboard) &&
-                     win.Game.CanUnwindMove()) {
+            else if (e.Key == VirtualKey.Home && this.commentBox.FocusState != FocusState.Keyboard &&
+                     // Kbd focus covers tabbing to comment box, and pointer covers clicking on it
+                     this.commentBox.FocusState != FocusState.Pointer && win.Game.CanUnwindMove()) {
                 this.homeButtonLeftDown(null, null);
                 e.Handled = true;
             }
             // Last move
-            else if (e.Key == VirtualKey.End && (this.commentBox.FocusState != FocusState.Keyboard) &&
-                     win.Game.CanReplayMove()) {
+            else if (e.Key == VirtualKey.End && this.commentBox.FocusState != FocusState.Keyboard &&
+                     // Kbd focus covers tabbing to comment box, and pointer covers clicking on it
+                     this.commentBox.FocusState != FocusState.Pointer && win.Game.CanReplayMove()) {
                 this.endButtonLeftDown(null, null);
                 e.Handled = true;
             }
             // Move branch down
             else if (e.Key == VirtualKey.Down && this.IsKeyPressed(VirtualKey.Control) &&
-                     (this.commentBox.FocusState != FocusState.Keyboard)) {
+                     this.commentBox.FocusState != FocusState.Keyboard && // Covers tabbing to it
+                     this.commentBox.FocusState != FocusState.Pointer) {  // Covers clicking on it
                 await this.Game.MoveBranchDown();
                 e.Handled = true;
             }
             // Move branch up
             else if (e.Key == VirtualKey.Up && this.IsKeyPressed(VirtualKey.Control) &&
-                     (this.commentBox.FocusState != FocusState.Keyboard)) {
+                     this.commentBox.FocusState != FocusState.Keyboard && // Covers tabbing to it
+                     this.commentBox.FocusState != FocusState.Pointer) {  // Covers clicking on it
                 await this.Game.MoveBranchUp();
                 e.Handled = true;
             }
             // Display next branch
             else if (e.Key == VirtualKey.Down && this.branchCombo.Items.Count > 0 &&
-                     (this.commentBox.FocusState != FocusState.Keyboard)) {
+                     this.commentBox.FocusState != FocusState.Keyboard && // Covers tabbing to it
+                     this.commentBox.FocusState != FocusState.Pointer) {  // Covers clicking on it
                 MainWindowAux.SetCurrentBranchDown(this.branchCombo, this.Game);
                 e.Handled = true;
             }
             // Display previous branch
             else if (e.Key == VirtualKey.Up && this.branchCombo.Items.Count > 0 &&
-                     (this.commentBox.FocusState != FocusState.Keyboard)) {
+                     this.commentBox.FocusState != FocusState.Keyboard && // Covers tabbing to it
+                     this.commentBox.FocusState != FocusState.Pointer) {  // Covers clicking on it
                 MainWindowAux.SetCurrentBranchUp(this.branchCombo, this.Game);
                 e.Handled = true;
             }
@@ -1227,7 +1233,8 @@ MISCELLANEOUS
             // Save flipped game for opponent's view
             else if (e.Key == VirtualKey.F &&
                      this.IsKeyPressed(VirtualKey.Control) && this.IsKeyPressed(VirtualKey.Menu) &&
-                     this.commentBox.FocusState != FocusState.Keyboard) {
+                     this.commentBox.FocusState != FocusState.Keyboard && // Covers tabbing to it
+                     this.commentBox.FocusState != FocusState.Pointer) {  // Covers clicking on it
                 await SaveFlippedFile();
                 e.Handled = true;
             }
@@ -1238,7 +1245,8 @@ MISCELLANEOUS
             }
             // Cutting a sub tree
             else if ((e.Key == VirtualKey.Delete || (e.Key == VirtualKey.X && this.IsKeyPressed(VirtualKey.Control))) &&
-                     (this.commentBox.FocusState != FocusState.Keyboard) &&
+                     this.commentBox.FocusState != FocusState.Keyboard && // Covers tabbing to it
+                     this.commentBox.FocusState != FocusState.Pointer &&  // Covers clicking on it
                      win.Game.CanUnwindMove() &&
                      await GameAux.Message("Cut current move from game tree?", "Confirm cutting move",
                                            new List<string>() {"Yes", "No"}, 1, 1) ==
@@ -1249,7 +1257,8 @@ MISCELLANEOUS
             }
             // Pasting a sub tree
             else if (e.Key == VirtualKey.V && this.IsKeyPressed(VirtualKey.Control) &&
-                     this.commentBox.FocusState != FocusState.Keyboard) {
+                     this.commentBox.FocusState != FocusState.Keyboard && // Covers tabbing to txt box
+                     this.commentBox.FocusState != FocusState.Pointer) {  // Covers clicking in txt box
                 if (win.Game.CanPaste())
                     await win.Game.PasteMove();
                 else
@@ -1259,7 +1268,8 @@ MISCELLANEOUS
             }
             // Pass move
             else if (e.Key == VirtualKey.P && this.IsKeyPressed(VirtualKey.Control) &&
-                     this.commentBox.FocusState != FocusState.Keyboard) {
+                     this.commentBox.FocusState != FocusState.Keyboard && // Covers tabbing to txt box
+                     this.commentBox.FocusState != FocusState.Pointer) {  // Covers clicking in txt box
                 this.passButton_left_down(null, null);
                 e.Handled = true;
             }
@@ -1275,7 +1285,7 @@ MISCELLANEOUS
             // Delete question mark at end of first line -- c-?.
             else if (((int)e.Key) == 191 && this.IsKeyPressed(VirtualKey.Shift) &&
                      this.IsKeyPressed(VirtualKey.Control)) {
-                await FirstRhetoricalLineToStatement();
+                await this.FirstRhetoricalLineToStatement();
                 win.FocusOnStones();
                 e.Handled = true;
                 return;
@@ -1284,7 +1294,15 @@ MISCELLANEOUS
             // Delete line indicated by c-N keypress.
             else if (e.Key > VirtualKey.Number0 && e.Key < VirtualKey.Number6 &&
                      this.IsKeyPressed(VirtualKey.Control)) {
-                await DeleteCommentLine(((int)e.Key) - ((int)VirtualKey.Number0));
+                await this.DeleteCommentLine(((int)e.Key) - ((int)VirtualKey.Number0));
+                win.FocusOnStones();
+                e.Handled = true;
+                return;
+            }
+            // Special Bill command because I do this ALL THE TIME
+            // Replace indexed move reference for current move with "this".
+            else if (e.Key == VirtualKey.T && this.IsKeyPressed(VirtualKey.Control)) {
+                this.ReplaceIndexedMoveRef();
                 win.FocusOnStones();
                 e.Handled = true;
                 return;
@@ -2067,9 +2085,9 @@ MISCELLANEOUS
             set { this.commentBox.Text = value; }
         }
 
-        /// FirstRhetoricalLineToStatement is a pet feature that converts the first line of a comment from
-        /// a question to a statement by deleting the "?" at the EOL.
-        /// 
+        //// FirstRhetoricalLineToStatement is a pet feature that converts the first line of a comment from
+        //// a question to a statement by deleting the "?" at the EOL.
+        //// 
         private async Task FirstRhetoricalLineToStatement () {
             var s = this.CurrentComment;
             var i = s.IndexOf("\r\n");  //Comments canonicalized because winRT TextBox forces that with no options
@@ -2084,8 +2102,8 @@ MISCELLANEOUS
             }
         }
 
-        /// DeleteCommentLine is a pet feature that deletes the one-based numbered line in the comment.
-        ///
+        //// DeleteCommentLine is a pet feature that deletes the one-based numbered line in the comment.
+        ////
         private async Task DeleteCommentLine (int num) {
             var s = this.CurrentComment;
             var loc = s.IndexOf("\r\n");  //Comments canonical newline because winRT TextBox forces that with no options
@@ -2124,9 +2142,38 @@ MISCELLANEOUS
             this.UpdateCurrentComment(s.Substring(0, prevloc) + s.Substring(loc, s.Length - loc));
         }
 
-        /// UpdateCurrentComment sets the current comment to the string, pushes the change to the model, and
-        /// updates the title since the dirty bit at least may have changed.
-        /// 
+        //// ReplaceIndexedMoveRef is a pet feature that replaces an indexed reference to a move (d4) with
+        //// a word ("this").  This confirms index is to current move.
+        ////
+        private void ReplaceIndexedMoveRef () {
+            var m = this.Game.CurrentMove;
+            if (m == null) // empty board has no current move :-)
+                return;
+            var moveRef = GoBoardAux.ModelCoordinateToDisplayLetter(m.Column).ToString() + 
+                          (this.Game.Board.Size + 1 - m.Row).ToString();
+            var reflen = moveRef.Length;
+            var comment = this.CurrentComment;
+            var found = comment.IndexOf(moveRef);
+            var res = "";
+            if (found != -1) {
+                res = comment.Substring(0, found) + "this" +
+                      comment.Substring(found + reflen, comment.Length - found - reflen);
+            }
+            else {
+                var MoveRefLower = moveRef.ToLower();
+                found = comment.IndexOf(MoveRefLower);
+                if (found != -1) {
+                    res = comment.Substring(0, found) + "this" +
+                          comment.Substring(found + reflen, comment.Length - found - reflen);
+                }
+            }
+            if (res != "")
+                this.UpdateCurrentComment(res);
+        }
+
+        //// UpdateCurrentComment sets the current comment to the string, pushes the change to the model, and
+        //// updates the title since the dirty bit at least may have changed.
+        //// 
         private void UpdateCurrentComment (string s) {
             // Stash previous text just in case.
             var old = this.CurrentComment;
@@ -2299,8 +2346,7 @@ MISCELLANEOUS
             for (var i = 1; i < size + 1; i++) {
                 //for i in xrange(1, size + 1):
                 // chr_offset skips the letter I to avoid looking like the numeral one in the display.
-                var chr_offset = (i < 9) ? i : (i + 1);
-                var chr_txt = (char)(chr_offset + (int)('A') - 1);
+                var chr_txt = GoBoardAux.ModelCoordinateToDisplayLetter(i);
                 var num_label_y = size - (i - 1);
                 // Place labels
                 MainWindowAux.SetupIndexLabel(g, i.ToString(), 0, num_label_y,
@@ -2313,6 +2359,7 @@ MISCELLANEOUS
                                               HorizontalAlignment.Center, VerticalAlignment.Bottom);
             }
         }
+
 
         internal static void SetupIndexLabel (Grid g, string content, int x, int y,
                                               HorizontalAlignment h_alignment, VerticalAlignment v_alignment) {

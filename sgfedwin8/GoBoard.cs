@@ -205,6 +205,13 @@ namespace SgfEdwin8 {
             }
         }
 
+        public static char ModelCoordinateToDisplayLetter (int i) {
+            var chr_offset = (i < 9) ? i : (i + 1);
+            var chr_txt = (char)(chr_offset + (int)('A') - 1);
+            return chr_txt;
+        }
+
+
     } // GoBoardAux class
 
 
