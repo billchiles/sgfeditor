@@ -1072,7 +1072,10 @@ MISCELLANEOUS
                 await this.SaveAs();
         }
 
-        private async Task SaveAs () {
+        //// SaveAs gets a file, opens it, saves, and keeps file info in game.
+        //// This is public because Game.cs (controller) needs to call this if previously opened file is no longer good.
+        ////
+        public async Task SaveAs () {
             var sf = await MainWindowAux.GetSaveFilename();
             if (sf != null) {
                 this.Game.SaveCurrentComment(); // Persist UI edits to model.

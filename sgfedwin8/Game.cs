@@ -1181,9 +1181,10 @@ namespace SgfEdwin8 {
         //// File Writing
         ////
 
-        //// write_game takes a filename to write an .sgf file.  This maps the game
-        //// to an sgfparser.ParsedGame and uses its __str__ method to produce the
-        //// output.
+        //// write_game takes a storage to write an .sgf file.  This maps the game
+        //// to a ParsedGame and uses its ToString() method to produce the output.
+        //// This also handles if the write fails, which can happen if the user deletes the
+        //// file after opening the file or since the last save.
         ////
         public async Task WriteGame (StorageFile sf = null, bool autosave = false) {
             string filename = null;
@@ -1197,7 +1198,23 @@ namespace SgfEdwin8 {
             else
                 filename = sf.Name;
             var pg = this.UpdateParsedGameFromGame();
-            await FileIO.WriteTextAsync(sf, pg.ToString());
+            var caughtException = false; // Needed since C# cannot await in catch blocks.
+            try {
+                await FileIO.WriteTextAsync(sf, pg.ToString());
+            }
+            catch (FileNotFoundException) {
+                caughtException = true;
+            }
+            if (caughtException) { // Probably should check for autosave file mishap
+                var res =  await GameAux.Message("You've moved or deleted the file (" + sf.Name +
+                                                 ") since opening it or your last save.\n" +
+                                                 "Save as?",
+                                "Previous File Missing", new List<string>() {"Save As", "Cancel"});
+                if (res == "Save As") {
+                    await this.mainWin.SaveAs();
+                }
+                return;
+            }
             if (! autosave) {
                 this.Dirty = false;
                 SaveGameFileInfo(sf);
@@ -1523,7 +1540,8 @@ namespace SgfEdwin8 {
 
         //// Message is a lot like WPF MessageBox.Show.  It returns the string name of the command selected.
         //// If cmds is null, there is a simple msgbox with an OK button, which is the default (enter) and the
-        //// cancel default (escape) commands.  If cmds
+        //// cancel default (escape) commands.  If cmds is not null, the dialog shows buttons for the listed
+        //// commands.  The default command is the first element unless defaultIndex is specified.
         ////
         public static async Task<string> Message (string msg, string title = null, List<string> cmds = null,
                                                   uint defaultIndex = 0, uint cancelIndex = 9999) {
