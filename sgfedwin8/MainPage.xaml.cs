@@ -751,17 +751,22 @@ MISCELLANEOUS
         //// file and current move number.  "Move " is always in the title, set
         //// there by default originally.  Game also uses this.
         ////
+        //// Note, originally this used the window title in WPF, but without title bars in
+        //// modern/winrt apps, we use part of the main UI to display this info, using two
+        //// lines for better display of title/file/dirty vs. move and capture info.  Old
+        //// code was "SGF Editor -- [<dirty>] Move #   B captures: #   W captures: #  <file>".
+        ////
         public void UpdateTitle () {
             var curMove = this.Game.CurrentMove;
             var num = curMove == null ? 0 : curMove.Number;
             var filebase = this.Game.Filebase;
             var pass_str = (curMove != null && curMove.IsPass) ? " **PASS**" : "";
-            var title = "SGF Editor -- " + (this.Game.Dirty ? "[*] Move " : "Move ") + num.ToString() + pass_str;
-            title = title + "   B captures: " + this.Game.BlackPrisoners.ToString() +
-                    "   W captures: " + this.Game.WhitePrisoners.ToString();
-            if (filebase != null)
-                title = title + ";   " + filebase;
+            var title = "SGF Editor -- " + (this.Game.Dirty ? "[*] " : "") + (filebase != null ? filebase : "");
+            var title2 = "Move " + num.ToString() + pass_str +
+                         "   Black captures: " + this.Game.BlackPrisoners.ToString() +
+                         "   White captures: " + this.Game.WhitePrisoners.ToString();
             this.Title.Text = title;
+            this.TitleLine2.Text = title2;
         }
 
 
