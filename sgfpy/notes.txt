@@ -1,45 +1,21 @@
 
-general todo:
- * handle pass move
- * pattern match ko and forbid ko take back
- * formalize exceptions, handle them up in the UI layer, keep program running
- * handle MA property for X marks
- * handle bogus empty nodes that some older game records have sometimes for branches and whatnot
- * add numeric labeling annotations
- * auto number moves on board from their move number (less useful until add printing, but could screenshot)
- * 
+
+Files:
+    sgfpy -> imports game, imports sgfparser to call parse_file, imports Adornments, 
+             and has functions that take Moves or refers to game.board for size, etc.
+		      It is primarily the UI.
+    game -> imports goboard and sgfparser, refers to main_win from game constructor,
+            and has write_game to map game/goboard model to parsed/file model.
+		     It is in a sense the controller.
+    goboard -> knows about parsed model for mapping coordinates from goboard.py model to file model
+               It is just model, with one or two cookie properties for the UI or game to use.
+    sgfparser -> parses games and produces strings for writing parsed games back to file
 
 
-wpf divergence from win8
- * meh
-   * did not port auto saving to wpf
-   * do not do file activation association on wpf
-   * reworked command panel, needs menus then in lieu of app bar,
-        some cmds kbd only anyway (cut, paste, move branch, etc.)
- * do not have scrolling help dialog
-ported to wpf ...
- * do not have esc saving comment and updating title if dirty
- * do not have canonicalized newline sequences in comments 
- * do not have tolerating HA[0]
- * do not have tree drawing tweaks for constants on node size
- * do not have simplified UpdateTitle code
- * do not have handicap stone placement tweak (broke when added code review updates)
- * tap last move to undo misclick
- * fixed home key and tapping start node to restore empty board adornments
- * green highlights on game tree nodes with comments
- * do not have game metadata editing dialog
- * finished cleaning up UpdateTitle so no calls pass args
- * enhanced highlighting of current node in tree view
- * fixed bug in writing flipped view files
- * AW handling
- * more general AB handling
- * game info dialog mentions new game to change handicap
- * [caught up to 07 JUL 13, modulo things only in win8 due to async]
-
- 
-
-pycode todo (changeset refs are to mercurial sources I have, not git commits on codeplex, but the
-             changes to the sgfed dir under git also have these diffs):
+pycode todo
+ *** This is way out of date :-)
+ *** changeset refs are to mercurial sources (not on codeplex), but the changes to the sgfed dir
+     under git on codeplex have the same diffs
  * last port back of bug fixes was changeset:   75:5555f6facde9, 11 NOV
  * throw out old tree view and port code from C# project (drawing, jumping, node highlighting, ...)
  * remove throw when SZ missing, default to 19
@@ -70,61 +46,7 @@ pycode todo (changeset refs are to mercurial sources I have, not git commits on 
  * do not have simplified UpdateTitle code
  *
 
-Architectural references ...
-General notes:
-  * There is a bit of tension between some things being public vs. internal due to thinking
-    of some of the types as being re-usable a la a platform or perhaps for extensions.
-  * I have chosen to use static classes with "stateless" helpers where in python the natural
-    style would be to use a global helper instead of an instance method.
-  * The static classes are public if some helpers are used across files since they then feel
-    more like a general platform helper, and members are marked 'internal' if they are meant
-    only for the current file or class they extend.  Yes, 'internal' in C# is program-wide
-    access, so all members could be used anywhere, but 'public' marks those meant to be used
-    anywhere.
-Files:
-    sgfpy -> imports game, imports sgfparser to call parse_file, imports Adornments, 
-             and has functions that take Moves or refers to game.board for size, etc.
-		      It is primarily the UI.
-    game -> imports goboard and sgfparser, refers to main_win from game constructor,
-            and has write_game to map game/goboard model to parsed/file model.
-		     It is in a sense the controller.
-    goboard -> knows about parsed model for mapping coordinates from goboard.py model to file model
-               It is just model, with one or two cookie properties for the UI or game to use.
-    sgfparser -> parses games and produces strings for writing parsed games back to file
 
-Types:
-    MainWindow
-       Refers to helpers in MainWindowAux.
-       Refers to Game, GameAux.
-       Refers to Move.
-    MainWindowAux
-       Refers to Move, GoBoard.
-       Refers to Game, GameAux.
-    Game
-       Refers to MainWindow to control UI.
-       Refers to GoBoard, GoBoardAux, Move to update model.
-       Refers to ParsedGame to update model as advanced through parsed game tree.
-       Refers to Adornments to update view model.
-    GameAux
-       Refers to GoBoard, GoBoardAux, Move to update model.
-       Refers to ParsedGame, ParsedNode to update model as advanced through parsed game tree
-          and to generated a parsed representation for printing.
-       Refers to Adornments to update view model.
-    GoBoard
-       Refers to Move.
-    GoBoardAux
-       Pure model.
-    Move
-       Refers to GoBoardAux for NoIndex constant.
-    Adornments
-       Refers to Move to hold model refs.
-    ParsedGame
-       Refers to ParsedNode
-    ParsedNode
-       Pure model.
-    ParserAux
-       Refers to Lexer.
-       Refers to ParsedGame, ParsedNode
 
 
 C# port path:
@@ -150,48 +72,5 @@ C# port path:
  *
  * REMAINING WORK ...
  * clean up comments and pythonic names
-
-
-
-------------------------------------------------
-
-
-
-ID   FF   Description     property type    property value
---  ----  --------------  ---------------  ---------------------------------
-*AB  1234  Add Black       setup            list of stone
-AP  ---4  Application     root             composed simpletext : simpletext       ;; [CGoban:3]
-*AW  1234  Add White       setup            list of stone
-*B   1234  Black           move             move
-BL  1234  Black time left move             real
-BR  1234  Black rank      game-info        simpletext
-BT  --34  Black team      game-info        simpletext
-*C   1234  Comment         -                text
-CA  ---4  Charset         root             simpletext                              ;; [UTF-8]
-CP  --34  Copyright       game-info        simpletext
-DT  1234  Date            game-info        simpletext
-EV  1234  Event           game-info        simpletext
-FF  -234  Fileformat      root             number (range: 1-4)
-*GC  1234  Game comment    game-info        text
-GM  1234  Game            root             number (range: 1-5,7-16)
-*HA  1234  Handicap        game-info (Go)   number
-*KM  1234  Komi            game-info (Go)   real                                   ;; [0.00]
-*LB  --34  Label           -                list of composed point : simpletext    ;; [dd:A] or LB[dd:A][ee:B][ff:C]
-MA  --34  Mark with X     -                list of point
-*PB  1234  Player Black    game-info        simpletext
-PL  1234  Player to play  setup            color                              ;; if switch start color (c-s-left): PL[W]
-*PW  1234  Player White    game-info        simpletext
-RE  1234  Result          game-info        simpletext
-RU  --34  Rules           game-info        simpletext                              ;; [Japanese]
-SE  ---4  Markup          - (LOA)          point
-*SQ  ---4  Square          -                list of point
-ST  ---4  Style           root             number (range: 0-3)                     ;; [2]
-*SZ  1234  Size            root             (number | composed number : number)
-TM  1234  Timelimit       game-info        real
-*TR  --34  Triangle        -                list of point                           ;; [dd] or TR[dd][ee][ff]
-*W   1234  White           move             move
-WL  1234  White time left move             real
-WR  1234  White rank      game-info        simpletext
-WT  --34  White team      game-info        simpletext
 
 

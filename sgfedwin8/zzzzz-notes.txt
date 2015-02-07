@@ -1,9 +1,38 @@
 
-maybe optimize for prev move not having branches and having no node next to it in the grid
-   if do this, then need new treeviewnode in grid, dict, etc.
+TO DO ...
+
+ * pattern match ko and forbid ko take back
+ * formalize exceptions, handle them up in the UI layer, keep program running
+ * handle MA property for X marks
+ * handle bogus empty nodes that some older game records have sometimes for branches and whatnot
+ * add numeric labeling annotations
+ * auto number moves on board from their move number (less useful until add printing, but could screenshot)
 
 
+Want to add unit tests, then refactor parsenodes out of model, just use them to read files and
+immediately convert to moves.  There were an incremental development aid that I kept around as a
+premature optimization, but they aren't necessary as an optimization and complicate the code in the
+model.
 
+When adding a move, we just invalidate the game tree and redraw it.  Turns out this is really fast.
+If one day need to handle many hundreds of nodes, can consider optimizing for prev move not having
+branches and there being no tree node to the right in the tree node grid, then just add tree node.
+However, highly likely in such a file, you're just browsing some joseki dictionary or whatnot.
+
+
+RELEASE NOTES ...
+
+On 02 SEP 14 posted to lifein19x19.com:
+ * pushed release to store
+ * a few bug fixes
+ * support AW and AB on the initial board state
+ * added few comment editing features, such as saving comment to clipboard as sort of an undo
+ * added a few tweaks to the tree view to make some things more visible
+
+
+... Forgot to update these for a few releases ...
+
+On 07 JUL 13 posted on lifein19x19.com
 Since store v1.05 (store calls it release 4, submitted 28 MAY 13)
  * added support for AW property in initial board state
  * generalized handling of AB to support no HA
@@ -37,6 +66,21 @@ Since store v1, b35b1502515c, 9:51 p.m. 25 MAR 2013:
  * reworked command panel, putting some stuff in app bar
  * green highlights on game tree nodes with comments
  * comment cleanups
+ from lifein19x19.com post ...
+ * cleaned up and simplified UpdateTitle
+ * fixed bug in new dlg and game info dlg where enter/esc didn't work, and mainwin still handled kbd input
+ * enhanced highlighting of current node in tree view
+ * fixed bug in writing flipped view files
+ * ported to C# WPF version: esc saves comment and updates title if dirty
+ * ported to C# WPF version: canonicalized newline sequences in comments 
+ * ported to C# WPF version: tolerating HA0 when parsing
+ * ported to C# WPF version: tree drawing tweaks for constants on node size
+ * ported to C# WPF version: simplified UpdateTitle code
+ * ported to C# WPF version: handicap stone placement tweak (broke when added code review updates)
+ * ported to C# WPF version: tap last move to undo misclick
+ * ported to C# WPF version: fixed home key and tapping start node to restore empty board adornments
+ * ported to C# WPF version: green highlights on game tree nodes with comments
+ * ported to C# WPF version: game metadata editing dialog
 
 
 Since 23 FEB Alpha 2 release:
@@ -104,16 +148,58 @@ Since the last release, 26 JAN, I've:
  * added title bar under cmd bay, changed UpdateTitle for simpler title there.
  
  
- 
--------------
 
-Y/N accelerators for yes/no dlgs
+SGF NOTES ...
+
+ID   FF   Description     property type    property value
+--  ----  --------------  ---------------  ---------------------------------
+*AB  1234  Add Black       setup            list of stone
+AP  ---4  Application     root             composed simpletext : simpletext       ;; [CGoban:3]
+*AW  1234  Add White       setup            list of stone
+*B   1234  Black           move             move
+BL  1234  Black time left move             real
+BR  1234  Black rank      game-info        simpletext
+BT  --34  Black team      game-info        simpletext
+*C   1234  Comment         -                text
+CA  ---4  Charset         root             simpletext                              ;; [UTF-8]
+CP  --34  Copyright       game-info        simpletext
+DT  1234  Date            game-info        simpletext
+EV  1234  Event           game-info        simpletext
+FF  -234  Fileformat      root             number (range: 1-4)
+*GC  1234  Game comment    game-info        text
+GM  1234  Game            root             number (range: 1-5,7-16)
+*HA  1234  Handicap        game-info (Go)   number
+*KM  1234  Komi            game-info (Go)   real                                   ;; [0.00]
+*LB  --34  Label           -                list of composed point : simpletext    ;; [dd:A] or LB[dd:A][ee:B][ff:C]
+MA  --34  Mark with X     -                list of point
+*PB  1234  Player Black    game-info        simpletext
+PL  1234  Player to play  setup            color                              ;; if switch start color (c-s-left): PL[W]
+*PW  1234  Player White    game-info        simpletext
+RE  1234  Result          game-info        simpletext
+RU  --34  Rules           game-info        simpletext                              ;; [Japanese]
+SE  ---4  Markup          - (LOA)          point
+*SQ  ---4  Square          -                list of point
+ST  ---4  Style           root             number (range: 0-3)                     ;; [2]
+*SZ  1234  Size            root             (number | composed number : number)
+TM  1234  Timelimit       game-info        real
+*TR  --34  Triangle        -                list of point                           ;; [dd] or TR[dd][ee][ff]
+*W   1234  White           move             move
+WL  1234  White time left move             real
+WR  1234  White rank      game-info        simpletext
+WT  --34  White team      game-info        simpletext
+
+
+
+RANDOM OLD LEARNING NOTES ...
 
 -------------
 snapped view
 http://rushabh.greenpoison.org.in/blog/2012/09/18/handling-snap-view-and-all-resolutions-in-windows-8/
 
 -------------
+
+Stuff from WPF expert helping me prove win8 bug and hidden scroller control stealing focus.
+Finally got Windows team to verify bug, don't know if they fixed it.
 
 Keyboard from WasApp1.MainWindow, source: Windows.UI.Xaml.Controls.TextBox
 Setting focus on stones ...
