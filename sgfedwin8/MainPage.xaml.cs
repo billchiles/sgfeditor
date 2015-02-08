@@ -28,30 +28,6 @@ using Windows.ApplicationModel.DataTransfer; // DataPackage and Clipboard
 namespace SgfEdwin8 {
 
     ////
-    //// What VS generated for me ...
-    ////
-
-    // The Blank Page item template is documented at http://go.microsoft.com/fwlink/?LinkId=234238
-    //
-    //public sealed partial class MainPage : Page
-    //{
-    //    public MainPage()
-    //    {
-    //        this.InitializeComponent();
-    //    }
-
-    //    /// <summary>
-    //    /// Invoked when this page is about to be displayed in a Frame.
-    //    /// </summary>
-    //    /// <param name="e">Event data that describes how this page was reached.  The Parameter
-    //    /// property is typically used to configure the page.</param>
-    //    protected override void OnNavigatedTo(NavigationEventArgs e)
-    //    {
-    //    }
-    //}
-
-
-    ////
     //// MainWindow class
     ////
 
@@ -81,7 +57,7 @@ to the game start, and end moves to the end of the game following the currently
 selected branches.  You can always click a node in the game tree graph.  If the
 current move has branches following it, the selected branch's first node has a
 light grey square outlining it. Nodes that have comments have a light green
-highlight, and the current node has a light blue highlight.
+highlight, and the current node has a fuchsia highlight.
 
 CREATING NEW FILES
 The new button (or ctrl-n) prompts for game info (player names, board size,
@@ -119,7 +95,11 @@ The Pass button or c-p will make a pass move.
 
 MISCELLANEOUS
    F1 produces this help.
-   Ctrl-k clears the current node's comment (cause the author does that a lot :-))
+   Ctrl-k clears the current node's comment and puts text on system clipboard.
+   Ctrl-1, ..., ctrl-5 deletes the first, ..., fifth line of node's comment and
+      puts entire comment's text on clipboard.
+   Ctrl-t changes the first occurence of the move's board coordinates in the comment
+      to 'this'; for example, 'd6 is strong cut' changes to 'this is strong cut'.
 ";
 
         private int prevSetupSize = 0;
@@ -1321,6 +1301,7 @@ MISCELLANEOUS
                 e.Handled = true;
             }
             else {
+                // Tell me what key I pressed.
                 //await GameAux.Message(e.Key.ToString() + (this.IsKeyPressed(VirtualKey.Shift)).ToString());
                 }
         } // mainWin_keydown
@@ -1769,7 +1750,7 @@ MISCELLANEOUS
 
         }
 
-        //// UpdateTreeHighlightMove handles the primary case of UpdateTreeView, moving the blue
+        //// UpdateTreeHighlightMove handles the primary case of UpdateTreeView, moving the
         //// highlight from the last current move the new current move, and managing if the old
         //// current move gets a green highlight for having a comment.
         ////
