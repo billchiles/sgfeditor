@@ -157,6 +157,8 @@ namespace SgfEdwin8 {
         //// writing .sgf files.  If flipped, then return the diagonal mirror image
         //// coordinates for writing files in the opponent's view of the board.
         ////
+        //// SGF format is col,row (count from left edge, count from top).
+        ////
         public static string GetParsedCoordinates (dynamic move_or_adornment, bool flipped) {
             int row = move_or_adornment.Row;
             int col = move_or_adornment.Column;
@@ -194,6 +196,8 @@ namespace SgfEdwin8 {
         //// as multiple values the row, col in terms of the model used by goboard.py.
         //// This assumes coords is "<letter><letter>" and valid indexes.
         ////
+        //// SGF format is col,row (count from left edge, count from top).
+        ////
         public static Tuple<int, int> ParsedToModelCoordinates (string coords) {
             if (coords == "")
                 // Pass move
@@ -217,8 +221,8 @@ namespace SgfEdwin8 {
 
 
     public class Move {
-        public int Row { get; set; }
-        public int Column { get; set; }
+        public int Row { get; set; }  // These count from top to bottom.
+        public int Column { get; set; }  // These count from left to right
         public Color Color { get; set; }
         public Move Previous { get; set; }
         public Move Next { get; set; }

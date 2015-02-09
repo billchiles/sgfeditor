@@ -15,12 +15,14 @@ using Windows.UI.Xaml.Navigation;
 // The User Control item template is documented at http://go.microsoft.com/fwlink/?LinkId=234236
 
 namespace SgfEdwin8 {
+
+    //// FocusableInputControl exists because in WinRT, grids cannot have keyboard or mouse handlers.
+    //// This is only referenced in XAML for MainWindow to capture input.
+    ////
     public sealed partial class FocusableInputControl : UserControl {
 
         public FocusableInputControl () {
             this.InitializeComponent();
-
-
             this.SizeChanged += FocusableInputControl_SizeChanged;
         }
 

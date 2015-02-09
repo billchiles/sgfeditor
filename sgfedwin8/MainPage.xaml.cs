@@ -105,6 +105,10 @@ MISCELLANEOUS
         private int prevSetupSize = 0;
 
         public Game Game { get; set; }
+        // Public because helpers in view controller GameAux add games here.  Could put
+        // helpers in MainwindowAux, but it is meant for use in this file only.  No great design choice.
+        public List<Game> Games = new List<Game>();
+
 
 
         public MainWindow () {
@@ -112,8 +116,6 @@ MISCELLANEOUS
             this.prevSetupSize = 0;
             this.Game = GameAux.CreateDefaultGame(this);
             this.DrawGameTree();
-            // fixing win8 -- tried this to always get it invoked, but the event is simply not raising
-            //this.AddHandler(UIElement.KeyDownEvent, (KeyEventHandler)this.mainWin_keydown, true);
         }
 
 
@@ -764,7 +766,7 @@ MISCELLANEOUS
             if (sf == null) return;
             await DoOpenGetFileGame(sf);
             // TODO: check whether open file threw an error, don't redraw tree.
-            // Cursory inspection says this is harmless if three on open file, but not calling InitTreeView.
+            // Cursory inspection says this is harmless if threw on open file, but not calling InitTreeView.
             this.DrawGameTree();
             this.FocusOnStones();
         }
@@ -817,7 +819,7 @@ MISCELLANEOUS
                     popup.Child = this.GetOpenfileUIDike();
                     popup.IsOpen = true;
                     // Process file ...
-                    await this.GetFileGameCheckingAutoSave(sf); //ParseAndCreateGame(sf);
+                    await this.GetFileGameCheckingAutoSave(sf);
                 }
                 catch (IOException err) {
                     // Essentially handles unexpected EOF or malformed property values.
@@ -896,7 +898,8 @@ MISCELLANEOUS
         ////
         public async Task ParseAndCreateGame (StorageFile sf) {
             var pg = await ParserAux.ParseFile(sf);
-            this.Game = await GameAux.CreateParsedGame(pg, this);
+            //this.Game = await GameAux.CreateParsedGame(pg, this);
+            await GameAux.CreateParsedGame(pg, this);
             //await Task.Delay(5000);  // Testing input blocker.
             this.Game.SaveGameFileInfo(sf);
             this.UpdateTitle();
@@ -1021,7 +1024,7 @@ MISCELLANEOUS
                     await GameAux.Message("Handicap must be 0 to 9.");
                     return;
                 }
-                var g = new Game(this, sizeInt, handicapInt, komi);
+                var g = GameAux.CreateGame(this, sizeInt, handicapInt, komi);
                 g.PlayerBlack = black;
                 g.PlayerWhite = white;
                 this.Game = g;
@@ -1261,6 +1264,29 @@ MISCELLANEOUS
                 this.passButton_left_down(null, null);
                 e.Handled = true;
             }
+            // Switch Windows/Games
+            else if (e.Key == VirtualKey.W && this.IsKeyPressed(VirtualKey.Control) &&
+                     this.commentBox.FocusState != FocusState.Keyboard && // Covers tabbing to txt box
+                     this.commentBox.FocusState != FocusState.Pointer) {  // Covers clicking in txt box
+                if (this.IsKeyPressed(VirtualKey.Shift))
+                    await this.GotoNextGame(-1);
+                else
+                    await this.GotoNextGame();
+                e.Handled = true;
+            }
+            // Close Window/Game
+            else if (e.Key == VirtualKey.F4 && this.IsKeyPressed(VirtualKey.Control) &&
+                     this.commentBox.FocusState != FocusState.Keyboard && // Covers tabbing to txt box
+                     this.commentBox.FocusState != FocusState.Pointer) {  // Covers clicking in txt box
+                var g = this.Game;
+                if (this.Games.Count > 1) {
+                    await this.GotoNextGame();
+                    }
+                else
+                    await this.DoNewButton();
+                this.Games.Remove(g);
+                e.Handled = true;
+            }
             // Special Bill command because I do this ALL THE TIME
             // Delete entire comment.
             else if (e.Key == VirtualKey.K && this.IsKeyPressed(VirtualKey.Control)) {
@@ -1307,12 +1333,14 @@ MISCELLANEOUS
         } // mainWin_keydown
 
 
+
         //// gameTree_mousedown handles clicks on the game tree graph canvas,
         //// navigating to the move clicked on.
         ////
         private void gameTree_mousedown (object sender, PointerRoutedEventArgs e) {
             // Integrity checking code for debugging and testing, not for release.
             //this.CheckTreeParsedNodes();
+            //
             // find TreeViewNode model for click locatio on canvas.
             var x = e.GetCurrentPoint(this.gameTreeView).Position.X;
             var y = e.GetCurrentPoint(this.gameTreeView).Position.Y;
@@ -1330,7 +1358,7 @@ MISCELLANEOUS
             if (! found) return; // User did not click on node.
             // Reset board before advancing to move.
             var move = n.Node as Move;
-            if (this.Game.CurrentMove != null) {
+            if (this.Game.CurrentMove != null) { // Same as checking game state is not NotStarted.
                 this.Game.GotoStart();
                 MainWindowAux.RestoreAdornments(this.stonesGrid, this.Game.SetupAdornments);
             }
@@ -1687,8 +1715,7 @@ MISCELLANEOUS
         //// DrawGameTree gets a view model of the game tree, creates objects to put on the canvas,
         //// and sets up the mappings for updating the view as we move around the game tree.  This
         //// also creates a special "start" mapping to get to the first view model node.  This is
-        //// public for app.xaml.cs's OnFileAcivated to call it, and until I clean up the check for
-        //// TreeViewDisplayed, I added a force parameter for OnFileActivated ... silly, I know.
+        //// public for app.xaml.cs's OnFileAcivated to call it.
         ////
         public void DrawGameTree (bool force = false) {
             if (this.TreeViewDisplayed() || force)
@@ -1906,7 +1933,50 @@ MISCELLANEOUS
                 //return this.treeViewMoveMap[move] = this.NewTreeViewNode(move);
         }
 
-        
+
+        ////
+        //// Handling Multiple Open Games
+        ////
+
+        //// GotoNextGame updates the view to show the next game in the game list.  If the argument is
+        //// is supplied and negative, this rotates backwards in the list.
+        //// 
+        //// The argument is an integer for gratuitous generality, but for now, this only goes one game.
+        ////
+        private async Task GotoNextGame (int howmany = 1) {
+            Debug.Assert(howmany == 1 || howmany == -1, "Only support changing game display by one game in list.");
+            var len = this.Games.Count;
+            if (len == 1) {
+                await GameAux.Message("There is only one game open currently.  Use Open or New to change games.",
+                                      "Change Game Windows");
+                return;
+            }
+            // Find target game and remove from games list.
+            var curindex = GameAux.ListFind(this.Game, this.Games);
+            Debug.Assert(curindex != -1, "Uh, how can the current game not be in the games list?!");
+            int target = curindex + howmany;
+            if (target == len)
+                target = 0;
+            else if (target < 0)
+                target = len - 1;
+            // Save and clear current game.
+            await this.CheckDirtySave();
+            var g = this.Games[target];
+            this.SetupBoardDisplay(g); // Clear current game UI, initialize board with new game.
+            this.Game = g; // Must set this after calling SetupBoardDisplay.
+            this.DrawGameTree();
+            var move = g.CurrentMove;
+            this.Game.GotoStartForGameSwap();
+            if (move != null) {
+                this.GotoGameTreeMove(move);
+            } // else leave board at initial board state
+            // Setup UI for target game's current move.
+            this.UpdateTitle();
+            this.UpdateTreeView(move);
+            this.FocusOnStones();
+        }
+
+
         ////
         //// Utilities
         ////
@@ -2133,6 +2203,10 @@ MISCELLANEOUS
 
         //// ReplaceIndexedMoveRef is a pet feature that replaces an indexed reference to a move (d4) with
         //// a word ("this").  This confirms index is to current move.
+        ////
+        //// For some reason the convention on computer go boards is to count rows from the bottom to the top,
+        //// and SGF format for some reason records moves as col,row pairs.  Hence, we build moveRef backwards
+        //// with column first and flipping row from bottom of board.
         ////
         private void ReplaceIndexedMoveRef () {
             var m = this.Game.CurrentMove;

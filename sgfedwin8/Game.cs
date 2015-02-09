@@ -117,7 +117,6 @@ namespace SgfEdwin8 {
             this.BlackPrisoners = 0;
             this.WhitePrisoners = 0;
             this.cutMove = null;
-            main_win.SetupBoardDisplay(this);
         } // Game Constructor
 
 
@@ -524,6 +523,32 @@ namespace SgfEdwin8 {
             this.SaveAndUpdateComments(current, null);
             this.Board.GotoStart();
             this.mainWin.ResetToStart(current);
+            this.nextColor = this.Handicap == 0 ? Colors.Black : Colors.White;
+            this.CurrentMove = null;
+            this.MoveCount = 0;
+            this.BlackPrisoners = 0;
+            this.WhitePrisoners = 0;
+            this.mainWin.UpdateBranchCombo(this.Branches, this.FirstMove);
+            this.mainWin.DisableBackwardButtons();
+            this.mainWin.EnableForwardButtons();
+        }
+
+        //// GotoStartForGameSwap resets the model to the initial board state before any moves
+        //// have been played.  This assumes the UI, board, etc., has been cleared with SetupBoardDisplay.
+        ////
+        public void GotoStartForGameSwap () {
+            // These debug.asserts could arguably be throw's if we think of this function
+            // as platform/library.
+            //MyDbg.Assert(this.State != GameState.NotStarted,
+            //             "Home button should be disabled if game not started.");
+            //var current = this.CurrentMove;
+            //MyDbg.Assert(current != null, "Home button should be disabled if no current move.");
+            //
+            // Comments for cur move have already been saved and cleared.  Put initial board comments in
+            // place in case this.Game is sitting at the intial board state.
+            this.mainWin.CurrentComment = this.Comments; 
+            //this.Board.GotoStart();
+            //this.mainWin.ResetToStart(current);
             this.nextColor = this.Handicap == 0 ? Colors.Black : Colors.White;
             this.CurrentMove = null;
             this.MoveCount = 0;
@@ -1391,8 +1416,8 @@ namespace SgfEdwin8 {
 
         //// GetPathToMove returns a list of tuples, the first int of which is a move
         //// number to move to paired with what branch to take at that move.  The last
-        //// move (the argumenet) has a sentinel -1 branch int.  Only moves that take
-        //// a alternative branch (not branch zero) are in the result.  This assumes
+        //// move (the argument) has a sentinel -1 branch int.  Only moves that take
+        //// an alternative branch (not branch zero) are in the result.  This assumes
         //// move is in the game and on the board, asserting if not.  The 0,-1 tuple
         //// indicates the empty initial board state, or the empty path.
         ////
@@ -1460,7 +1485,7 @@ namespace SgfEdwin8 {
         //// AdvanceToMovePath takes a path, where each tuple is a move number and the
         //// branch index to take at that move.  The branch is -1 for the last move.
         //// This returns true if successful, null if the path was bogus, or we encounter
-        //// a move conflict in the game tree.
+        //// a move conflict in the game tree (can happen from pastes).
         ////
         public bool AdvanceToMovePath (List<Tuple<int, int>> path) {
             MyDbg.Assert(this.CurrentMove == null, "Must be at beginning of empty game board.");
@@ -1796,15 +1821,31 @@ namespace SgfEdwin8 {
         }
 
 
-        public static Game CreateDefaultGame(MainWindow main_win) {
-            return new Game(main_win, Game.MaxBoardSize, 0, Game.DefaultKomi);
+        public static Game CreateDefaultGame(MainWindow mainwin) {
+            return GameAux.CreateGame(mainwin, Game.MaxBoardSize, 0, Game.DefaultKomi);
+            //var g = new Game(mainwin, Game.MaxBoardSize, 0, Game.DefaultKomi);
+            //mainwin.SetupBoardDisplay(g);
+            //// Must set Game after calling SetupBoardDisplay.
+            //mainwin.Game = g;
+            //mainwin.Games.Add(g);
+            //return g;
+        }
+        
+        public static Game CreateGame (MainWindow mainwin, int size, int handicap, string komi,
+                                       List<Move> handicap_stones = null, List<Move> all_white = null) {
+            var g = new Game(mainwin, size, handicap, komi, handicap_stones, all_white);
+            mainwin.SetupBoardDisplay(g);
+            // Must set Game after calling SetupBoardDisplay.
+            mainwin.Game = g;
+            mainwin.Games.Add(g);
+            return g;
         }
 
-
-        //// _list_find returns the index of elt (first argument to func)  in the first argument using the compare
-        //// test.  The test defaults to identity.
+        //// _list_find returns the index of elt in the list argument using the compare function.
+        //// Elt is the first argument to the compare function, elements from the list are second.
+        //// The test defaults to identity.
         ////
-        internal static int ListFind<T> (object elt, List<T> l, Func<object, object, bool> compare = null) {
+        public static int ListFind<T> (object elt, List<T> l, Func<object, object, bool> compare = null) {
             if (compare == null)
                 compare = object.ReferenceEquals;
             for (int i = 0; i < l.Count; i++)
@@ -1858,8 +1899,8 @@ namespace SgfEdwin8 {
                 komi = props["KM"][0];
             else
                 komi = handicap == 0 ? Game.DefaultKomi : "0.5";
-            // Creating new game cleans up current game
-            var g = new Game(main_win, size, handicap, komi, all_black, all_white);
+            // Create new game and clean up current game
+            var g = GameAux.CreateGame(main_win, size, handicap, komi, all_black, all_white);
             // Player names
             if (props.ContainsKey("PB"))
                 g.PlayerBlack = props["PB"][0];
