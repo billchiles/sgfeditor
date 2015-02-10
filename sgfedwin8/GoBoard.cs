@@ -228,9 +228,11 @@ namespace SgfEdwin8 {
         public Move Next { get; set; }
         public int Number { get; set; }
         public bool IsPass { get; set; }
+        // DeadStones is always a list.
         public List<Move> DeadStones { get; set; }
         public List<Adornments> Adornments { get; set; }
         public string Comments { get; set; }
+        // Branches is null when there is zero or one next move.
         public List<Move> Branches { get; set; }
         public ParsedNode ParsedNode { get; set; }
         public bool Rendered { get; set; }

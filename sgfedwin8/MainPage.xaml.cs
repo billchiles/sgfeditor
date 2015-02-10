@@ -54,10 +54,11 @@ NAVIGATING MOVES IN GAME TREE
 Right arrow moves to the next move, left moves to the previous, up arrow selects
 another branch or the main branch, down arrow selects another branch, home moves
 to the game start, and end moves to the end of the game following the currently
-selected branches.  You can always click a node in the game tree graph.  If the
-current move has branches following it, the selected branch's first node has a
-light grey square outlining it. Nodes that have comments have a light green
-highlight, and the current node has a fuchsia highlight.
+selected branches.  You can always click a node in the game tree graph.  Ctrl-left
+arrow moves to the closest previous move that has branches.  If the current move
+has branches following it, the selected branch's first node has a light grey
+square outlining it. Nodes that have comments have a light green highlight, and
+the current node has a fuchsia highlight.
 
 CREATING NEW FILES
 The new button (or ctrl-n) prompts for game info (player names, board size,
@@ -139,7 +140,7 @@ MISCELLANEOUS
             // Set up one time timer to check for autosaved unnamed file, which is on timer so that
             // it does not sometimes cause app to fail store WACK for launch time.
             var timer2 = new DispatcherTimer();
-            timer2.Interval = TimeSpan.FromSeconds(2);
+            timer2.Interval = TimeSpan.FromSeconds(1);
             timer2.Tick += 
                 new EventHandler<object>(async (sender, args) => {
                     timer2.Stop();
@@ -163,11 +164,26 @@ MISCELLANEOUS
                 MainWindow.FileActivatedNoUnnamedAutoSave = false;
                 await this.DeleteUnnamedAutoSave();
             }
-            else if (! this.inOpenFileDialog)
+            else if (! this.inOpenFileDialog) {
                 // Users can launch app, type c-o, and be in open file dialog when we're checking for an
                 // auto-saved, unnamed file.  If user launched and hit c-o that fast, assume we can forgo
                 // auto-save check.
-                await CheckUnnamedAutoSave();
+                //
+                // User started editing within one sec startup timer before checking autosave, so just punt.
+                if (this.Game.Dirty) 
+                    return;
+                // Need to cover UI to block user from mutating state while checking autosave.
+                Popup popup = null;
+                try {
+                    popup = new Popup();
+                    popup.Child = this.GetOpenfileUIDike();
+                    popup.IsOpen = true;
+                    await CheckUnnamedAutoSave();
+                }
+                finally {
+                    popup.IsOpen = false;
+                }
+            }
             else
                 await this.DeleteUnnamedAutoSave();
 
@@ -208,14 +224,17 @@ MISCELLANEOUS
                                                new List<string>() {"Open auto saved file", 
                                                                    "Create default new board"})
                             == "Open auto saved file") {
+                    var defaultGame = this.Game;
                     await this.ParseAndCreateGame(autoSf);
+                    // Since we only check this on launch, and user chose to open saved file, clean up default game.
+                    this.Games.Remove(defaultGame);
                     this.Game.Dirty = true; // actual file is not saved (there is no file assoc :-))
                     // Erase auto save file info from Game so that save prompts for name.
-                    this.Game.Storage = null;
+                    this.Game.Storage = null;  // No Close operation.
                     this.Game.Filename = null;
                     this.Game.Filebase = null;
                     // Fix up title and draw tree.
-                    this.Title.Text = "SGF Editor -- Move 0";
+                    this.UpdateTitle();
                     this.DrawGameTree();
                 }
                 await autoSf.DeleteAsync();
@@ -606,10 +625,8 @@ MISCELLANEOUS
                 this.AddCurrentAdornments(move.Previous);
             else
                 MainWindowAux.RestoreAdornments(this.stonesGrid, this.Game.SetupAdornments);
-            //self._update_tree_view(move.Previous);
             if (this.Game.CurrentMove != null) {
-                var m = this.Game.CurrentMove;
-                this.UpdateTreeView(m);
+                this.UpdateTreeView(this.Game.CurrentMove);
                 this.UpdateTitle();
             }
             else {
@@ -618,6 +635,38 @@ MISCELLANEOUS
             }
             this.FocusOnStones();
         }
+
+        //// PreviousBranchMove moves back to the closest previous move that has branches.
+        //// This function assumes the game is started, and there's a move to rewind.
+        //// This handles removing and restoring adornments, and handling the current move
+        //// adornment.  
+        ////
+        private void PreviousBranchMove () {
+            // Setup for loop so do not stop on current move if it has branches.
+            var move = this.Game.UnwindMove();
+            if (! move.IsPass)
+                MainWindowAux.RemoveStone(this.stonesGrid, move);
+            var curmove = this.Game.CurrentMove;
+            // Find previous with branches.
+            while (curmove != null && curmove.Branches == null) {
+                move = this.Game.UnwindMove();
+                if (!move.IsPass)
+                    MainWindowAux.RemoveStone(this.stonesGrid, move);
+                curmove = move.Previous;
+            }
+            if (curmove != null) {
+                this.AddCurrentAdornments(curmove);
+                this.UpdateTreeView(curmove);
+                this.UpdateTitle();
+            }
+            else {
+                MainWindowAux.RestoreAdornments(this.stonesGrid, this.Game.SetupAdornments);
+                this.UpdateTreeView(null);
+                this.UpdateTitle();
+            }
+            this.FocusOnStones();
+        }
+
 
         //// nextButton_left_down handles the replay one move button.  Also,
         //// mainwin_keydown calls this to handle left arrow.  This also handles
@@ -1141,7 +1190,10 @@ MISCELLANEOUS
             if (e.Key == VirtualKey.Left && this.commentBox.FocusState != FocusState.Keyboard &&
                 // Kbd focus covers tabbing to comment box, and pointer covers clicking on it
                 this.commentBox.FocusState != FocusState.Pointer && win.Game.CanUnwindMove()) {
-                this.prevButtonLeftDown(null, null);
+                if (this.IsKeyPressed(VirtualKey.Control))
+                    this.PreviousBranchMove();
+                else
+                    this.prevButtonLeftDown(null, null);
                 e.Handled = true;
             }
             // Next move
@@ -1330,7 +1382,7 @@ MISCELLANEOUS
                 // Tell me what key I pressed.
                 //await GameAux.Message(e.Key.ToString() + (this.IsKeyPressed(VirtualKey.Shift)).ToString());
                 }
-        } // mainWin_keydown
+        }  // mainWin_keydown
 
 
 

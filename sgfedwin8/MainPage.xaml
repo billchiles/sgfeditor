@@ -40,7 +40,7 @@
             </Grid.RowDefinitions>
             <!-- margin is "left, top, right, bottom"-->
             <StackPanel Grid.Row="0" Background="DarkKhaki">
-                <TextBlock Text="SGF Editor -- Move 0" FontSize="16" Margin="4,2,1,1"
+                <TextBlock Text="SGF Editor -- " FontSize="16" Margin="4,2,1,1"
                            VerticalAlignment="Center" HorizontalAlignment="Stretch" x:Name="Title"/>
                 <TextBlock Text="Move 0" FontSize="16" Margin="4,1,1,1"
                            VerticalAlignment="Center" HorizontalAlignment="Stretch" x:Name="TitleLine2"/>
