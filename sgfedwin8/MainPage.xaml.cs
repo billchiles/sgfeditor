@@ -176,7 +176,7 @@ MISCELLANEOUS
                 Popup popup = null;
                 try {
                     popup = new Popup();
-                    popup.Child = this.GetOpenfileUIDike();
+                    popup.Child = this.GetUIDike();
                     popup.IsOpen = true;
                     await CheckUnnamedAutoSave();
                 }
@@ -954,27 +954,38 @@ MISCELLANEOUS
             this.UpdateTitle();
         }
 
+        //// GetOpenfileUIDike returns a re-used grid to eat input after commiting to open a file.
+        //// DoOpenGetFileGame uses this.
+        ////
         private Grid openFileUIDike = null;
         private Grid GetOpenfileUIDike () {
-            if (this.openFileUIDike != null)
-                return this.openFileUIDike;
-            else {
-                // Need outer UIElement to stretch over whole screen.
-                var g = new Grid();
-                // Need inner UIElement that can have focus, take input, etc.
-                var tb = new TextBox();
-                // For some reason NewGameDialog can have huge margins and dike input over entire screen,
-                // but this must span entire screen.
-                tb.Margin = new Thickness(1, 1, 1, 1);
-                tb.Background = new SolidColorBrush(Colors.Black);
-                tb.Opacity = 0.25;
-                var bounds = Window.Current.Bounds;
-                g.Width = bounds.Width;
-                g.Height = bounds.Height;
-                g.Children.Add(tb);
-                this.openFileUIDike = g;
-                return g;
-            }
+            if (this.openFileUIDike == null)
+                this.openFileUIDike = GetUIDike();
+            return this.openFileUIDike;
+        }
+
+        //// GetUIDike returns a grid with a control to eat input to be used in operations where user
+        //// shouldn't mutate the model after committing to save or delete or whatnot.
+        ////
+        //// For some weird reason, re-using openFileUiDike grid in onNavigatedToCheckAutoSave and
+        //// GetOpenfileUIDike for DoOpenGetFileGame threw an error that something changed size, but
+        //// the window, grid, textbox should all be the same, WTF?! :-)
+        ////
+        private Grid GetUIDike () {
+            // Need outer UIElement to stretch over whole screen.
+            var g = new Grid();
+            // Need inner UIElement that can have focus, take input, etc.
+            var tb = new TextBox();
+            // For some reason NewGameDialog can have huge margins and dike input over entire screen,
+            // but this must span entire screen.
+            tb.Margin = new Thickness(1, 1, 1, 1);
+            tb.Background = new SolidColorBrush(Colors.Black);
+            tb.Opacity = 0.25;
+            var bounds = Window.Current.Bounds;
+            g.Width = bounds.Width;
+            g.Height = bounds.Height;
+            g.Children.Add(tb);
+            return g;
         }
 
         //// _check_dirty_save prompts whether to save the game if it is dirty.  If
