@@ -818,9 +818,14 @@ MISCELLANEOUS
             await this.CheckDirtySave();
             var sf = await this.DoOpenGetFile();
             if (sf == null) return;
+            // If file is already open, just show it.
+            var gindex = GameAux.ListFind(sf.Name, this.Games, (sfname, game) => ((string)sfname) == ((Game)game).Filename);
+            if (gindex != -1) {
+                await this.GotoOpenGame(gindex);
+                return;
+            }
+            // Get new open file.
             await DoOpenGetFileGame(sf);
-            // TODO: check whether open file threw an error, don't redraw tree.
-            // Cursory inspection says this is harmless if threw on open file, but not calling InitTreeView.
             this.DrawGameTree();
             this.FocusOnStones();
         }
@@ -2069,7 +2074,7 @@ MISCELLANEOUS
                                       "Change Game Windows");
                 return;
             }
-            // Find target game and remove from games list.
+            // Find target game as valid index.
             var curindex = GameAux.ListFind(this.Game, this.Games);
             Debug.Assert(curindex != -1, "Uh, how can the current game not be in the games list?!");
             int target = curindex + howmany;
@@ -2077,7 +2082,14 @@ MISCELLANEOUS
                 target = 0;
             else if (target < 0)
                 target = len - 1;
-            // Save and clear current game.
+            // Swap the board view.
+            await GotoOpenGame(target);
+        }
+
+        //// GotoOpenGame updates the view to show the specified game.  Target is an index into this.Games.
+        //// It must be a valid index.  This is used by app.xaml.cs for file activation and DoOpenFile.
+        ////
+        public async Task GotoOpenGame (int target) {
             await this.CheckDirtySave();
             var g = this.Games[target];
             this.SetupBoardDisplay(g); // Clear current game UI, initialize board with new game.
