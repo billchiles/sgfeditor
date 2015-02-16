@@ -534,21 +534,17 @@ namespace SgfEdwin8 {
         }
 
         //// GotoStartForGameSwap resets the model to the initial board state before any moves
-        //// have been played.  This assumes the UI, board, etc., has been cleared with SetupBoardDisplay.
+        //// have been played so that the new current game can reply moves to its last current state.
+        //// This assumes the UI, board, etc., has been cleared with SetupBoardDisplay.  This does
+        //// not need the state guarantees of GotoStart, such as a started game or current move, and
+        //// it does not have to rewind all state, like the board view, since we setup the board
+        //// display before calling this to reply moves.
         ////
         public void GotoStartForGameSwap () {
-            // These debug.asserts could arguably be throw's if we think of this function
-            // as platform/library.
-            //MyDbg.Assert(this.State != GameState.NotStarted,
-            //             "Home button should be disabled if game not started.");
-            //var current = this.CurrentMove;
-            //MyDbg.Assert(current != null, "Home button should be disabled if no current move.");
-            //
             // Comments for cur move have already been saved and cleared.  Put initial board comments in
             // place in case this.Game is sitting at the intial board state.
             this.mainWin.CurrentComment = this.Comments; 
-            //this.Board.GotoStart();
-            //this.mainWin.ResetToStart(current);
+            this.Board.GotoStart();  // This shouldn't matter, but it is cleaner abstraction to call it.
             this.nextColor = this.Handicap == 0 ? Colors.Black : Colors.White;
             this.CurrentMove = null;
             this.MoveCount = 0;
@@ -1008,7 +1004,7 @@ namespace SgfEdwin8 {
 
         //// add_adornment creates the Adornments object in the model and adds it to
         //// move.  If move is None (or game not started), then this affects the
-        //// initial game state.  The returns the new adornment.  If all the letter
+        //// initial game state.  This returns the new adornment.  If all the letter
         //// adornments have been used at this point in the game tree, then this
         //// adds nothing and returns None.
         ////
@@ -1137,7 +1133,7 @@ namespace SgfEdwin8 {
 
         //// _branches_for_moving returns the branches list (from previous move or
         //// intial board state) and the index in that list of the current move.
-        //// This does user interation for move_branch_up and move_branch_down.
+        //// This does user interaction for move_branch_up and move_branch_down.
         ////
         private async Task<Tuple<List<Move>, int>> BranchesForMoving () {
             // Check if have move
@@ -1542,6 +1538,15 @@ namespace SgfEdwin8 {
 
 
 
+    //// GameState helps check for consistency with whether there should be a first move, to set first move
+    //// appropriately when making a move, and to check whether to affect initial board state or a move.  NOTE,
+    //// a game could be NotStarted and dirty if you deleted all moves without saving.
+    ////
+    //// CLEANUP: It should be that Started is true if and only if FirstMove is non-null.  In fact, that's
+    //// asserted in a couple of places.  Obviously, the state here is dual, so could use a bool if keep this.
+    //// While it may make some code cleaner to read, possibly should kill this in lieu of just using FirstMove,
+    //// or IsStarted property implemented by looking at FirstMove.
+    ////
     public enum GameState {
         NotStarted, Started
     }
@@ -1821,14 +1826,12 @@ namespace SgfEdwin8 {
         }
 
 
-        public static Game CreateDefaultGame(MainWindow mainwin) {
-            return GameAux.CreateGame(mainwin, Game.MaxBoardSize, 0, Game.DefaultKomi);
-            //var g = new Game(mainwin, Game.MaxBoardSize, 0, Game.DefaultKomi);
-            //mainwin.SetupBoardDisplay(g);
-            //// Must set Game after calling SetupBoardDisplay.
-            //mainwin.Game = g;
-            //mainwin.Games.Add(g);
-            //return g;
+        //// CreateDefaultGame stashed the new game in DefaultGame so that we can throw it away if
+        //// the user does not use it and opens a file or creates a new game.
+        ////
+        public static Game CreateDefaultGame (MainWindow mainwin) {
+            mainwin.DefaultGame = GameAux.CreateGame(mainwin, Game.MaxBoardSize, 0, Game.DefaultKomi);
+            return mainwin.DefaultGame;
         }
         
         public static Game CreateGame (MainWindow mainwin, int size, int handicap, string komi,
@@ -1836,10 +1839,10 @@ namespace SgfEdwin8 {
             var g = new Game(mainwin, size, handicap, komi, handicap_stones, all_white);
             mainwin.SetupBoardDisplay(g);
             // Must set Game after calling SetupBoardDisplay.
-            mainwin.Game = g;
-            mainwin.Games.Add(g);
+            mainwin.AddGame(g);
             return g;
         }
+
 
         //// _list_find returns the index of elt in the list argument using the compare function.
         //// Elt is the first argument to the compare function, elements from the list are second.

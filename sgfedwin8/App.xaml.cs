@@ -88,6 +88,7 @@ namespace SgfEdwin8
             // Need to be careful in catch block when creating default game and cleaning up old game.
             var game = mainwin.Game;
             try {
+                mainwin.LastCreatedGame = null;
                 await mainwin.GetFileGameCheckingAutoSave(sf);
             }
             catch (IOException err) {
@@ -108,21 +109,43 @@ namespace SgfEdwin8
         }
 
         //// FileActivatedErrorCleanup ensures that if we hit errors reading a file when activating the app via
-        //// a file, then we restore state to a default new game.  There's a bit of a kludge here in that we don't
+        //// a file, then we restore state to a default new game.  
+        ////
+        //// IGNORE IGNORE IGNORE IGNORE ... There's a bit of a kludge here in that we don't
         //// know if game in mainwin was properly reset or if the opened file got as far as storing a new game (which
-        //// is not likely).  Since SetupBoardDisplay assumes there's a game, mainwin.game can't be null, and if its
-        //// current move is non-null, then SetupBoardDisplay hits an error trying to remove the current move
+        //// is not likely).  Since creating a default game calls SetupBoardDisplay which assumes mainwin.game is not null.
+        //// If mainwin.Game's current move is non-null, then SetupBoardDisplay hits an error trying to remove the current move
         //// adornment twice.  Since frame may or may not be new, with a new board drawn and everything, setting
         //// the current move to null seemed the easiest, cleanest thing to do (might do something better later).
         ////
         private static void FileActivatedErrorCleanup (MainWindow mainwin, Game game) {
-            if (object.ReferenceEquals(game, mainwin.Game)) {
-                // If here, game has already been cleaned up, so this ensures SetupBoardDisplay doesn't error
-                // trying to remove current adornment twice.
-                mainwin.Game.CurrentMove = null;
+            //if (object.ReferenceEquals(game, mainwin.Game)) {
+            //    // If here, game has already been cleaned up, so this ensures SetupBoardDisplay doesn't error
+            //    // trying to remove current adornment twice.  If error before creating new game, such as lexing/parsing,
+            //    // then
+            //    mainwin.Game.CurrentMove = null;
+            //}
+            //
+            // At one point I had a repro for the above case.  You fall into the above IF when you have a lexing or parsing
+            // error and have not made the new game yet.  I no longer can repro the error from removing the current adornment twice,
+            // nor can I prove how it must have happened before from old commit diffs.  I'm putting this in in case it happens,
+            // then I can capture the repro, and if it never happens, then I can clean all this up.
+            //
+            if (mainwin.LastCreatedGame != null) {
+                // Error after creating game, so remove it and reset board to last game or default game.
+                // The games list may not contain g because creating new games may delete the initial default game.
+                mainwin.UndoLastGameCreation(mainwin.Games.Contains(game) ? game : null);
             }
-            mainwin.Game = GameAux.CreateDefaultGame(mainwin);
-            mainwin.UpdateTitle();
+            //try {
+            //    mainwin.Game = GameAux.CreateDefaultGame(mainwin);
+            //}
+            //catch (Exception err) {
+            //    if (mainwin.Game != null)
+            //        mainwin.Game.CurrentMove = null;
+            //    mainwin.Game = GameAux.CreateDefaultGame(mainwin);
+            //    var ignoretask = GameAux.Message("CHECK IT, IT HAPPENED ..." + err.Message + err.StackTrace);
+            //}
+            //mainwin.UpdateTitle();
         }
 
 

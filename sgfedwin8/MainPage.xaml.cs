@@ -109,6 +109,10 @@ MISCELLANEOUS
         // Public because helpers in view controller GameAux add games here.  Could put
         // helpers in MainwindowAux, but it is meant for use in this file only.  No great design choice.
         public List<Game> Games = new List<Game>();
+        // Helps cleanup when there are lexing, parsing, or game construction errors when opening files.
+        public Game LastCreatedGame = null;
+        // Helps cleanup unused default game to avoid accumulating them in open games.
+        public Game DefaultGame = null;
 
 
 
@@ -116,6 +120,7 @@ MISCELLANEOUS
             this.InitializeComponent();
             this.prevSetupSize = 0;
             this.Game = GameAux.CreateDefaultGame(this);
+            this.DefaultGame = this.Game;
             this.DrawGameTree();
         }
 
@@ -860,6 +865,7 @@ MISCELLANEOUS
         ////
         private async Task DoOpenGetFileGame (StorageFile sf) {
             if (sf != null) {
+                var curgame = this.Game; // Stash in case we have to undo due to file error.
                 Popup popup = null;
                 try {
                     // Need to cover UI to block user due to all the awaits from parsing and so on.
@@ -868,18 +874,27 @@ MISCELLANEOUS
                     popup.Child = this.GetOpenfileUIDike();
                     popup.IsOpen = true;
                     // Process file ...
+                    this.LastCreatedGame = null;
                     await this.GetFileGameCheckingAutoSave(sf);
                 }
                 catch (IOException err) {
                     // Essentially handles unexpected EOF or malformed property values.
+                    // Should be nothing to do since curgame should still be intact if never got past reading file.
                     var ignoreTask = // Squelch warning that we're not awaiting Message, which we can't in catch blocks.
                     GameAux.Message(err.Message + err.StackTrace);
                 }
                 catch (Exception err) {
                     // No code paths should throw from incomplete, unrecoverable state, so should be fine to continue.
                     // For example, game state should be intact (other than IsDirty) for continuing.
+                    if (this.LastCreatedGame != null) {
+                        // Error after creating game, so remove it and reset board to last game or default game.
+                        // The games list may not contain g because creating new games may delete the initial default game.
+                        // Must do this before Message call since cannot await it.
+                        this.UndoLastGameCreation(this.Games.Contains(curgame) ? curgame : null);
+                    }
                     var ignoreTask = // Squelch warning that we're not awaiting Message, which we can't in catch blocks.
                     GameAux.Message(err.Message + err.StackTrace);
+                    // NOTE: because not awaiting Message, the following code executes immediately.
                 }
                 finally {
                     popup.IsOpen = false;
@@ -2000,6 +2015,46 @@ MISCELLANEOUS
         ////
         //// Handling Multiple Open Games
         ////
+
+        //// AddGame updates game management app globals in MainWindow.  It must be called after SetupBoardDisplay
+        //// when creating new games.  If the current game is a non-dirty default game, then toss it.
+        ////
+        public void AddGame (Game g) {
+            // this.Game is null when creating very first default game while launching app to display board.
+            if (this.Game != null && object.ReferenceEquals(this.Game, this.DefaultGame) && 
+                (this.Game.State != GameState.Started || ! this.Game.Dirty)) {
+                this.Games.Remove(this.Game);
+                this.DefaultGame = null;
+            }
+            this.Game = g;
+            this.Games.Add(g);
+            this.LastCreatedGame = g;
+        }
+
+        //// UndoLastGameCreation should only be called after an open game operation fails, and a game
+        //// was created that you know you need to clean up.  If the game passed in is not null, then
+        //// it is the game to display; otherwise, create a default game.
+        ////
+        public void UndoLastGameCreation (Game newgame) {
+            if (this.Games.Contains(this.LastCreatedGame))
+                this.Games.Remove(this.LastCreatedGame);
+            if (newgame == null) {
+                GameAux.CreateDefaultGame(this);
+                return;
+            }
+            this.SetupBoardDisplay(newgame); // Clear current game UI, initialize board with new game.
+            this.Game = newgame; // Must set this after calling SetupBoardDisplay.
+            this.DrawGameTree();
+            var move = newgame.CurrentMove;
+            this.Game.GotoStartForGameSwap();
+            if (move != null) {
+                this.GotoGameTreeMove(move);
+            } // else leave board at initial board state
+            // Setup UI for target game's current move.
+            this.UpdateTitle();
+            this.UpdateTreeView(move);
+            this.FocusOnStones();
+        }
 
         //// GotoNextGame updates the view to show the next game in the game list.  If the argument is
         //// is supplied and negative, this rotates backwards in the list.
