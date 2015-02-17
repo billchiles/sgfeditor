@@ -122,6 +122,7 @@ MISCELLANEOUS
             this.Game = GameAux.CreateDefaultGame(this);
             this.DefaultGame = this.Game;
             this.DrawGameTree();
+            this.FocusOnStones(); // Doesn't seem to work.
         }
 
 
@@ -152,6 +153,7 @@ MISCELLANEOUS
                     await this.onNavigatedToCheckAutoSave();
                 });
             timer2.Start();
+            this.FocusOnStones(); // Doesn't seem to work.
         }
 
         //// FileActivatedNoUnnamedAutoSave is set by App.OnFileActivated so that when the user launches
@@ -1008,24 +1010,27 @@ MISCELLANEOUS
             return g;
         }
 
-        //// _check_dirty_save prompts whether to save the game if it is dirty.  If
-        //// saving, then it uses the game filename, or prompts for one if it is None.
-        //// This is public for use in app.xaml.cs OnfileActivated.
+        //// CheckDirtySave prompts whether to save the game if it is dirty.  If
+        //// saving, then it uses the game filename, or prompts for one if it is null.
+        //// This is public for use in app.xaml.cs OnfileActivated, and it takes a game
+        //// optionally for checking a game that is not this.game when deleting games.
         ////
-        public async Task CheckDirtySave () {
-            this.Game.SaveCurrentComment();
-            if (this.Game.Dirty &&
+        public async Task CheckDirtySave (Game g = null) {
+            if (g == null)
+                g = this.Game;
+            g.SaveCurrentComment();
+            if (g.Dirty &&
                     await GameAux.Message("Game is unsaved, save it?", "Confirm saving file",
                                     new List<string>() {"Yes", "No"}) == GameAux.YesMessage) {
                 StorageFile sf;
-                if (this.Game.Storage != null) {
-                    sf = this.Game.Storage;
+                if (g.Storage != null) {
+                    sf = g.Storage;
                 }
                 else {
                     sf = await MainWindowAux.GetSaveFilename();
                 }
                 if (sf != null)
-                    await this.Game.WriteGame(sf);
+                    await g.WriteGame(sf);
             }
         }
 
@@ -1036,14 +1041,6 @@ MISCELLANEOUS
         private async void newButton_left_down(object new_button, RoutedEventArgs e) {
             await DoNewButton();
         }
-
-        ////// Needed this when trying to navigate to the new dialog as a page.
-        ////// That didn't work since win8 tears down the main page, and it
-        ////// required crufty hacks to coordinate and synchronize with MianWindow.
-        //////
-        //public bool NewDiaogDone = false;
-        //// white name, black name, size, handicap, komi ...
-        //public Tuple<string, string, string, string, string> NewDialogInfo = null;
 
         //// DoNewButton can be re-used where we need to use 'await'.  Can't 'await'
         //// newButtonLeftDown since it must be 'async void' due to being an event handler.
@@ -1064,14 +1061,6 @@ MISCELLANEOUS
             ((NewGameDialog)popup.Child).WhiteTextBox.IsTabStop = true;
             ((NewGameDialog)popup.Child).WhiteTextBox.IsHitTestVisible = true;
             ((NewGameDialog)popup.Child).WhiteTextBox.Focus(FocusState.Keyboard);
-            // This was used when tried to navigate to new dialog as a page, but win8 tears
-            // down MainWindow when we navigated to the dialog, requiring jumping through multiple hoops.
-            //this.Frame.Navigate(typeof(NewGameDialog), this);
-            //while (! this.NewDiaogDone)
-            //    await Task.Delay(500);
-            //if (this.NewDialogInfo != null) {
-            //    NewGameDialogDone();
-            //}
         }
 
         //// NewGameDialogDone handles when the new game dialog popup is done.
@@ -1088,12 +1077,6 @@ MISCELLANEOUS
                 var size = dlg.SizeText;
                 var handicap = dlg.HandicapText;
                 var komi = dlg.KomiText;
-                // Old code used when trying to do new dlg as page transition, too awkward, see notes above.
-                //var white = this.NewDialogInfo.Item1;
-                //var black = this.NewDialogInfo.Item2;
-                //var size = this.NewDialogInfo.Item3;
-                //var handicap = this.NewDialogInfo.Item4;
-                //var komi = this.NewDialogInfo.Item5;
                 var sizeInt = int.Parse(size);
                 var handicapInt = int.Parse(handicap);
                 if (sizeInt != 19) {
@@ -1312,7 +1295,7 @@ MISCELLANEOUS
                 await SaveFlippedFile();
                 e.Handled = true;
             }
-            // New file
+            // New game
             else if (e.Key == VirtualKey.N && this.IsKeyPressed(VirtualKey.Control)) {
                 await this.DoNewButton();
                 e.Handled = true;
@@ -1357,17 +1340,25 @@ MISCELLANEOUS
                     await this.GotoNextGame();
                 e.Handled = true;
             }
+            else if (e.Key == VirtualKey.G && this.IsKeyPressed(VirtualKey.Control) &&
+                     this.commentBox.FocusState != FocusState.Keyboard && // Covers tabbing to txt box
+                     this.commentBox.FocusState != FocusState.Pointer) {  // Covers clicking in txt box
+                await this.ShowGamesGoto();
+                e.Handled = true;
+            }
             // Close Window/Game
             else if (e.Key == VirtualKey.F4 && this.IsKeyPressed(VirtualKey.Control) &&
                      this.commentBox.FocusState != FocusState.Keyboard && // Covers tabbing to txt box
                      this.commentBox.FocusState != FocusState.Pointer) {  // Covers clicking in txt box
-                var g = this.Game;
                 if (this.Games.Count > 1) {
                     await this.GotoNextGame();
-                    }
-                else
-                    await this.DoNewButton();
-                this.Games.Remove(g);
+                }
+                else {
+                    await this.CheckDirtySave();
+                    GameAux.CreateDefaultGame(this);
+                    this.UpdateTitle();
+                }
+                this.Games.Remove(this.Game);
                 e.Handled = true;
             }
             // Special Bill command because I do this ALL THE TIME
@@ -2085,6 +2076,72 @@ MISCELLANEOUS
             // Swap the board view.
             await GotoOpenGame(target);
         }
+
+        async Task ShowGamesGoto () {
+            await this.CheckDirtySave();
+            // Setup new dialog and show it
+            var gameDialog = new WindowSwitchingDialog();
+            var popup = new Popup();
+            gameDialog.WindowSwitchingDialogClose += (s, e) => { 
+                popup.IsOpen = false;
+                this.WindowSwitchingDialogDone(gameDialog); 
+            };
+            popup.Child = gameDialog;
+            popup.IsOpen = true;
+            var gamesList = ((WindowSwitchingDialog)popup.Child).GamesList;
+            foreach (var g in this.Games) {
+                gamesList.Items.Add(g.Filename ?? "No File Association");
+            }
+            // Put focus into dialog, good for user, but also stops mainwindow from handling kbd events
+            gamesList.IsEnabled = true;
+            ((WindowSwitchingDialog)popup.Child).GamesList.IsTabStop = true;
+            ((WindowSwitchingDialog)popup.Child).GamesList.IsHitTestVisible = true;
+            ((WindowSwitchingDialog)popup.Child).GamesList.Focus(FocusState.Keyboard);
+        }
+
+        //// WindowSwitchingDialogDone handles when the new game dialog popup is done.
+        //// It checks whether the dialog was confirmed or cancelled, and takes
+        //// appropriate action.
+        ////
+        private async void WindowSwitchingDialogDone (WindowSwitchingDialog dlg) {
+            if (this.theAppBar.IsOpen)
+                // If launched from appbar, and it remained open, close it.
+                this.theAppBar.IsOpen = false;
+            if (dlg.SelectionConfirmed == WindowSwitchingDialog.WindowSwitchResult.Switch) {
+                var gfile = dlg.SelectedGame;
+                var gindex = GameAux.ListFind(gfile, this.Games, (fname, game) => ((string)fname) == ((Game)game).Filename);
+                Game g;
+                if (gindex == -1) {
+                    gindex = dlg.GamesList.SelectedIndex;
+                    g = this.Games[gindex];
+                } else
+                    g = this.Games[gindex];
+                if (Object.ReferenceEquals(g, this.Game))
+                    return;
+                await this.GotoOpenGame(gindex);
+            }
+            else if (dlg.SelectionConfirmed == WindowSwitchingDialog.WindowSwitchResult.Delete) {
+                var gfile = dlg.SelectedGame;
+                var gindex = GameAux.ListFind(gfile, this.Games, (fname, game) => ((string)fname) == ((Game)game).Filename);
+                var g = this.Games[gindex];
+                if (Object.ReferenceEquals(g, this.Game)) {
+                    if (this.Games.Count > 1) {
+                        await this.GotoNextGame();
+                    }
+                    else {
+                        await this.CheckDirtySave();
+                        GameAux.CreateDefaultGame(this);
+                        this.UpdateTitle();
+                    }
+                }
+                else
+                    await this.CheckDirtySave();
+                this.Games.Remove(g);
+            }
+            this.FocusOnStones();
+        }
+
+
 
         //// GotoOpenGame updates the view to show the specified game.  Target is an index into this.Games.
         //// It must be a valid index.  This is used by app.xaml.cs for file activation and DoOpenFile.

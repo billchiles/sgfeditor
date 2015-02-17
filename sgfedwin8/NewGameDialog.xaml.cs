@@ -7,9 +7,6 @@ using Windows.System; // VirtualKeyModifiers
 
 
 namespace SgfEdwin8 {
-    /// <summary>
-    /// An empty page that can be used on its own or navigated to within a Frame.
-    /// </summary>
     public sealed partial class NewGameDialog : Page {
         // Indicates whether ok or cancel button hit.
         public bool NewGameConfirmed { get; set; }
