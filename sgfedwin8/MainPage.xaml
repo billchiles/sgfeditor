@@ -270,8 +270,12 @@
                             x:Name="appBarSquareButton">Square</Button>
                 </StackPanel>
                 -->
-                <Button Grid.Row="1" Grid.Column="0" IsEnabled="True" BorderThickness="1" Click="AppBarGameInfoClick"
+                <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal">
+                    <Button IsEnabled="True" BorderThickness="1" Click="AppBarGameInfoClick"
                             >Game Info ...</Button>
+                    <Button IsEnabled="True" BorderThickness="1" Margin="73,0,0,0"  Click="AppBarGotoGame"
+                            >Goto Game ...</Button>
+                </StackPanel>
                 <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal"  >
                     <Button Margin="0,0,10,0" Name="newButton" Click="newButton_left_down" 
                             BorderThickness="1" >New</Button>

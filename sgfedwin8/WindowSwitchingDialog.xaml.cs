@@ -13,20 +13,20 @@ using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Navigation;
 
-// The Blank Page item template is documented at http://go.microsoft.com/fwlink/?LinkId=234238
 
 namespace SgfEdwin8 {
 
     public sealed partial class WindowSwitchingDialog : Page {
 
-        // Indicates whether ok or cancel button hit.
-        public WindowSwitchResult SelectionConfirmed { get; set; }
-
+        //// SelectionConfirmed indicates whether the user selected a game to goto, wants to delete, or cancelled.
+        ////
         public enum WindowSwitchResult {
             Switch, Delete, Cancel
         }
+        public WindowSwitchResult SelectionConfirmed { get; set; }
 
-        // Expose values since members are by default private.
+        // Expose some UI elements since xaml members are private.
+        //
         public string SelectedGame { get; set; }
         // Expose a control so that main UI can put focus into dialog and stop main ui kbd handling.
         public ListBox GamesList { get { return this.gamesList; } }
@@ -40,16 +40,11 @@ namespace SgfEdwin8 {
             this.windowSwitchingDlgGrid.Height = bounds.Height;
         }
 
-        /// <summary>
-        /// Invoked when this page is about to be displayed in a Frame.
-        /// </summary>
-        /// <param name="e">Event data that describes how this page was reached.  The Parameter
-        /// property is typically used to configure the page.</param>
         protected override void OnNavigatedTo (NavigationEventArgs e) {
         }
 
 
-        //// NewGameDialogClose is called by Ok and Cancel clicks to signal owner.
+        //// WindowSwitchingDialogClose is called by click handlers to signal owner.
         ////
         public event EventHandler WindowSwitchingDialogClose;
 

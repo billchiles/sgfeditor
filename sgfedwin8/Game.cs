@@ -83,6 +83,9 @@ namespace SgfEdwin8 {
         // Note, the public cut_move is a method.
         private Move cutMove;
 
+        // Used to retire games when they are too many open.
+        public DateTime LastVisited;
+
 
         public Game (MainWindow main_win, int size, int handicap, string komi, List<Move> handicap_stones = null,
                      List<Move> all_white = null) {
@@ -117,6 +120,7 @@ namespace SgfEdwin8 {
             this.BlackPrisoners = 0;
             this.WhitePrisoners = 0;
             this.cutMove = null;
+            this.LastVisited = DateTime.Now;
         } // Game Constructor
 
 
@@ -544,10 +548,11 @@ namespace SgfEdwin8 {
             // Comments for cur move have already been saved and cleared.  Put initial board comments in
             // place in case this.Game is sitting at the intial board state.
             this.mainWin.CurrentComment = this.Comments; 
-            this.Board.GotoStart();  // This shouldn't matter, but it is cleaner abstraction to call it.
+            this.Board.GotoStart();
             this.nextColor = this.Handicap == 0 ? Colors.Black : Colors.White;
             this.CurrentMove = null;
             this.MoveCount = 0;
+            this.LastVisited = DateTime.Now;
             this.BlackPrisoners = 0;
             this.WhitePrisoners = 0;
             this.mainWin.UpdateBranchCombo(this.Branches, this.FirstMove);

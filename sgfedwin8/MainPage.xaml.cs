@@ -34,7 +34,7 @@ namespace SgfEdwin8 {
     public sealed partial class MainWindow : Page {
 
         private const string HelpString = @"
-SGFEd can read and write .sgf files, edit game trees, etc.
+SGFEditor can read and write .sgf files, edit game trees, etc.
 
 PLACING STONES AND ANNOTATIONS:
 Click on board location to place alternating colored stones.  If the last move
@@ -68,6 +68,12 @@ to save.
 OPENING EXISTING FILES
 The open button (or ctrl-o) prompts for a .sgf file name to open.  If the current
 game is dirty, this prompts to save.
+
+MULTIPLE OPEN FILES
+You can have up to 10 games open.  Limit to 10 seems reasonable until understand
+store app VM profile.  Ctrl-w rotates through games.  Ctrl-g brings up dialog for
+switching to games and closing games.  When creating or opening games, SgfEditor
+closes the default game if it is unused. 
 
 SAVING FILES, SAVE AS
 The save button (or ctrl-s) saves to the associated file name if there is one;
@@ -113,6 +119,8 @@ MISCELLANEOUS
         public Game LastCreatedGame = null;
         // Helps cleanup unused default game to avoid accumulating them in open games.
         public Game DefaultGame = null;
+        // Limit open games to avoid VM bloat and app issues from opening games over weeks.
+        const int MAX_GAMES = 10;
 
 
 
@@ -344,7 +352,9 @@ MISCELLANEOUS
                     g.Children.Remove(elt);
                 }
                 // Clear board just to make sure we drop all model refs.
-                this.Game.Board.GotoStart();
+                // TODO Investigate this, probably was no-op for releasing memory before, and now that hold
+                // games in this.Games, just need to make sure swapping games is fine if we delete this.
+                //this.Game.Board.GotoStart();
                 this.UpdateBranchCombo(null, null);
                 this.CurrentComment = "";
                 this.DisableBackwardButtons();
@@ -1350,15 +1360,7 @@ MISCELLANEOUS
             else if (e.Key == VirtualKey.F4 && this.IsKeyPressed(VirtualKey.Control) &&
                      this.commentBox.FocusState != FocusState.Keyboard && // Covers tabbing to txt box
                      this.commentBox.FocusState != FocusState.Pointer) {  // Covers clicking in txt box
-                if (this.Games.Count > 1) {
-                    await this.GotoNextGame();
-                }
-                else {
-                    await this.CheckDirtySave();
-                    GameAux.CreateDefaultGame(this);
-                    this.UpdateTitle();
-                }
-                this.Games.Remove(this.Game);
+                await this.CloseGame(this.Game);
                 e.Handled = true;
             }
             // Special Bill command because I do this ALL THE TIME
@@ -1667,7 +1669,11 @@ MISCELLANEOUS
         }
 
 
-        private async void AppBarSaveAsClick(object sender, RoutedEventArgs e) {
+        private async void AppBarGotoGame (object sender, RoutedEventArgs e) {
+            await this.ShowGamesGoto();
+        }
+
+        private async void AppBarSaveAsClick (object sender, RoutedEventArgs e) {
             await this.SaveAs();
             this.FocusOnStones();
         }
@@ -2022,6 +2028,20 @@ MISCELLANEOUS
                 this.Games.Remove(this.Game);
                 this.DefaultGame = null;
             }
+            if (this.Games.Count >= MainWindow.MAX_GAMES) {
+                var now = DateTime.Now;
+                var max = now - now;
+                Game target = null;
+                foreach (var gg in this.Games)
+                    if ((now - gg.LastVisited) > max && ! gg.Dirty) {
+                        target = gg;
+                        max = now - gg.LastVisited;
+                    }
+                // If no such game, then don't worry about it.
+                // Should add new game, but don't want to prompt here for one to close.
+                if (target != null)
+                    this.Games.Remove(target);
+            }
             this.Game = g;
             this.Games.Add(g);
             this.LastCreatedGame = g;
@@ -2052,6 +2072,26 @@ MISCELLANEOUS
             this.FocusOnStones();
         }
 
+        //// CloseGame handles swapping out current game if necessary, checking dirty save, 
+        //// creating default game if need be, etc.
+        //// 
+        private async Task CloseGame (Game g) {
+            if (Object.ReferenceEquals(g, this.Game)) {
+                if (this.Games.Count > 1) {
+                    await this.GotoNextGame();
+                }
+                else {
+                    await this.CheckDirtySave();
+                    GameAux.CreateDefaultGame(this);
+                    this.UpdateTitle();
+                }
+            }
+            else
+                await this.CheckDirtySave();
+            this.Games.Remove(g);
+        }
+
+
         //// GotoNextGame updates the view to show the next game in the game list.  If the argument is
         //// is supplied and negative, this rotates backwards in the list.
         //// 
@@ -2077,72 +2117,6 @@ MISCELLANEOUS
             await GotoOpenGame(target);
         }
 
-        async Task ShowGamesGoto () {
-            await this.CheckDirtySave();
-            // Setup new dialog and show it
-            var gameDialog = new WindowSwitchingDialog();
-            var popup = new Popup();
-            gameDialog.WindowSwitchingDialogClose += (s, e) => { 
-                popup.IsOpen = false;
-                this.WindowSwitchingDialogDone(gameDialog); 
-            };
-            popup.Child = gameDialog;
-            popup.IsOpen = true;
-            var gamesList = ((WindowSwitchingDialog)popup.Child).GamesList;
-            foreach (var g in this.Games) {
-                gamesList.Items.Add(g.Filename ?? "No File Association");
-            }
-            // Put focus into dialog, good for user, but also stops mainwindow from handling kbd events
-            gamesList.IsEnabled = true;
-            ((WindowSwitchingDialog)popup.Child).GamesList.IsTabStop = true;
-            ((WindowSwitchingDialog)popup.Child).GamesList.IsHitTestVisible = true;
-            ((WindowSwitchingDialog)popup.Child).GamesList.Focus(FocusState.Keyboard);
-        }
-
-        //// WindowSwitchingDialogDone handles when the new game dialog popup is done.
-        //// It checks whether the dialog was confirmed or cancelled, and takes
-        //// appropriate action.
-        ////
-        private async void WindowSwitchingDialogDone (WindowSwitchingDialog dlg) {
-            if (this.theAppBar.IsOpen)
-                // If launched from appbar, and it remained open, close it.
-                this.theAppBar.IsOpen = false;
-            if (dlg.SelectionConfirmed == WindowSwitchingDialog.WindowSwitchResult.Switch) {
-                var gfile = dlg.SelectedGame;
-                var gindex = GameAux.ListFind(gfile, this.Games, (fname, game) => ((string)fname) == ((Game)game).Filename);
-                Game g;
-                if (gindex == -1) {
-                    gindex = dlg.GamesList.SelectedIndex;
-                    g = this.Games[gindex];
-                } else
-                    g = this.Games[gindex];
-                if (Object.ReferenceEquals(g, this.Game))
-                    return;
-                await this.GotoOpenGame(gindex);
-            }
-            else if (dlg.SelectionConfirmed == WindowSwitchingDialog.WindowSwitchResult.Delete) {
-                var gfile = dlg.SelectedGame;
-                var gindex = GameAux.ListFind(gfile, this.Games, (fname, game) => ((string)fname) == ((Game)game).Filename);
-                var g = this.Games[gindex];
-                if (Object.ReferenceEquals(g, this.Game)) {
-                    if (this.Games.Count > 1) {
-                        await this.GotoNextGame();
-                    }
-                    else {
-                        await this.CheckDirtySave();
-                        GameAux.CreateDefaultGame(this);
-                        this.UpdateTitle();
-                    }
-                }
-                else
-                    await this.CheckDirtySave();
-                this.Games.Remove(g);
-            }
-            this.FocusOnStones();
-        }
-
-
-
         //// GotoOpenGame updates the view to show the specified game.  Target is an index into this.Games.
         //// It must be a valid index.  This is used by app.xaml.cs for file activation and DoOpenFile.
         ////
@@ -2160,6 +2134,57 @@ MISCELLANEOUS
             // Setup UI for target game's current move.
             this.UpdateTitle();
             this.UpdateTreeView(move);
+            this.FocusOnStones();
+        }
+
+
+        //// ShowGamesGoto displays a dialog listing the open games, from which users can select
+        //// a game to display or delete/close.
+        ////
+        async Task ShowGamesGoto () {
+            await this.CheckDirtySave();
+            // Setup new dialog and show it
+            var gameDialog = new WindowSwitchingDialog();
+            var popup = new Popup();
+            gameDialog.WindowSwitchingDialogClose += (s, e) => {
+                popup.IsOpen = false;
+                this.WindowSwitchingDialogDone(gameDialog);
+            };
+            popup.Child = gameDialog;
+            popup.IsOpen = true;
+            var gamesList = ((WindowSwitchingDialog)popup.Child).GamesList;
+            foreach (var g in this.Games) {
+                gamesList.Items.Add(g.Filename ?? "No File Association");
+            }
+            // Put focus into dialog, good for user, but also stops mainwindow from handling kbd events
+            gamesList.IsEnabled = true;
+            ((WindowSwitchingDialog)popup.Child).GamesList.IsTabStop = true;
+            ((WindowSwitchingDialog)popup.Child).GamesList.IsHitTestVisible = true;
+            ((WindowSwitchingDialog)popup.Child).GamesList.Focus(FocusState.Keyboard);
+        }
+
+        //// WindowSwitchingDialogDone handles when the goto/close game dialog popup is done.
+        //// It checks the result of the dialog and takes appropriate action.
+        ////
+        private async void WindowSwitchingDialogDone (WindowSwitchingDialog dlg) {
+            if (this.theAppBar.IsOpen)
+                // If launched from appbar, and it remained open, close it.
+                this.theAppBar.IsOpen = false;
+            if (dlg.SelectionConfirmed == WindowSwitchingDialog.WindowSwitchResult.Switch) {
+                var gfile = dlg.SelectedGame;
+                // Do not search for filename because 1) "No File Name" and 2) always finds first if two have same name
+                //var gindex = GameAux.ListFind(gfile, this.Games, (fname, game) => ((string)fname) == ((Game)game).Filename);
+                var gindex = dlg.GamesList.SelectedIndex;
+                var g = this.Games[gindex];
+                if (Object.ReferenceEquals(g, this.Game))
+                    return;
+                await this.GotoOpenGame(gindex);
+            }
+            else if (dlg.SelectionConfirmed == WindowSwitchingDialog.WindowSwitchResult.Delete) {
+                // Do not search for filename because 1) "No File Name" and 2) always finds first if two have same name
+                //var gindex = GameAux.ListFind(gfile, this.Games, (fname, game) => ((string)fname) == ((Game)game).Filename);
+                await CloseGame(this.Games[dlg.GamesList.SelectedIndex]);
+            }
             this.FocusOnStones();
         }
 
@@ -2437,7 +2462,6 @@ MISCELLANEOUS
             this.Game.SaveCurrentComment();
             this.UpdateTitle();
         }
-
 
     } // class MainWindow
 
