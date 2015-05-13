@@ -29,7 +29,7 @@ namespace SgfEdwin8 {
         //
         public string SelectedGame { get; set; }
         // Expose a control so that main UI can put focus into dialog and stop main ui kbd handling.
-        public ListBox GamesList { get { return this.gamesList; } }
+        public ListView GamesList { get { return this.gamesList; } }
 
 
         public WindowSwitchingDialog () {
@@ -91,5 +91,29 @@ namespace SgfEdwin8 {
         }
 
     } // WindowSwitchingDialog class
+
+    //// SampleStringList is for design time only of figuring out the dialog in the designer.
+    ////
+    public class SampleStringList : System.Collections.ObjectModel.ObservableCollection<string> {
+        public SampleStringList () {
+            Add("hello");
+            Add("there");
+            Add("world");
+            Add("hello2");
+            Add("hello3");
+            Add("there4");
+            Add("world5");
+            Add("there6");
+            Add("world7");
+            Add("hello8");
+            Add("there9");
+            Add("worlda");
+            Add("hellob");
+            Add("therec");
+            Add("worldd");
+        }
+    }
+
+
 
 } // namespace

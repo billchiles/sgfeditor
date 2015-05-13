@@ -60,6 +60,7 @@ namespace SgfEdwin8
             }
             // Ensure the current window is active
             Window.Current.Activate();
+            //((MainWindow)rootFrame.Content).FocusOnStones();  Last possible point, cannot change launch focus.
         }
 
         protected override async void OnFileActivated (FileActivatedEventArgs args) {

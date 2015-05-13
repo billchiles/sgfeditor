@@ -915,6 +915,7 @@ MISCELLANEOUS
                 }
                 finally {
                     popup.IsOpen = false;
+                    popup.Child = null;  // Need to explicitly unparent UI tree, or get weird race condition UI bug.
                 }
             }
         }
