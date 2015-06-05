@@ -69,11 +69,18 @@ namespace SgfEdwin8 {
         public List<ParsedNode> Branches;
         public Dictionary<string, List<string>> Properties;
 
+        //// BadNodeMessage is non-null if processing or readying a node for rendering detects
+        //// an erroneous situation (SGF features not supported or something bogus).  Thsi then
+        //// contains the error msg that should be reported if not swalling the processing error.
+        ////
+        public string BadNodeMessage;
+
         public ParsedNode () {
             this.Next = null;
             this.Previous = null;
             this.Branches = null;
             this.Properties = new Dictionary<string, List<string>>();
+            this.BadNodeMessage = null;
         }
 
         //// node_str returns the string for one node, taking a flag for a

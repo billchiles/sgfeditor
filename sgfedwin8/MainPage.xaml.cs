@@ -218,11 +218,12 @@ MISCELLANEOUS
         //// DispatchTimer to invoke this every 30s.
         ////
         public async Task MaybeAutoSave () {
-            if (this.Game.Dirty) {
-                var file = this.GetAutoSaveName(this.Game.Filebase);
+            var g = this.Game; // Capture game in case user switches games while this is running.
+            if (g.Dirty) {
+                var file = this.GetAutoSaveName(g.Filebase);
                 var tempFolder = ApplicationData.Current.TemporaryFolder;
                 var storage = await tempFolder.CreateFileAsync(file, CreationCollisionOption.ReplaceExisting);
-                await this.Game.WriteGame(storage, true);
+                await g.WriteGame(storage, true);
             }
         }
 
@@ -697,9 +698,10 @@ MISCELLANEOUS
         // Need this to re-use this functionality where we need to use 'await'.  Can't
         // 'await' nextButtonLeftDown since it must be 'async void'.
         public async Task DoNextButton () {
-            var move = this.Game.ReplayMove();
+            var move = await this.Game.ReplayMove();
             if (move == null) {
-                await GameAux.Message("Can't play branch further due to conflicting stones on the board.");
+                // If got null, then next move conflicts with move on the board (likely from pasting moves), or
+                // there was an error rendering a parse node.
                 return;
             }
             this.AdvanceToStone(move);
@@ -724,10 +726,9 @@ MISCELLANEOUS
         //// game has not started, or no move has been played.
         ////
         private async void endButtonLeftDown (object end_button, RoutedEventArgs e) {
-            await this.Game.GotoLastMove();
-            var cur = this.Game.CurrentMove;
+            await this.Game.GotoLastMove(); // This may not succeed due to replaying and rendering nodes.
             this.UpdateTitle();
-            this.UpdateTreeView(cur);
+            this.UpdateTreeView(this.Game.CurrentMove);
             this.FocusOnStones();
         }
 
@@ -898,7 +899,7 @@ MISCELLANEOUS
                     // Essentially handles unexpected EOF or malformed property values.
                     // Should be nothing to do since curgame should still be intact if never got past reading file.
                     var ignoreTask = // Squelch warning that we're not awaiting Message, which we can't in catch blocks.
-                    GameAux.Message(err.Message + err.StackTrace);
+                    GameAux.Message("IO Error with opening or reading file.\n\n" + err.Message + "\n\n" + err.StackTrace);
                 }
                 catch (Exception err) {
                     // No code paths should throw from incomplete, unrecoverable state, so should be fine to continue.
@@ -910,7 +911,7 @@ MISCELLANEOUS
                         this.UndoLastGameCreation(this.Games.Contains(curgame) ? curgame : null);
                     }
                     var ignoreTask = // Squelch warning that we're not awaiting Message, which we can't in catch blocks.
-                    GameAux.Message(err.Message + err.StackTrace);
+                    GameAux.Message("IO Error or SGF formatting issue.\n\n" + err.Message + "\n\n" + err.StackTrace);
                     // NOTE: because not awaiting Message, the following code executes immediately.
                 }
                 finally {
@@ -1414,7 +1415,7 @@ MISCELLANEOUS
         //// gameTree_mousedown handles clicks on the game tree graph canvas,
         //// navigating to the move clicked on.
         ////
-        private void gameTree_mousedown (object sender, PointerRoutedEventArgs e) {
+        private async void gameTree_mousedown (object sender, PointerRoutedEventArgs e) {
             // Integrity checking code for debugging and testing, not for release.
             //this.CheckTreeParsedNodes();
             //
@@ -1442,32 +1443,49 @@ MISCELLANEOUS
             else
                 this.Game.SaveCurrentComment();
             if (move != null) {
-                if (move.Row != -1 && move.Column != -1)
+                if (move.Row != -1 && move.Column != -1) {
                     // move is NOT dummy move for start node of game tree view, so advance to it.
-                    this.GotoGameTreeMove(move);
+                    if (! this.GotoGameTreeMove(move)) {
+                        // Hit conflicting move location due to pasted node or rendering bad parsed node
+                        // Do not go back to start, then user sees where the issue is.
+                        await GameAux.Message("You are replaying moves from a pasted branch that has conflicts " +
+                                              "with stones on the board, or replaying moves with bad properties " +
+                                              "from an SGF file.");
+                    }
+                }
             }
-            else
+            else {
                 // Move is ParsedNode, not a move that's been rendered.
-                this.GotoGameTreeMove((ParsedNode)n.Node);
+                if (! this.GotoGameTreeMove((ParsedNode)n.Node))
+                    // Hit conflicting move location due to pasted node or rendering bad parsed node
+                    await GameAux.Message("You are replaying moves from a pasted branch that has conflicts " +
+                                          "with stones on the board, or replaying moves with bad properties " + 
+                                          "from an SGF file.");
+            }
             this.UpdateTitle();
             this.UpdateTreeView(this.Game.CurrentMove);
             this.FocusOnStones();
         }
 
-        private void GotoGameTreeMove (Move move) {
+        private bool GotoGameTreeMove (Move move) {
+            var res = true;
             var path = this.Game.GetPathToMove(move);
             if (path != this.Game.TheEmptyMovePath) {
-                this.Game.AdvanceToMovePath(path);
-                GotoGameTreeMoveUpdateUI(move);
+                if (! this.Game.AdvanceToMovePath(path)) res = false; // conflicting stone loc or bad parse node
+                // Do not update UI using move, use CurrentMove because we didn't make it to move's position.
+                GotoGameTreeMoveUpdateUI(this.Game.CurrentMove);
             }
+            return res;
         }
 
-        private void GotoGameTreeMove (ParsedNode move) {
+        private bool GotoGameTreeMove (ParsedNode move) {
+            var res = true;
             var path = this.Game.GetPathToMove(move);
             if (path != this.Game.TheEmptyMovePath) {
-                this.Game.AdvanceToMovePath(path);
+                if (! this.Game.AdvanceToMovePath(path)) res = false; // conflicting stone loc or bad parse node
                 this.GotoGameTreeMoveUpdateUI(this.Game.CurrentMove);
             }
+            return res;
         }
 
         //// GotoGameTreeMoveUpdateUI sets the forw/back buttons appropriately.  It also
@@ -1476,21 +1494,26 @@ MISCELLANEOUS
         //// comment at that time, and now just need to put the current comment in the UI.
         ////
         private void GotoGameTreeMoveUpdateUI(Move move) {
-            // All other game and UI state has been updated by Game.AdvanceToMovePath.
-            this.AddCurrentAdornments(move);
-            if (move.Previous != null)
-                this.EnableBackwardButtons();
-            else
-                this.DisableBackwardButtons();
-            if (move.Next != null) {
-                this.EnableForwardButtons();
-                this.UpdateBranchCombo(move.Branches, move.Next);
+            // If move is null, there was an error advancing to the first move.  this.currentmove is still 
+            // null from going to start.  All other UI should be correct from gametree_mousedown, nothing
+            // changed by AdvanceToMovePath.
+            if (move != null) {
+                // All other game and UI state has been updated by Game.AdvanceToMovePath.
+                this.AddCurrentAdornments(move);
+                if (move.Previous != null)
+                    this.EnableBackwardButtons();
+                else
+                    this.DisableBackwardButtons();
+                if (move.Next != null) {
+                    this.EnableForwardButtons();
+                    this.UpdateBranchCombo(move.Branches, move.Next);
+                }
+                else {
+                    this.DisableForwardButtons();
+                    this.UpdateBranchCombo(null, null);
+                }
+                this.CurrentComment = move.Comments;
             }
-            else {
-                this.DisableForwardButtons();
-                this.UpdateBranchCombo(null, null);
-            }
-            this.CurrentComment = move.Comments;
         }
 
 
@@ -1845,8 +1868,6 @@ MISCELLANEOUS
         ////
         public void UpdateTreeView (Move move, bool wipeit = false) {
             MyDbg.Assert(this.TreeViewDisplayed());
-            //if (! this.TreeViewDisplayed())
-            //    return;
             if (wipeit) {
                 this.InitializeTreeView();
                 this.DrawGameTree();
