@@ -36,6 +36,10 @@ namespace SgfEdwin8 {
         private const string HelpString = @"
 SGFEditor can read and write .sgf files, edit game trees, etc.
 
+The following describes command and key bindings, but you can use commands
+from buttons in the upper right of the display and from the app bar (right
+click on the game board or drag up from the bottom of the display).
+
 PLACING STONES AND ANNOTATIONS:
 Click on board location to place alternating colored stones.  If the last move
 is a misclick (at the end of a branch), click the last move again to undo it.
@@ -73,7 +77,8 @@ MULTIPLE OPEN FILES
 You can have up to 10 games open.  Limit to 10 seems reasonable until understand
 store app VM profile.  Ctrl-w rotates through games.  Ctrl-g brings up dialog for
 switching to games and closing games.  When creating or opening games, SgfEditor
-closes the default game if it is unused. 
+closes the default game if it is unused. If you open a game that is already open,
+SgfEditor just displays the game where you were last viewing it.
 
 SAVING FILES, SAVE AS
 The save button (or ctrl-s) saves to the associated file name if there is one;
@@ -2668,7 +2673,12 @@ MISCELLANEOUS
             label.Foreground = new SolidColorBrush(Colors.Black);
             label.HorizontalAlignment = h_alignment;
             if (h_alignment == HorizontalAlignment.Right)
-                label.Margin = new Thickness(0, 0, 2, 0);
+                // Add extra margin on right so that row numbers do not slam against edge
+                // of board (tan of board).  This used to be 2 on win8/8.1 because
+                // FocusableInputControl would set the parent grid cell 2 pixels bigger than
+                // the square board size, but due to win10 back compat bug, winRT infinitely
+                // resizes the focusable control and crashes.
+                label.Margin = new Thickness(0, 0, 4, 0);
             label.VerticalAlignment = v_alignment;
             g.Children.Add(label);
         }

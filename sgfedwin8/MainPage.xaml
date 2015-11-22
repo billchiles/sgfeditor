@@ -222,23 +222,26 @@
         </local:FocusableInputControl>
 
     </Grid> <!-- main grid for buttons, board, comments -->
+        
     
-        <!-- Define the snapped view content, which starts off collapsed and possibly gets toggled on size change -->
-        <Grid x:Name="snapViewContent" Background="#C7419082" Visibility="Collapsed" HorizontalAlignment="Stretch" 
-              VerticalAlignment="Stretch">
-            <!-- Define the grid to hold board lines, which is filled in programmatically depending on the go board 
-                 size ... -->
-            <Grid Background="#FFD7B264" HorizontalAlignment="Stretch" x:Name="collapsedBoardGrid" Grid.Row="0" 
-                  Grid.Column="0" VerticalAlignment="Stretch"  >
-            </Grid>
+    <!-- Define the snapped view content (required in win8/8.1), 
+         which starts off collapsed and possibly gets toggled on size change in win8.1, never hit on win10 -->
+    <Grid x:Name="snapViewContent" Background="#C7419082" Visibility="Collapsed" HorizontalAlignment="Stretch" 
+            VerticalAlignment="Stretch">
+        <!-- Define the grid to hold board lines, which is filled in programmatically depending on the go board 
+                size ... -->
+        <Grid Background="#FFD7B264" HorizontalAlignment="Stretch" x:Name="collapsedBoardGrid" Grid.Row="0" 
+                Grid.Column="0" VerticalAlignment="Stretch"  >
+        </Grid>
 
-            <!-- Define the grid to hold go stones, whose rows and columns are filled in programmatically ... -->
-            <Grid Background="Transparent" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Grid.Row="0" 
-                  Grid.Column="0" x:Name="collapsedStonesGrid"  >
-            </Grid>
+        <!-- Define the grid to hold go stones, whose rows and columns are filled in programmatically ... -->
+        <Grid Background="Transparent" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Grid.Row="0" 
+                Grid.Column="0" x:Name="collapsedStonesGrid"  >
+        </Grid>
         </Grid>
         
     </Grid> <!-- switchableContentRoot -->
+    
 
     <!-- App Bar for touch screens and moving less frequent commands out of command panel -->
     <Page.BottomAppBar>
