@@ -22,6 +22,21 @@ However, highly likely in such a file, you're just browsing some joseki dictiona
 
 RELEASE NOTES ...
 
+21 NOV 15 pushed to store, but these notes include FEB 2015 release too for lifein19x19 post:
+
+ * fixed keyboard input issue with focus in the comment box and some keys getting handled globally
+ * added ctrl-t to convert index references to the current move to "this" for easier reading
+ * now gracefully handle if user deletes open file and then tries to save game later
+ * changed file name and game state feedback for easier viewing
+ * updated help text
+ * FEB 2015 released features above here
+ * now support multiple open files and switching between them
+ * ctrl-leftarrow now moves back in game history to closest node that has branches
+ * some minor bug fixes
+ * better recovering from encountering bad nodes parsed from file and reporting issue to user
+ * work around windows 10 backward compatibility bug that was causing app to crash on win10
+
+
 On 02 SEP 14 posted to lifein19x19.com:
  * pushed release to store
  * a few bug fixes
