@@ -38,10 +38,12 @@ namespace SgfEdwin10 {
                 //else
                 //    this.Height = size;
                 var parent = this.Parent as Grid;
-                if (parent != null)
-                {
-                    parent.ColumnDefinitions[0].Width = new GridLength(size);
-                }
+                // Do NOT set parent, let layout recalc parent because setting it locked it and made automatic
+                // resizing behaviors/aesthetics sub optimal.
+                //if (parent != null)
+                //{
+                //    parent.ColumnDefinitions[0].Width = new GridLength(size);
+                //}
             }
         }
 

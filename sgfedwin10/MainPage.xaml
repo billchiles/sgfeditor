@@ -7,7 +7,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
         Background="#C7419082"
-        KeyDown="mainWin_keydown" >
+        KeyDown="mainWin_keydown" SizeChanged="Page_SizeChanged" >
 
 
     <!-- This is what blank app had as file contents after header
@@ -25,23 +25,25 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="320*" />
-            <ColumnDefinition Width="183*" />
+            <!--<ColumnDefinition Width="320*" />-->
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="495" />
+            <!--<ColumnDefinition Width="183*" />-->
         </Grid.ColumnDefinitions>
 
         <!-- Define the comment box and tree control with splitter and scroll bars ... -->
-        <Grid Grid.Column="1" Grid.Row="1" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" >
+        <Grid Grid.Column="1" Grid.Row="1" HorizontalAlignment="Right" VerticalAlignment="Stretch" >
             <Grid.RowDefinitions>
-                <RowDefinition Height="45"/>
+                <RowDefinition Height="48"/>
                 <RowDefinition  />
                 <RowDefinition Height="Auto"/>
                 <RowDefinition />
             </Grid.RowDefinitions>
             <!-- margin is "left, top, right, bottom"-->
-            <StackPanel Grid.Row="0" Background="DarkKhaki">
+            <StackPanel Grid.Row="0" Background="DarkKhaki" Margin="2,0,0,0">
                 <TextBlock Text="SGF Editor -- " FontSize="16" Margin="4,2,1,1"
                            VerticalAlignment="Center" HorizontalAlignment="Stretch" x:Name="Title"/>
-                <TextBlock Text="Move 0" FontSize="16" Margin="4,1,1,1"
+                <TextBlock Text="Move 0" FontSize="16" Margin="4,1,1,3"
                            VerticalAlignment="Center" HorizontalAlignment="Stretch" x:Name="TitleLine2"/>
             </StackPanel>
             <TextBox Grid.Row="1" HorizontalAlignment="Stretch" Margin="2,2,2,1" Name="commentBox" 

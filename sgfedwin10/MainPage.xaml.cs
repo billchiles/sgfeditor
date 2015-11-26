@@ -293,8 +293,8 @@ MISCELLANEOUS
         //// scrollviewer, then the code in OnFocusLost will have to test for the scrollviewer
         //// used in SGFed and keep searching for the hidden root scrollviewer that steals focus.
         //// 
-        private int magic_snappedview_size = 500;     // These numbers come from msdn and SO
-                                                      //private int magic_landscape_size = 1366;  // These numbers come from msdn and SO
+        //private int magic_snappedview_size = 500;     // These numbers come from msdn and SO
+        //private int magic_landscape_size = 1366;  // These numbers come from msdn and SO
         void MainView_SizeChanged (object sender, WindowSizeChangedEventArgs e) {
             //switch (ApplicationView.Value) {
             //    case ApplicationViewState.Snapped:
@@ -2531,6 +2531,13 @@ MISCELLANEOUS
             this.UpdateTitle();
         }
 
+        private void Page_SizeChanged (object sender, SizeChangedEventArgs e) {
+            //var narrow = e.NewSize.Width < 600;
+            var w = e.NewSize.Width - 495; //110 if cleverly relaying out narrow controls and wide controls
+            var h = e.NewSize.Height;
+            if (w > h) { this.inputFocus.Width = h; this.inputFocus.Height = h; }
+            else { this.inputFocus.Width = w; this.inputFocus.Height = w; }
+        }
     } // class MainWindow
 
 

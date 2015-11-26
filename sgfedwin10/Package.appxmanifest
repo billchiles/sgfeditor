@@ -1,10 +1,10 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest" xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10" IgnorableNamespaces="uap mp">
-  <Identity Name="D37E5277-8AB5-4016-8F13-D36C8478F682" Publisher="CN=billchi" Version="1.0.0.0" />
+  <Identity Name="62410Billchi.SgfEditor" Publisher="CN=ED344A36-FC9A-41AF-8E3D-0DD808A5E54E" Version="1.1.0.0" />
   <mp:PhoneIdentity PhoneProductId="dcba1c15-c4a3-4fff-8bc7-a0606f9584b8" PhonePublisherId="00000000-0000-0000-0000-000000000000" />
   <Properties>
     <DisplayName>SgfEditor</DisplayName>
-    <PublisherDisplayName>billchi</PublisherDisplayName>
+    <PublisherDisplayName>Billchi</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
   <Dependencies>
@@ -16,7 +16,7 @@
   <Applications>
     <Application Id="App" Executable="$targetnametoken$.exe" EntryPoint="sgfedwin10.App">
       <uap:VisualElements DisplayName="SgfEditor" Square150x150Logo="Assets\logo.png" Square44x44Logo="Assets\Small-Logo-44.png" Description="sgfedwin10" BackgroundColor="#464646">
-        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png">
+        <uap:DefaultTile>
           <uap:ShowNameOnTiles>
             <uap:ShowOn Tile="square150x150Logo" />
           </uap:ShowNameOnTiles>
@@ -31,7 +31,6 @@
           <uap:FileTypeAssociation Name=".sgf">
             <uap:DisplayName>Smart Game Format</uap:DisplayName>
             <uap:Logo>assets\storelogo.png</uap:Logo>
-            <uap:EditFlags OpenIsSafe="true" />
             <uap:SupportedFileTypes>
               <uap:FileType>.sgf</uap:FileType>
             </uap:SupportedFileTypes>
