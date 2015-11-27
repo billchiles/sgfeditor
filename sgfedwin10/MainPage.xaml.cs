@@ -2535,6 +2535,7 @@ MISCELLANEOUS
             //var narrow = e.NewSize.Width < 600;
             var w = e.NewSize.Width - 495; //110 if cleverly relaying out narrow controls and wide controls
             var h = e.NewSize.Height;
+            if (w < 50) return;
             if (w > h) { this.inputFocus.Width = h; this.inputFocus.Height = h; }
             else { this.inputFocus.Width = w; this.inputFocus.Height = w; }
         }
