@@ -276,6 +276,25 @@ MISCELLANEOUS
         //// 
 
 
+        //// Page_SizeChanged comes from win10 port for smooth resizing, along with commensurate changes in xaml
+        //// outer grid columns and FocusableInputControl resizing.  On win8 and win8.1 need to deal with
+        //// snapped view interactions.  When making this change, could only test win8 build on win8.1 machine and
+        //// a 8.1 build on a win10 machine, leaving out testing win8 build on win8 :-(.  The 8.1 build on win10
+        //// had some quirks that the win10 version did not have for the exact same xaml and code (because the
+        //// snapped view code never executes).  The win8 build had similar slightly off quirks, mostly requiring
+        //// more width for right hand panel of controls (more width than 8.1 build required on win10).
+        //// 
+        private void Page_SizeChanged (object sender, SizeChangedEventArgs e) {
+            //var narrow = e.NewSize.Width < 600;   
+            var w = e.NewSize.Width - 600; //110 if cleverly relaying out narrow controls and wide controls   
+            var h = e.NewSize.Height;
+            if (w < 50) return;
+            if (w > h) { this.inputFocus.Width = h; this.inputFocus.Height = h; }
+            else { this.inputFocus.Width = w; this.inputFocus.Height = w; }
+        }  
+
+
+
         //// MainView_SizeChanged does the work to switch from full view to snapped view.  For now
         //// this assumes the main view is good enough for filled view (complement of snapped)
         //// and portrait, which it might be if the xaml includes the commented out scrollviewer
