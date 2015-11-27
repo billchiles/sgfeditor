@@ -43,10 +43,10 @@ namespace SgfEdwin8 {
                 //    this.Width = size;
                 //else
                 //    this.Height = size;
-                var parent = this.Parent as Grid;
-                if (parent != null) {
-                    parent.ColumnDefinitions[0].Width = new GridLength(size);
-                }
+                //var parent = this.Parent as Grid;
+                //if (parent != null) {
+                //    parent.ColumnDefinitions[0].Width = new GridLength(size);
+                //}
             }
         }
 
