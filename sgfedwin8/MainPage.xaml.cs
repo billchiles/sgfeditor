@@ -132,10 +132,15 @@ MISCELLANEOUS
         public MainWindow () {
             this.InitializeComponent();
             this.prevSetupSize = 0;
+            this.CreateDefaultGame();
+        }
+
+        private void CreateDefaultGame () {
             this.Game = GameAux.CreateDefaultGame(this);
             this.DefaultGame = this.Game;
+            this.UpdateTitle();
             this.DrawGameTree();
-            this.FocusOnStones(); // Doesn't seem to work.
+            this.FocusOnStones(); // Doesn't seem to work for some reason when called on launch.
         }
 
 
@@ -1423,6 +1428,14 @@ MISCELLANEOUS
                 e.Handled = true;
                 return;
             }
+            // Special Bill command because I do this ALL THE TIME
+            // Replace indexed move reference with "marked", "square marked", "marked group", etc.
+            else if (e.Key == VirtualKey.M && this.IsKeyPressed(VirtualKey.Control)) {
+                this.ReplaceIndexedMarkedRef();
+                win.FocusOnStones();
+                e.Handled = true;
+                return;
+            }
             // Help
             else if (e.Key == VirtualKey.F1) {
                 this.ShowHelp();
@@ -2093,6 +2106,7 @@ MISCELLANEOUS
             this.LastCreatedGame = g;
         }
 
+
         //// UndoLastGameCreation should only be called after an open game operation fails, and a game
         //// was created that you know you need to clean up.  If the game passed in is not null, then
         //// it is the game to display; otherwise, create a default game.
@@ -2101,7 +2115,8 @@ MISCELLANEOUS
             if (this.Games.Contains(this.LastCreatedGame))
                 this.Games.Remove(this.LastCreatedGame);
             if (newgame == null) {
-                GameAux.CreateDefaultGame(this);
+                //GameAux.CreateDefaultGame(this);
+                this.CreateDefaultGame();
                 return;
             }
             this.SetupBoardDisplay(newgame); // Clear current game UI, initialize board with new game.
@@ -2128,8 +2143,9 @@ MISCELLANEOUS
                 }
                 else {
                     await this.CheckDirtySave();
-                    GameAux.CreateDefaultGame(this);
-                    this.UpdateTitle();
+                    //GameAux.CreateDefaultGame(this);
+                    //this.UpdateTitle();
+                    this.CreateDefaultGame();
                 }
             }
             else
@@ -2476,22 +2492,76 @@ MISCELLANEOUS
             var comment = this.CurrentComment;
             var found = comment.IndexOf(moveRef);
             var res = "";
-            if (found != -1) {
-                res = comment.Substring(0, found) + "this" +
-                      comment.Substring(found + reflen, comment.Length - found - reflen);
-            }
-            else {
+            if (found == -1) {
                 var MoveRefLower = moveRef.ToLower();
                 found = comment.IndexOf(MoveRefLower);
-                if (found != -1) {
-                    res = comment.Substring(0, found) + "this" +
-                          comment.Substring(found + reflen, comment.Length - found - reflen);
-                }
+            }
+            if (found != -1) {
+                res = comment.Substring(0, found) + "this" +
+                        comment.Substring(found + reflen, comment.Length - found - reflen);
             }
             if (res != "")
                 this.UpdateCurrentComment(res);
         }
 
+        //// ReplaceIndexedMarkedRef is a pet feature that replaces an indexed reference to a location (d4) with
+        //// a word ("marked", "marked group", etc.).  This confirms index has an adornment marking it.
+        ////
+        //// For some reason the convention on computer go boards is to count rows from the bottom to the top,
+        //// and SGF format for some reason records moves as col,row pairs.  Hence, we build moveRef backwards
+        //// with column first and flipping row from bottom of board.
+        ////
+        private void ReplaceIndexedMarkedRef () {
+            var comment = this.CurrentComment;
+            var len = comment.Length;
+            int modelrow = 0;
+            int modelcol = 0;
+            for (var i = 0; i < len - 1; i++) {
+                var c = comment[i];
+                if (c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z') {
+                    var c2 = comment[i + 1];
+                    if (c2 >= '0' && c2 <= '9') {
+                        var num = 0;
+                        int sublen = 2;
+                        var c3 = i + 2 < len ? comment[i + 2] : ' ';
+                        if (c3 >= '0' && c3 <= '9') {
+                            num = ((c2 - '0')) * 10 + (c3 - '0');
+                            sublen = 3;
+                        }
+                        else
+                            num = c2 - '0';
+                        // figure out row/col, get adornment
+                        modelrow = (this.Game.Board.Size + 1 - num);
+                        modelcol = GoBoardAux.DisplayLetterToModelCoordinate(c);
+                        var adornments = this.Game.GetAdornments(modelrow, modelcol);
+                        //var a = this.Game.GetAdornment(modelrow, modelcol, AdornmentKind.Triangle);
+                        string res = "";
+                        if (adornments.Count() == 0)
+                            // Count is small, even in degenerate case, so ok to call Count
+                            continue;
+                        if (adornments.Count() == 1) {
+                            var a = adornments[0];
+                            if (a.Kind == AdornmentKind.Triangle)
+                                res = "marked stone";
+                            else if (a.Kind == AdornmentKind.Square)
+                                res = "square marked stone";
+                            else if (a.Kind == AdornmentKind.Letter)
+                                res = a.Letter;
+                            // No else for current move and setting res to "this" because current is not in list.
+                        }
+                        else
+                            // Very rare and not useful to put mulitiple adornments on same location, so don't bother if multiple.
+                            break;
+                        this.UpdateCurrentComment(comment.Substring(0, i) + res +
+                                                  comment.Substring(i + sublen, comment.Length - i - sublen));
+                        break;
+                    }
+                }
+            }
+            
+        }
+        
+        
         //// UpdateCurrentComment sets the current comment to the string, pushes the change to the model, and
         //// updates the title since the dirty bit at least may have changed.
         //// 

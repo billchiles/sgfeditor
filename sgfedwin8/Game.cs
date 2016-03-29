@@ -1094,7 +1094,7 @@ namespace SgfEdwin8 {
         }
 
         //// GetAdornment returns the first (and should be only) adornment of kind kind
-        //// at row, col.  If there is no such adornment, this returns null.
+        //// at row, col (one-based model coordinates).  If there is no such adornment, this returns null.
         ////
         public Adornments GetAdornment (int row, int col, AdornmentKind kind) {
             var move = this.CurrentMove;
@@ -1104,6 +1104,16 @@ namespace SgfEdwin8 {
                 if (a.Kind == kind && a.Row == row && a.Column == col)
                     return a;
             return null;
+        }
+
+        //// GetAdornments returns the current move's adornments at this location.
+        //// Row, col are one-based model coordinates.  If there are no adornments, return empty collection.
+        ////
+        public List<Adornments> GetAdornments (int row, int col) {
+            var move = this.CurrentMove;
+            List<Adornments> adornments =
+                (this.State == GameState.NotStarted || move == null) ? this.SetupAdornments : move.Adornments;
+            return adornments.Where((a) => a.Row == row && a.Column == col).ToList();
         }
 
 
