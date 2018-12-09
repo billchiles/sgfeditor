@@ -12,7 +12,7 @@ using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Navigation;
 using Windows.UI.Xaml.Shapes; // Rectangle
-using Windows.UI; // Color
+using Windows.UI; // Colorkh
 using Windows.UI.Popups; // MessageDialog
 using Windows.UI.Core; // CoreWindow, PointerEventArgs
 using Windows.System; // VirtualKeyModifiers
@@ -113,6 +113,17 @@ MISCELLANEOUS
    Ctrl-t changes the first occurence of the move's board coordinates in the comment
       to 'this'; for example, 'd6 is strong cut' changes to 'this is strong cut'.
 ";
+
+///
+/// Variables in dialog to play with display:
+///    tree font size -- bound it relative to cell, subtract for smaller size
+///    tree cell size -- how to computer stone size, 65%?
+///    colors -- curret, comment, which branch, and how to translate to code and how to enter
+///    comment font size -- how to bound?
+///    file name and game state font -- how to bound?
+///    board indexes font
+///    non-board width -- current is min, what about changing grid from asterisk to fixed ?
+///
 
         private int prevSetupSize = 0;
 
@@ -2033,7 +2044,7 @@ MISCELLANEOUS
             this.nextBranchGrid = itemCookie;
             if (this.nextBranchRect == null) {
                 this.nextBranchRect = new Rectangle();
-                this.nextBranchRect.Stroke = new SolidColorBrush(Colors.Gray);
+                this.nextBranchRect.Stroke = new SolidColorBrush(Colors.Fuchsia);
                 this.nextBranchRect.StrokeThickness = 0.7;
             }
             itemCookie.Children.Add(this.nextBranchRect);
@@ -2758,7 +2769,7 @@ MISCELLANEOUS
             Grid.SetRow(label, y);
             Grid.SetColumn(label, x);
             label.FontWeight = FontWeights.Bold;
-            label.FontSize = 14;
+            label.FontSize = 18;
             label.Foreground = new SolidColorBrush(Colors.Black);
             label.HorizontalAlignment = h_alignment;
             if (h_alignment == HorizontalAlignment.Right)
@@ -3118,8 +3129,11 @@ MISCELLANEOUS
         //// treeViewGridCellSize is the number of pixels along one side of a "grid cell"
         //// on the canvas.
         ////
-        public const int treeViewGridCellSize = 45;
-        private const int treeViewNodeSize = 30;
+        public const int treeViewGridCellSize = 50; // 45;
+        private const int treeViewNodeSize = 35; // 30;
+        private const int treeViewFontSize = 16; // 14;
+        private const int treeViewFontSize2 = 12; //10;
+
 
         //// DrawGameTreeLines draws all the lines from this node to its next nodes.
         //// Note, these are TreeViewNodes, not Moves, so some of the nodes simply denote
@@ -3191,11 +3205,11 @@ MISCELLANEOUS
             // Set font size based on length of integer print representation
             label.FontWeight = FontWeights.Bold;
             if (model.Column.ToString().Length > 2) {
-                label.FontSize = 10;
+                label.FontSize = MainWindowAux.treeViewFontSize2;
                 label.FontWeight = FontWeights.Normal;
             }
             else
-                label.FontSize = 14;
+                label.FontSize = MainWindowAux.treeViewFontSize;
             label.Foreground = new SolidColorBrush(model.Kind == TreeViewNodeKind.Move ?
                                                     GameAux.OppositeMoveColor(model.Color) :
                                                     Colors.Black);

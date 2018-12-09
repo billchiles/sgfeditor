@@ -43,13 +43,13 @@
             </Grid.RowDefinitions>
             <!-- margin is "left, top, right, bottom"-->
             <StackPanel Grid.Row="0" Background="DarkKhaki" Margin="2,0,0,0">
-                <TextBlock Text="SGF Editor -- " FontSize="16" Margin="4,2,1,1"
+                <TextBlock Text="SGF Editor -- " FontSize="18" Margin="4,2,1,1"
                            VerticalAlignment="Center" HorizontalAlignment="Stretch" x:Name="Title"/>
-                <TextBlock Text="Move 0" FontSize="16" Margin="4,1,1,3"
+                <TextBlock Text="Move 0" FontSize="18" Margin="4,1,1,3"
                            VerticalAlignment="Center" HorizontalAlignment="Stretch" x:Name="TitleLine2"/>
             </StackPanel>
             <TextBox Grid.Row="1" HorizontalAlignment="Stretch" Margin="2,2,2,1" Name="commentBox" 
-                     VerticalAlignment="Stretch" TextWrapping="Wrap" AcceptsReturn="True"
+                     VerticalAlignment="Stretch" TextWrapping="Wrap" AcceptsReturn="True" FontSize="20"
                      ScrollViewer.HorizontalScrollBarVisibility="Auto" 
                      ScrollViewer.VerticalScrollBarVisibility="Auto" />
             <ScrollViewer Grid.Row="3" Margin="2,1,2,2" ScrollViewer.HorizontalScrollBarVisibility="Visible" 
