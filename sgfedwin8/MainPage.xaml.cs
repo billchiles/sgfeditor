@@ -12,7 +12,7 @@ using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Navigation;
 using Windows.UI.Xaml.Shapes; // Rectangle
-using Windows.UI; // Colorkh
+using Windows.UI; // Color
 using Windows.UI.Popups; // MessageDialog
 using Windows.UI.Core; // CoreWindow, PointerEventArgs
 using Windows.System; // VirtualKeyModifiers
@@ -117,8 +117,17 @@ MISCELLANEOUS
 ///
 /// Variables in dialog to play with display:
 ///    tree font size -- bound it relative to cell, subtract for smaller size
-///    tree cell size -- how to computer stone size, 65%?
+///    tree cell size -- how to compute stone size, 65%?
 ///    colors -- curret, comment, which branch, and how to translate to code and how to enter
+///       https://docs.microsoft.com/en-us/uwp/api/windows.ui.colors
+///       maybe (SolidColorBrush)new BrushConverter().ConvertFromString("Red");
+///       Namespace: Windows.UI.Xaml.Markup
+///       Assemblies: Windows.UI.Xaml.Markup.dll, Windows.dll
+///       XamlBindingHelper Class
+///       var color = (Color)XamlBindingHelper.ConvertValue(typeof(Color), "ORANGE");
+///       var brush = new SolidColorBrush(color);
+///       in WPF ... Color col=(Color)ColorConverter.ConvertFromString("Red"); 
+///       in ??? ... System.Drawing.Color.FromName(colorName);
 ///    comment font size -- how to bound?
 ///    file name and game state font -- how to bound?
 ///    board indexes font
