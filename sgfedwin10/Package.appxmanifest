@@ -1,0 +1,42 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest" xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10" IgnorableNamespaces="uap mp">
+  <Identity Name="62410Billchi.SgfEditor" Publisher="CN=ED344A36-FC9A-41AF-8E3D-0DD808A5E54E" Version="1.1.0.0" />
+  <mp:PhoneIdentity PhoneProductId="dcba1c15-c4a3-4fff-8bc7-a0606f9584b8" PhonePublisherId="00000000-0000-0000-0000-000000000000" />
+  <Properties>
+    <DisplayName>SgfEditor</DisplayName>
+    <PublisherDisplayName>Billchi</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+  </Properties>
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Universal" MinVersion="10.0.0.0" MaxVersionTested="10.0.0.0" />
+  </Dependencies>
+  <Resources>
+    <Resource Language="x-generate" />
+  </Resources>
+  <Applications>
+    <Application Id="App" Executable="$targetnametoken$.exe" EntryPoint="sgfedwin10.App">
+      <uap:VisualElements DisplayName="SgfEditor" Square150x150Logo="Assets\logo.png" Square44x44Logo="Assets\Small-Logo-44.png" Description="sgfedwin10" BackgroundColor="#464646">
+        <uap:DefaultTile>
+          <uap:ShowNameOnTiles>
+            <uap:ShowOn Tile="square150x150Logo" />
+          </uap:ShowNameOnTiles>
+        </uap:DefaultTile>
+        <uap:SplashScreen Image="Assets\SplashScreen.png" />
+        <uap:InitialRotationPreference>
+          <uap:Rotation Preference="landscape" />
+        </uap:InitialRotationPreference>
+      </uap:VisualElements>
+      <Extensions>
+        <uap:Extension Category="windows.fileTypeAssociation">
+          <uap:FileTypeAssociation Name=".sgf">
+            <uap:DisplayName>Smart Game Format</uap:DisplayName>
+            <uap:Logo>assets\storelogo.png</uap:Logo>
+            <uap:SupportedFileTypes>
+              <uap:FileType>.sgf</uap:FileType>
+            </uap:SupportedFileTypes>
+          </uap:FileTypeAssociation>
+        </uap:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+</Package>
