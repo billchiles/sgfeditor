@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
+using Windows.System; // VirtualKey
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Controls.Primitives;
@@ -17,6 +18,10 @@ using Windows.UI.Xaml.Navigation;
 namespace SgfEdwin8 {
 
     public sealed partial class HelpDialog : Page {
+
+        // Expose a control so that main UI can put focus into dialog and stop main ui kbd handling.
+        public Button OK_Button { get { return this.okButton; } }
+
         public HelpDialog () {
             this.InitializeComponent();
             // Ensure dialog overlays entire main window so that it cannot handle input.
@@ -34,5 +39,20 @@ namespace SgfEdwin8 {
                 this.HelpDialogClose(this, EventArgs.Empty);
         }
 
-    }
-}
+        //// HelpDlgKeydown just handles enter and escape for Ok button and stops input from going through.
+        ////
+        private void HelpDlgKeydown (object sender, KeyRoutedEventArgs e)  {
+            HelpDialog win;
+            if (sender.GetType() == typeof(HelpDialog))
+                win = (HelpDialog)sender;
+            else
+                win = this;
+            if ((e.Key == VirtualKey.Escape) || (e.Key == VirtualKey.Enter)) {
+                e.Handled = true;
+                this.okButton_click(null, null);
+                return;
+            }
+        } // HelpDlgKeydown
+
+    } // HelpDialog Class
+} // namespace

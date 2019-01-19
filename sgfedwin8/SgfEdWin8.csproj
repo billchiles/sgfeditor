@@ -129,6 +129,9 @@
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SgfParser.cs" />
+    <Compile Include="SomeSettings.xaml.cs">
+      <DependentUpon>SomeSettings.xaml</DependentUpon>
+    </Compile>
     <Compile Include="WindowSwitchingDialog.xaml.cs">
       <DependentUpon>WindowSwitchingDialog.xaml</DependentUpon>
     </Compile>
@@ -174,6 +177,10 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="NewGameDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="SomeSettings.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

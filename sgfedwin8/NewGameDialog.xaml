@@ -14,6 +14,7 @@
              gets big margins to have dialog appear reasonably sized. -->
         <Grid Margin="400,203,400,197">
             <!-- Background="{StaticResource ApplicationPageBackgroundThemeBrush}"-->
+            <!-- Not sure what these resources are or do, some holdover from long ago when I first created a dialog -->
             <Grid.Resources>
                 <Style TargetType="Grid">
                     <!--TargetType="{x:Type Grid}"-->

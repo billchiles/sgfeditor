@@ -25,6 +25,7 @@ using Windows.UI.ViewManagement; // ApplicationView (for snap view)
 using Windows.ApplicationModel.DataTransfer; // DataPackage and Clipboard
 
 
+
 namespace SgfEdwin8 {
 
     ////
@@ -105,6 +106,10 @@ ctrl-uparrow, and to move a branch down, use ctrl-downarrow.
 PASSING
 The Pass button or c-p will make a pass move.
 
+SETTNIGS
+C-p brings up a dumb settings dialog where you can change some font sizes and sizes
+of UI elements.  There currently is not a lot of rigor and checking of input values.
+
 MISCELLANEOUS
    F1 produces this help.
    Ctrl-k clears the current node's comment and puts text on system clipboard.
@@ -114,26 +119,9 @@ MISCELLANEOUS
       to 'this'; for example, 'd6 is strong cut' changes to 'this is strong cut'.
 ";
 
-///
-/// Variables in dialog to play with display:
-///    tree font size -- bound it relative to cell, subtract for smaller size
-///    tree cell size -- how to compute stone size, 65%?
-///    colors -- curret, comment, which branch, and how to translate to code and how to enter
-///       https://docs.microsoft.com/en-us/uwp/api/windows.ui.colors
-///       maybe (SolidColorBrush)new BrushConverter().ConvertFromString("Red");
-///       Namespace: Windows.UI.Xaml.Markup
-///       Assemblies: Windows.UI.Xaml.Markup.dll, Windows.dll
-///       XamlBindingHelper Class
-///       var color = (Color)XamlBindingHelper.ConvertValue(typeof(Color), "ORANGE");
-///       var brush = new SolidColorBrush(color);
-///       in WPF ... Color col=(Color)ColorConverter.ConvertFromString("Red"); 
-///       in ??? ... System.Drawing.Color.FromName(colorName);
-///    comment font size -- how to bound?
-///    file name and game state font -- how to bound?
-///    board indexes font
-///    non-board width -- current is min, what about changing grid from asterisk to fixed ?
-///
-
+        // This is set in the constructor and SetupBoardDisplay to indicate first board setup, 0,
+        // or last setup to determine if we can re-use the board elements.  HOWEVER, right now we
+        // only support 19x19.
         private int prevSetupSize = 0;
 
         public Game Game { get; set; }
@@ -147,11 +135,28 @@ MISCELLANEOUS
         // Limit open games to avoid VM bloat and app issues from opening games over weeks.
         const int MAX_GAMES = 10;
 
-
+        /// These get set in the constructor to get the program's defaults to support RestoreSettingsDefaults().
+        ///
+        private int _titleSizeDefault = 18; // (int)this.Title.FontSize;
+        private int _indexesSizeDefault = 18; // MainWindowAux.indexLabelFontSize;
+        private int _commentFontsizeDefault = 20; // (int)this.commentBox.FontSize;
+        private int _treeNodeSizeDefault = 50; // MainWindowAux.treeViewGridCellSize;
+        private int _treeNodeFontsizeDefault = 18; // MainWindowAux.treeViewFontSize;
+        private Color _treeCurrentHighlightDefault = ColorsConverter.ConvertToColor("Magenta").Value;
+        private Color _treeCommentsHighlightDefault = ColorsConverter.ConvertToColor("LightGreen").Value;
 
         public MainWindow () {
             this.InitializeComponent();
             this.prevSetupSize = 0;
+
+            this._titleSizeDefault = (int)this.Title.FontSize; // 18
+            this._indexesSizeDefault = MainWindowAux.indexLabelFontSize; // 18
+            this._commentFontsizeDefault = (int)this.commentBox.FontSize; // 20
+            this._treeNodeSizeDefault = MainWindowAux.treeViewGridCellSize; // 50
+            this._treeNodeFontsizeDefault = MainWindowAux.treeViewFontSize; // 18
+            this._treeCurrentHighlightDefault = this.currentNodeHighlightColor; // Magenta
+            this._treeCommentsHighlightDefault = this.commentNodeHighlightColor; // LightGreen
+
             this.CreateDefaultGame();
         }
 
@@ -382,6 +387,28 @@ MISCELLANEOUS
         public void SetupBoardDisplay (Game new_game) {
             if (this.prevSetupSize == 0) {
                 // First time setup.
+                var store = ApplicationData.Current.LocalSettings;
+                // Must check every key if it exists because app may have crashed or not written all of them.  
+                // If first time ever launch, or never customized settings, use defaults since there will be no settings.
+                // Do not need to check return values because settings values were vetted before persisting them.
+                if (store.Values.ContainsKey("TitleFontSize"))
+                    this.SettingsSetTitleFontSize((int)store.Values["TitleFontSize"]);
+                if (store.Values.ContainsKey("IndexesFontSize"))
+                    this.SettingsSetIndexesFontSize((int)store.Values["IndexesFontSize"]);
+                if (store.Values.ContainsKey("CommentFontSize"))
+                    this.commentBox.FontSize = (int)store.Values["CommentFontSize"];
+                if (store.Values.ContainsKey("TreeNodeSize"))
+                    this.SettingsSetTreeNodeSize((int)store.Values["TreeNodeSize"]);
+                if (store.Values.ContainsKey("TreeNodeFontSize"))
+                    this.SettingsSetTreeNodeFontsize((int)store.Values["TreeNodeFontSize"], 
+                                                     (int)store.Values["TreeNodeSize"]);
+                // Don't need to test color conversions since we only write named colors to store.
+                if (store.Values.ContainsKey("TreeCurrentHighlight"))
+                    this.currentNodeHighlightColor = 
+                        ColorsConverter.ConvertToColor((string)store.Values["TreeCurrentHighlight"]).Value;
+                if (store.Values.ContainsKey("TreeCommentHIghlight"))
+                    this.commentNodeHighlightColor = 
+                        ColorsConverter.ConvertToColor((string)store.Values["TreeCommentHIghlight"]).Value;
                 this.SetupLinesGrid(new_game.Board.Size);
                 this.SetupStonesGrid(new_game.Board.Size);
                 MainWindowAux.SetupIndexLabels(this.stonesGrid, new_game.Board.Size);
@@ -397,8 +424,8 @@ MISCELLANEOUS
                     MainWindowAux.RemoveCurrentStoneAdornment(g, cur_move);
                 // Remove stones and adornments, so don't just loop over stones.
                 foreach (var elt in g.Children.OfType<UIElement>().Where((o) => !(o is TextBlock)).ToList()) {
-                    // Only labels in stones grid should be row/col labels
-                    // because adornments are inside ViewBoxes.
+                    // Only labels in stones grid should be row/col labels because adornments are inside
+                    // Grids (squares and triables) or Viewboxes (letters).
                     g.Children.Remove(elt);
                 }
                 // Clear board just to make sure we drop all model refs.
@@ -598,20 +625,14 @@ MISCELLANEOUS
             };
             popup.Child = helpDialog;
             popup.IsOpen = true;
+            // Put focus into dialog, good for user, but also stops mainwindow from handling kbd events
+            helpDialog.OK_Button.IsEnabled = true;
+            helpDialog.OK_Button.IsTabStop = true;
+            helpDialog.OK_Button.IsHitTestVisible = true;
+            helpDialog.OK_Button.Focus(FocusState.Keyboard);
+
         }
-        // This is previous hack due to win8 msgbox not scrolling.
-        //
-        //private bool showFirstHalfHelp = true;
-        //private async void ShowHelp () {
-        //    var howMuch = (MainWindow.HelpString.Length / 2) + 15;
-        //    if (this.showFirstHalfHelp)
-        //        await GameAux.Message("HACK: Hit OK and press F1 again to see alternating halves of help string.\n" +
-        //                                  MainWindow.HelpString.Substring(0, howMuch),
-        //                              "SGFEd Help");
-        //    else
-        //        await GameAux.Message(MainWindow.HelpString.Substring(howMuch), "SGFEd Help");
-        //    this.showFirstHalfHelp = ! this.showFirstHalfHelp;
-        //}
+
 
 
         //// whatBoardClickCreates is set in App Bar button handlers and used by
@@ -1321,8 +1342,7 @@ MISCELLANEOUS
                 e.Handled = true;
             }
             // Opening a file
-            else if (e.Key == VirtualKey.O && //this.CtrlKeyPressed) 
-                     this.IsKeyPressed(VirtualKey.Control)) {
+            else if (e.Key == VirtualKey.O && this.IsKeyPressed(VirtualKey.Control)) {
                 await this.DoOpenButton();
                 e.Handled = true;
             }
@@ -1412,6 +1432,13 @@ MISCELLANEOUS
                      this.commentBox.FocusState != FocusState.Keyboard && // Covers tabbing to txt box
                      this.commentBox.FocusState != FocusState.Pointer) {  // Covers clicking in txt box
                 await this.CloseGame(this.Game);
+                e.Handled = true;
+            }
+            // UI Settings
+            else if (e.Key == VirtualKey.U && this.IsKeyPressed(VirtualKey.Control) &&
+                     this.commentBox.FocusState != FocusState.Keyboard && // Covers tabbing to txt box
+                     this.commentBox.FocusState != FocusState.Pointer) {  // Covers clicking in txt box
+                await this.ShowGamesSettings();
                 e.Handled = true;
             }
             // Special Bill command because I do this ALL THE TIME
@@ -1878,6 +1905,8 @@ MISCELLANEOUS
         //// also creates a special "start" mapping to get to the first view model node.  This is
         //// public for app.xaml.cs's OnFileAcivated to call it.
         ////
+        private Color commentNodeHighlightColor = Colors.LightGreen;
+        private Color currentNodeHighlightColor = Colors.Fuchsia;
         public void DrawGameTree (bool force = false) {
             if (this.TreeViewDisplayed() || force)
                 // considered premature optimization of re-using objects from this.treeViewMoveMap, but no need
@@ -1898,7 +1927,7 @@ MISCELLANEOUS
                             var mnode = node as Move;
                             if ((pnode != null && pnode.Properties.ContainsKey("C")) ||
                                 (mnode != null && mnode.Comments != "")) {
-                                eltGrid.Background = new SolidColorBrush(Colors.LightGreen);
+                                    eltGrid.Background = new SolidColorBrush(this.commentNodeHighlightColor);
                             }
                             this.treeViewMoveMap[node] = curModel;
                             Canvas.SetLeft(eltGrid, curModel.Column * MainWindowAux.treeViewGridCellSize);
@@ -1926,8 +1955,8 @@ MISCELLANEOUS
         public void UpdateTreeView (Move move, bool wipeit = false) {
             MyDbg.Assert(this.TreeViewDisplayed());
             if (wipeit) {
-                this.InitializeTreeView();
-                this.DrawGameTree();
+                //this.InitializeTreeView();
+                this.DrawGameTree(true); // true = force initialize
             }
             else {
                 UpdateTreeHighlightMove(move);
@@ -1940,22 +1969,27 @@ MISCELLANEOUS
         //// highlight from the last current move the new current move, and managing if the old
         //// current move gets a green highlight for having a comment.
         ////
+        //// currentNodeRect just carries the outline stroke of the current node.  We fill the
+        //// background of the tree node's cookie (Gred) with the current highlight, comment
+        //// highlight, or transparent.  We keep the rect outline stroke and the background colors
+        //// the same now, but they could be different.
+        ////
         private Rectangle currentNodeRect = null;
         private Grid currentNodeGrid = null;
         private void UpdateTreeHighlightMove (Move move) {
             // Ensure we have the box that helps the current node be highlighted.
             if (this.currentNodeRect == null) {
                 this.currentNodeRect = new Rectangle();
-                this.currentNodeRect.Stroke = new SolidColorBrush(Colors.Gray);
-                //this.currentNodeRect.StrokeThickness = 0.7;
+                this.currentNodeRect.Stroke = new SolidColorBrush(this.currentNodeHighlightColor); //Colors.Gray);
+                this.currentNodeRect.StrokeThickness = 0.7;
             }
             TreeViewNode curMoveItem = this.TreeViewNodeForMove(move);
             if (curMoveItem == null) {
                 // move is not in tree view node map, so it is new.  For simplicity, just redraw entire tree.
                 // This is fast enough to 300 moves at least, but could add optimization to notice adding move
                 // to end of branch with no node in the way for adding new node.
-                this.InitializeTreeView();
-                this.DrawGameTree();
+                //this.InitializeTreeView();
+                this.DrawGameTree(true); // true = force initialize
             }
             else {
                 UpdateTreeHighlightMoveAux(curMoveItem);
@@ -1980,13 +2014,17 @@ MISCELLANEOUS
                                    // or mnode is dummy node representing empty board
                                    (mnode.Row == -1 && mnode.Column == -1 && this.Game.Comments != "")))) {
                 // Nodes with comments are green
-                prevItem.Background = new SolidColorBrush(Colors.LightGreen);
+                prevItem.Background = new SolidColorBrush(this.commentNodeHighlightColor);
             }
             else
                 // Those without comments are transparent
                 prevItem.Background = new SolidColorBrush(Colors.Transparent);
             // Update current move shading and bring into view.
-            curItemCookie.Background = new SolidColorBrush(Colors.Fuchsia);
+            // We're filling the tree node's cookie (Grid) background and moving the currentNodeRect to provide
+            // the outline stroke, which could be different, but we keep them the same now.
+            var brush = new SolidColorBrush(this.currentNodeHighlightColor);
+            curItemCookie.Background = brush;
+            this.currentNodeRect.Stroke = brush; // Set in case settings changed for the fill.
             curItemCookie.Children.Add(this.currentNodeRect);
             this.currentNodeGrid = curItemCookie; // Save grid so that we can remove the Rect correctly.
             this.BringTreeElementIntoView(curItemCookie);
@@ -2045,16 +2083,19 @@ MISCELLANEOUS
         ////
         private Grid nextBranchGrid = null;
         private Rectangle nextBranchRect = null;
+        private double nextBranchRectStroke = 1.5;  // Was 0.7 which is just too light.  Should add this to settings.
         private void UpdateTreeHighlightBranch (Move move) {
             TreeViewNode item = this.TreeViewNodeForMove(move);
             // Should always be item here since not wiping tree, and if node were new, then no branches.
             MyDbg.Assert(item != null);
             Grid itemCookie = ((Grid)item.Cookie);
             this.nextBranchGrid = itemCookie;
+            // Create Rect first time, but note we only remove it from view, never destroy it, so settings changes
+            // need to directly update the Rect.
             if (this.nextBranchRect == null) {
                 this.nextBranchRect = new Rectangle();
-                this.nextBranchRect.Stroke = new SolidColorBrush(Colors.Fuchsia);
-                this.nextBranchRect.StrokeThickness = 0.7;
+                this.nextBranchRect.Stroke = new SolidColorBrush(this.currentNodeHighlightColor);
+                this.nextBranchRect.StrokeThickness = this.nextBranchRectStroke;
             }
             itemCookie.Children.Add(this.nextBranchRect);
         }
@@ -2067,6 +2108,15 @@ MISCELLANEOUS
             }
         }
 
+        private void UpdateNextBranchHighlighting () {
+            // Update highlighting from settings changes.
+            if (this.nextBranchRect != null) {
+                this.nextBranchRect.Stroke = new SolidColorBrush(this.currentNodeHighlightColor);
+                this.nextBranchRect.StrokeThickness = this.nextBranchRectStroke;
+            }
+        }
+
+        
         //// TreeViewNodeForMove returns the TreeViewNode representing the view model for move.
         //// This is public because Game needs to call it when zipping through moves for gotolast,
         //// gotomovepath, etc., to ensure treeViewMoveMap maps Move objects when they get rendered,
@@ -2599,6 +2649,190 @@ MISCELLANEOUS
             this.UpdateTitle();
         }
 
+
+        ///
+        /// https://docs.microsoft.com/en-us/windows/uwp/design/app-settings/store-and-retrieve-app-datapersistence
+        ///
+        private async Task ShowGamesSettings () {
+            //await this.CheckDirtySave();
+            // Setup settings dialog and show it
+            var settingsDialog = new SomeSettings(this);
+            var popup = new Popup();
+            settingsDialog.SettingsDialogClose += (s, e) => {
+                popup.IsOpen = false;
+                this.SettingsDialogDone(settingsDialog);
+            };
+            settingsDialog.TitleSize = (int)this.Title.FontSize;
+            settingsDialog.IndexesSize = MainWindowAux.indexLabelFontSize;
+            settingsDialog.CommentFontsize = (int)this.commentBox.FontSize;
+            settingsDialog.TreeNodeSize = MainWindowAux.treeViewGridCellSize;
+            settingsDialog.TreeNodeFontsize = MainWindowAux.treeViewFontSize;
+            settingsDialog.TreeCurrentHighlight = this.currentNodeHighlightColor;
+            settingsDialog.TreeCommentsHighlight = this.commentNodeHighlightColor;
+            popup.Child = settingsDialog;
+            popup.IsOpen = true;
+            // Put focus into dialog, good for user, but also stops mainwindow from handling kbd events
+            ((SomeSettings)popup.Child).CancelButton.IsEnabled = true;
+            ((SomeSettings)popup.Child).CancelButton.IsTabStop = true;
+            ((SomeSettings)popup.Child).CancelButton.IsHitTestVisible = true;
+            ((SomeSettings)popup.Child).CancelButton.Focus(FocusState.Keyboard);
+        } // ShowGameSettings
+
+
+        //// SettingsDialogDone handles when the settings dialog popup is done.
+        //// It checks whether the dialog was confirmed or cancelled, and takes
+        //// appropriate action.
+        ////
+        private const int MaxFontSize = 40;
+        private async void SettingsDialogDone (SomeSettings dlg) {
+            // There is no launch from the context menu, so don't need this now.
+            //if (this.theAppBar.IsOpen)
+            //    // If launched from appbar, and it remained open, close it.
+            //    this.theAppBar.IsOpen = false;
+            var redrawTree = false;
+            if (dlg.SettingsConfirmed) {
+                if (dlg.TitleSize != (int)this.Title.FontSize || dlg.ResetSettings) {
+                    // Xaml default is 18, which seems fine on 19x10 (HD) display, but 24 is better on 36x20 (UHD)
+                    if (! SettingsSetTitleFontSize(dlg.TitleSize)) {
+                        await GameAux.Message("Title font size seems a bit absurd, ignoring it ...");
+                    }
+                }
+                if (dlg.IndexesSize != MainWindowAux.indexLabelFontSize || dlg.ResetSettings) {
+                    // Default is 18, which seems fine on 19x10 (HD) display, but 20 is better on 36x20 (UHD)
+                    if (! SettingsSetIndexesFontSize(dlg.IndexesSize)) {
+                        await GameAux.Message("Indexes font size seems a bit absurd, ignoring it ...");
+                    }
+                }
+                if (dlg.CommentFontsize != (int)this.commentBox.FontSize || dlg.ResetSettings) {
+                    // Xaml default is 20, which seems fine on 19x10 (HD) display, but 24 is better on 36x20 (UHD)
+                    if (dlg.CommentFontsize > MainWindow.MaxFontSize) {
+                        await GameAux.Message("Comment font size seems a bit absurd, ignoring it ...");
+                    }
+                    else {
+                        this.commentBox.FontSize = dlg.CommentFontsize;
+                    }
+                }
+                if (dlg.TreeNodeSize != MainWindowAux.treeViewGridCellSize || dlg.ResetSettings) {
+                    // Note, this is actually the tree node grid cell size, from which we compute the circle node size.
+                    // Default is 50, which seems fine on 19x10 (HD) display, but 60 is better on 36x20 (UHD), and the
+                    // node default was 35, 45 for UHD.
+                    this.SettingsSetTreeNodeSize(dlg.TreeNodeSize);
+                    redrawTree = true;
+                }
+                // Must set font size after node size.
+                if (dlg.TreeNodeFontsize != MainWindowAux.treeViewFontSize || dlg.ResetSettings) {
+                    // Default is 18, which seems fine on 19x10 (HD) display, but 20 is better on 36x20 (UHD)
+                    if (! SettingsSetTreeNodeFontsize(dlg.TreeNodeFontsize, dlg.TreeNodeSize))
+                        await GameAux.Message("Tree node font size seems a bit absurd or too big for nodes, ignoring it ...");
+                    redrawTree = true;
+                }
+                if (dlg.TreeCurrentHighlight != this.currentNodeHighlightColor || dlg.ResetSettings) {
+                    this.currentNodeHighlightColor = dlg.TreeCurrentHighlight;
+                    redrawTree = true;
+                }
+                if (dlg.TreeCommentsHighlight != this.commentNodeHighlightColor || dlg.ResetSettings) {
+                    this.commentNodeHighlightColor = dlg.TreeCommentsHighlight;
+                    redrawTree = true;
+                }
+                if (redrawTree) {
+                    this.UpdateNextBranchHighlighting();
+                    this.DrawGameTree(true);
+                }
+                this.FocusOnStones();
+                this.SaveSettings();
+            } // if settings changed
+        } // SettingsDialogDone
+
+        //// SettingsSetTitleFontSize is used in SettingsDialogDone and SetupBoardDisplay to apply settings.
+        ////
+        private bool SettingsSetTitleFontSize (int settingsSize) {
+            if (settingsSize > MainWindow.MaxFontSize) {
+                return false;
+            }
+            else {
+                var prev = this.Title.FontSize;
+                this.Title.FontSize = settingsSize;
+                this.TitleLine2.FontSize = settingsSize;
+                var g = this.TitleCommentGrid;
+                var h = g.RowDefinitions[0].Height;
+                // Make the title area big enough + the same margin
+                g.RowDefinitions[0].Height = new GridLength((settingsSize * 2) + (h.Value - (prev * 2)));
+            }
+            return true;
+        }
+
+        //// SettingsSetIndexesFontSize is used in SettingsDialogDone and SetupBoardDisplay to apply settings.
+        ////
+        private bool SettingsSetIndexesFontSize (int settingsSize) {
+            if (settingsSize > MainWindow.MaxFontSize) {
+                return false;
+            }
+            else {
+                MainWindowAux.indexLabelFontSize = settingsSize;
+                foreach (var elt in this.stonesGrid.Children.OfType<UIElement>()
+                                        .Where((o) => o is TextBlock).ToList()) {
+                    // Only labels in stones grid should be row/col board labels because adornments are inside
+                    // Grids (squares and triables) or Viewboxes (letters), and stones are not TextBlocks.
+                    ((TextBlock)elt).FontSize = MainWindowAux.indexLabelFontSize;
+                }
+            }
+            return true;
+        }
+
+        //// SettingsSetTreeNodeSize is used in SettingsDialogDone and SetupBoardDisplay to apply settings.
+        ////
+        private void SettingsSetTreeNodeSize (int settingsSize) {
+            MainWindowAux.treeViewNodeSize =
+                // This computation with bigger and bigger sizes will make connecting lines appear shorter and 
+                // shorter.  Could try percentage computation for more similar aesthetics to defaults.
+                settingsSize - (MainWindowAux.treeViewGridCellSize - MainWindowAux.treeViewNodeSize);
+            MainWindowAux.treeViewGridCellSize = settingsSize;
+        }
+
+        //// SettingsSetTreeNodeSize is used in SettingsDialogDone and SetupBoardDisplay to apply settings.
+        //// Must call this after calling SettingsSetTreeNodeSize().
+        ////
+        private bool SettingsSetTreeNodeFontsize (int settingsSize, int treeNodeSize) {
+            if ((settingsSize > MainWindow.MaxFontSize) || (settingsSize > (treeNodeSize * 0.4))) {
+                return false;
+            }
+            else {
+                // Note, font size is smaller for three digit move numbers.
+                var diff = MainWindowAux.treeViewFontSize - MainWindowAux.treeViewFontSize2;
+                MainWindowAux.treeViewFontSize = settingsSize;
+                MainWindowAux.treeViewFontSize2 = settingsSize - diff;
+            }
+            return true;
+        }
+
+        
+        /// https://docs.microsoft.com/en-us/windows/uwp/get-started/settings-learning-track
+        /// 
+        private void SaveSettings () {
+            var store = ApplicationData.Current.LocalSettings;
+            store.Values["TitleFontSize"] = (int)this.Title.FontSize;
+            store.Values["IndexesFontSize"] = MainWindowAux.indexLabelFontSize;
+            store.Values["CommentFontSize"] = (int)this.commentBox.FontSize;
+            store.Values["TreeNodeSize"] = MainWindowAux.treeViewGridCellSize;
+            store.Values["TreeNodeFontSize"] = MainWindowAux.treeViewFontSize;
+            // Don't need to validate name, wouldn't be stored in class if not validated already.
+            store.Values["TreeCurrentHighlight"] = ColorsConverter.GetColorName(this.currentNodeHighlightColor);
+            store.Values["TreeCommentHIghlight"] = ColorsConverter.GetColorName(this.commentNodeHighlightColor);
+        }
+
+        //// RestoreSettinsDefaults is called from the SomeSettings dialog when the user hits the Reset button.
+        //// We can't just take the programmatic state since it tracks current settings, so we capture these on launch.
+        //// 
+        internal void RestoreSettingsDefaults (SomeSettings dlg) {
+            dlg.TitleSize = this._titleSizeDefault;
+            dlg.IndexesSize = this._indexesSizeDefault;
+            dlg.CommentFontsize = this._commentFontsizeDefault;
+            dlg.TreeNodeSize = this._treeNodeSizeDefault;
+            dlg.TreeNodeFontsize = this._treeNodeFontsizeDefault;
+            dlg.TreeCurrentHighlight = this._treeCurrentHighlightDefault;
+            dlg.TreeCommentsHighlight = this._treeCommentsHighlightDefault;
+        }
+
     } // class MainWindow
 
 
@@ -2770,7 +3004,7 @@ MISCELLANEOUS
             }
         }
 
-
+        internal static int indexLabelFontSize = 18;
         internal static void SetupIndexLabel (Grid g, string content, int x, int y,
                                               HorizontalAlignment h_alignment, VerticalAlignment v_alignment) {
             var label = new TextBlock();
@@ -2778,7 +3012,7 @@ MISCELLANEOUS
             Grid.SetRow(label, y);
             Grid.SetColumn(label, x);
             label.FontWeight = FontWeights.Bold;
-            label.FontSize = 18;
+            label.FontSize = MainWindowAux.indexLabelFontSize;
             label.Foreground = new SolidColorBrush(Colors.Black);
             label.HorizontalAlignment = h_alignment;
             if (h_alignment == HorizontalAlignment.Right)
@@ -2952,21 +3186,22 @@ MISCELLANEOUS
         //// the WPF markup object.  This grid is a 3x3 grid that sits in a single cell
         //// of the stones grid.  We do not re-uses these grids for multiple adornments
         //// or free list them at this time.
+        //// NOTE: SetupBoardDisplay assumes all adornments are in Grids or Viewboxes,
+        //// and never is a TextBlock, which it uses to find board labels.
         ////
         internal static void AddNewAdornment(Grid stones_grid, Adornments adornment, Game game_inst,
-                                               bool render = true) {
+                                             bool render = true) {
             UIElement gridOrViewbox;
             MyDbg.Assert(adornment.Kind == AdornmentKind.Square || adornment.Kind == AdornmentKind.Triangle ||
                          adornment.Kind == AdornmentKind.Letter,
                          "Eh?! Unsupported AdornmentKind value?");
             if (adornment.Kind == AdornmentKind.Square)
                 gridOrViewbox = MakeSquareAdornment(stones_grid, adornment.Row, adornment.Column,
-                                             game_inst, render);
+                                                    game_inst, render);
             else if (adornment.Kind == AdornmentKind.Triangle)
                 gridOrViewbox = MakeTriangleAdornment(stones_grid, adornment.Row, adornment.Column,
-                                               game_inst, render);
-            else // if (adornment.Kind == AdornmentKind.Letter)
-                // grid in this case is really a viewbow.
+                                                      game_inst, render);
+            else // if (adornment.Kind == AdornmentKind.Letter), gridOrViewbox is a viewbow.
                 gridOrViewbox = MakeLetterAdornment(stones_grid, adornment.Row, adornment.Column,
                                              adornment.Letter, game_inst, render);
             adornment.Cookie = gridOrViewbox;
@@ -3040,6 +3275,7 @@ MISCELLANEOUS
         //// if there is a move at this location or an empty board location to set the
         //// adornment color.
         ////
+        private const double letterAdornmentFontSize = 10.0;
         private static Viewbox MakeLetterAdornment (Grid stones_grid, int row, int col, string letter,
                                                     Game game_inst, bool render) {
             var vwbox = new Viewbox();
@@ -3050,7 +3286,7 @@ MISCELLANEOUS
             var label = new TextBlock();
             label.Text = letter;
             // Win8: Fontsize has no effect on TextBlock, but setting a margin will reduce the size.
-            label.FontSize = 10.0;
+            label.FontSize = MainWindowAux.letterAdornmentFontSize;
             label.Margin = new Thickness(2, 2, 2, 2);
             Grid.SetRow(label, 1);
             Grid.SetColumn(label, 1);
@@ -3138,10 +3374,10 @@ MISCELLANEOUS
         //// treeViewGridCellSize is the number of pixels along one side of a "grid cell"
         //// on the canvas.
         ////
-        public const int treeViewGridCellSize = 50; // 45;
-        private const int treeViewNodeSize = 35; // 30;
-        private const int treeViewFontSize = 16; // 14;
-        private const int treeViewFontSize2 = 12; //10;
+        internal static int treeViewGridCellSize = 50; // 45;
+        internal static int treeViewNodeSize = 35; // 30;
+        internal static int treeViewFontSize = 18; // 14;
+        internal static int treeViewFontSize2 = 14; //10;
 
 
         //// DrawGameTreeLines draws all the lines from this node to its next nodes.
@@ -3263,6 +3499,7 @@ MISCELLANEOUS
 
 
     } // class MainWindowAux
+
 
 } // namespace sgfed
 

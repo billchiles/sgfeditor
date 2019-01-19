@@ -1070,10 +1070,13 @@ namespace SgfEdwin8 {
             // state vs. a move.  Pass in data because Python has broken
             // closure semantics or poor lexical model, take your pick :-).
             if (kind == AdornmentKind.Letter && data == null) {
+                // Collect the letter adornments for the move (or empty board)
                 var letters = adornments.Where((a) => a.Kind == AdornmentKind.Letter).ToList();
-                if (letters.Count == 26)
+                if (letters.Count == 26) // All letters in use
                     return null;
                 foreach (var elt in capLetters)
+                    // if the letter, elt, taken in order from A..Z, is not used in letters adornments, then
+                    // return -1 means we can use that letter.
                     if (GameAux.ListFind<Adornments>(elt, letters, (x, y) => {
                         var cookie = ((Adornments)y).Cookie;
                         var lbl = ((Viewbox)cookie).Child;
