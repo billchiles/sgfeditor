@@ -1592,7 +1592,7 @@ MISCELLANEOUS
 
         private void LetterButtonClick (object sender, RoutedEventArgs e) {
             // Do not disable this button because winRT insists on changing foreground after I set it to white.
-            //this.LetterButton.IsEnabled = false;
+            this.LetterButton.IsEnabled = false;
             this.LetterButton.BorderThickness = new Thickness(1);
             //this.LetterButton.Foreground = new SolidColorBrush(Colors.White);
             this.TriangleButton.IsEnabled = true;
@@ -2531,13 +2531,28 @@ MISCELLANEOUS
             this.UpdateTitle();
         }
 
-        private void Page_SizeChanged (object sender, SizeChangedEventArgs e) {
-            //var narrow = e.NewSize.Width < 600;
-            var w = e.NewSize.Width - 495; //110 if cleverly relaying out narrow controls and wide controls
+        //// Page_SizeChanged was an incorrect attempt to square the Go Board on resizing.  It is
+        //// clearly wrong because we're getting the entire window's dimensions and doing magic math
+        //// to get correct dimensions.
+        //private void Page_SizeChanged (object sender, SizeChangedEventArgs e) {
+        //    //var narrow = e.NewSize.Width < 600;
+        //    var w = e.NewSize.Width - 495; //110 if cleverly relaying out narrow controls and wide controls
+        //    var h = e.NewSize.Height;
+        //    if (w < 50) return; // Random magic value to stop crashing form insanely small sizing.
+        //    if (w > h) { this.inputFocus.Width = h; this.inputFocus.Height = h; }
+        //    else { this.inputFocus.Width = w; this.inputFocus.Height = w; }
+        //}
+
+        //// FocusableInput_SizeChanged handles when the window resizes.  This control stretches to
+        //// the first column of the outer grid to get its size, and when its size changes, then
+        //// we set the grid that holds the board lines and stones grids to be square.
+        ////
+        private void FocusableInput_SizeChanged (object sender, SizeChangedEventArgs e) {
+            var w = e.NewSize.Width;
             var h = e.NewSize.Height;
-            if (w < 50) return;
-            if (w > h) { this.inputFocus.Width = h; this.inputFocus.Height = h; }
-            else { this.inputFocus.Width = w; this.inputFocus.Height = w; }
+            //if (w < 50) return; // Random magic value to stop crashing form insanely small sizing.
+            if (w > h) { this.boardStonesGrid.Width = h; this.boardStonesGrid.Height = h; }
+            else { this.boardStonesGrid.Width = w; this.boardStonesGrid.Height = w; }
         }
     } // class MainWindow
 
