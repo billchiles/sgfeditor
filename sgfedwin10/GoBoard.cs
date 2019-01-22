@@ -215,6 +215,14 @@ namespace SgfEdwin10 {
             return chr_txt;
         }
 
+        public static int DisplayLetterToModelCoordinate (char c) {
+            c = char.ToLower(c);
+            var i = c - 'a';
+            if (i >= 9)
+                return i;
+            else
+                return i + 1;
+        }
 
     } // GoBoardAux class
 

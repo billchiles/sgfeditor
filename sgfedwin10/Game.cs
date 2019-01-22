@@ -1070,10 +1070,13 @@ namespace SgfEdwin10 {
             // state vs. a move.  Pass in data because Python has broken
             // closure semantics or poor lexical model, take your pick :-).
             if (kind == AdornmentKind.Letter && data == null) {
+                // Collect the letter adornments for the move (or empty board)
                 var letters = adornments.Where((a) => a.Kind == AdornmentKind.Letter).ToList();
-                if (letters.Count == 26)
+                if (letters.Count == 26) // All letters in use
                     return null;
                 foreach (var elt in capLetters)
+                    // if the letter, elt, taken in order from A..Z, is not used in letters adornments, then
+                    // return -1 means we can use that letter.
                     if (GameAux.ListFind<Adornments>(elt, letters, (x, y) => {
                         var cookie = ((Adornments)y).Cookie;
                         var lbl = ((Viewbox)cookie).Child;
@@ -1094,7 +1097,7 @@ namespace SgfEdwin10 {
         }
 
         //// GetAdornment returns the first (and should be only) adornment of kind kind
-        //// at row, col.  If there is no such adornment, this returns null.
+        //// at row, col (one-based model coordinates).  If there is no such adornment, this returns null.
         ////
         public Adornments GetAdornment (int row, int col, AdornmentKind kind) {
             var move = this.CurrentMove;
@@ -1106,7 +1109,17 @@ namespace SgfEdwin10 {
             return null;
         }
 
+        //// GetAdornments returns the current move's adornments at this location.
+        //// Row, col are one-based model coordinates.  If there are no adornments, return empty collection.
+        ////
+        public List<Adornments> GetAdornments (int row, int col) {
+            var move = this.CurrentMove;
+            List<Adornments> adornments =
+                (this.State == GameState.NotStarted || move == null) ? this.SetupAdornments : move.Adornments;
+            return adornments.Where((a) => a.Row == row && a.Column == col).ToList();
+        }
 
+        
         //// remove_adornment assumes a is in the current adornments list, and
         //// signals an error if it is not.  You can always call this immediately
         //// after get_adornment if no move state has changed.

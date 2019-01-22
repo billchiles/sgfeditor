@@ -6,7 +6,8 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
-    Background="#C7419082">
+    Background="#C7419082"
+    KeyDown="HelpDlgKeydown">
 
     <Grid Name="HelpDlgGrid" Background="#C7419082">
         <!-- Need inner grid so that outer grid overlays app, disabling it, while inner grid
@@ -18,9 +19,9 @@
             </Grid.RowDefinitions>
             <TextBox Name="helpText" Grid.Row="0" BorderThickness="1" BorderBrush="Black"
                      HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
-                     TextWrapping="Wrap" Foreground="Black" 
+                     TextWrapping="Wrap" Foreground="Black" FontSize="20"
                      ScrollViewer.HorizontalScrollBarVisibility="Visible" 
-                     ScrollViewer.VerticalScrollBarVisibility="Auto" >
+                     ScrollViewer.VerticalScrollBarVisibility="Visible" >
             </TextBox>
             <Button Name="okButton" Click="okButton_click" FontSize="14" Foreground="Black" Padding="0"
                     Height="40" Width="100" Grid.Row="1" HorizontalAlignment="Right">OK</Button>

@@ -27,14 +27,13 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <!--<ColumnDefinition Width="320*" />-->
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="495" /> <!-- was 495 -->
-            <!--<ColumnDefinition Width="183*" />-->
         </Grid.ColumnDefinitions>
 
         <!-- Define the comment box and tree control with splitter and scroll bars ... -->
-        <Grid Grid.Column="1" Grid.Row="1" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" >
+        <Grid Grid.Column="1" Grid.Row="1" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" 
+              Name="TitleCommentGrid">
             <Grid.RowDefinitions>
                 <RowDefinition Height="48"/>
                 <RowDefinition  />
