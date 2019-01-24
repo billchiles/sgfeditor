@@ -155,6 +155,9 @@ MISCELLANEOUS
 
         public MainWindow () {
             this.InitializeComponent();
+            // Calling FocusOnStones in the CreateDefaultGame call here seems too early in UI setup,
+            // do put this post loaded event handler to pull focus out of comment box.
+            this.Loaded += (object sender, RoutedEventArgs e) => this.FocusOnStones();
             this.prevSetupSize = 0;
 
             this._titleSizeDefault = (int)this.Title.FontSize; // 18
@@ -1432,7 +1435,7 @@ MISCELLANEOUS
             else if (e.Key == VirtualKey.U && this.IsKeyPressed(VirtualKey.Control) &&
                      this.commentBox.FocusState != FocusState.Keyboard && // Covers tabbing to txt box
                      this.commentBox.FocusState != FocusState.Pointer) {  // Covers clicking in txt box
-                await this.ShowGamesSettings();
+                this.ShowGamesSettings();
                 e.Handled = true;
             }
             // Special Bill command because I do this ALL THE TIME
@@ -2673,7 +2676,7 @@ MISCELLANEOUS
         ///
         /// https://docs.microsoft.com/en-us/windows/uwp/design/app-settings/store-and-retrieve-app-datapersistence
         ///
-        private async Task ShowGamesSettings () {
+        private void ShowGamesSettings () {
             //await this.CheckDirtySave();
             // Setup settings dialog and show it
             var settingsDialog = new SomeSettings(this);
@@ -2681,6 +2684,7 @@ MISCELLANEOUS
             settingsDialog.SettingsDialogClose += (s, e) => {
                 popup.IsOpen = false;
                 this.SettingsDialogDone(settingsDialog);
+                this.FocusOnStones();
             };
             settingsDialog.TitleSize = (int)this.Title.FontSize;
             settingsDialog.IndexesSize = MainWindowAux.indexLabelFontSize;
@@ -2759,7 +2763,7 @@ MISCELLANEOUS
                     this.DrawGameTree(true);
                 }
                 this.FocusOnStones();
-                this.SaveSettings();
+                this.SaveSettings(dlg.ResetSettings);
             } // if settings changed
         } // SettingsDialogDone
 
@@ -2828,16 +2832,37 @@ MISCELLANEOUS
 
         /// https://docs.microsoft.com/en-us/windows/uwp/get-started/settings-learning-track
         /// 
-        private void SaveSettings () {
+        private void SaveSettings (bool reset) {
             var store = ApplicationData.Current.LocalSettings;
-            store.Values["TitleFontSize"] = (int)this.Title.FontSize;
-            store.Values["IndexesFontSize"] = MainWindowAux.indexLabelFontSize;
-            store.Values["CommentFontSize"] = (int)this.commentBox.FontSize;
-            store.Values["TreeNodeSize"] = MainWindowAux.treeViewGridCellSize;
-            store.Values["TreeNodeFontSize"] = MainWindowAux.treeViewFontSize;
-            // Don't need to validate name, wouldn't be stored in class if not validated already.
-            store.Values["TreeCurrentHighlight"] = ColorsConverter.GetColorName(this.currentNodeHighlightColor);
-            store.Values["TreeCommentHIghlight"] = ColorsConverter.GetColorName(this.commentNodeHighlightColor);
+            if (store.Values.ContainsKey("TitleFontSize") && (int)this.Title.FontSize == this._titleSizeDefault &&
+                store.Values.ContainsKey("IndexesFontSize") && MainWindowAux.indexLabelFontSize == this._indexesSizeDefault &&
+                store.Values.ContainsKey("CommentFontSize") && (int)this.commentBox.FontSize == this._commentFontsizeDefault &&
+                store.Values.ContainsKey("TreeNodeSize") && MainWindowAux.treeViewGridCellSize == this._treeNodeSizeDefault &&
+                store.Values.ContainsKey("TreeNodeFontSize") && MainWindowAux.treeViewFontSize == this._treeNodeFontsizeDefault &&
+                // Don't need to validate name, wouldn't be stored in class if not validated already.
+                store.Values.ContainsKey("TreeCurrentHighlight") &&
+                this.currentNodeHighlightColor == this._treeCurrentHighlightDefault &&
+                store.Values.ContainsKey("TreeCommentHIghlight") &&
+                this.commentNodeHighlightColor == this._treeCommentsHighlightDefault) {
+                // User said reset and then didn't change any values, so clear the settings persistence for good measure.
+                store.Values.Remove("TitleFontSize");
+                store.Values.Remove("IndexesFontSize");
+                store.Values.Remove("CommentFontSize");
+                store.Values.Remove("TreeNodeSize");
+                store.Values.Remove("TreeNodeFontSize");
+                store.Values.Remove("TreeCurrentHighlight");
+                store.Values.Remove("TreeCommentHIghlight");
+            }
+            else {
+                store.Values["TitleFontSize"] = (int)this.Title.FontSize;
+                store.Values["IndexesFontSize"] = MainWindowAux.indexLabelFontSize;
+                store.Values["CommentFontSize"] = (int)this.commentBox.FontSize;
+                store.Values["TreeNodeSize"] = MainWindowAux.treeViewGridCellSize;
+                store.Values["TreeNodeFontSize"] = MainWindowAux.treeViewFontSize;
+                // Don't need to validate name, wouldn't be stored in class if not validated already.
+                store.Values["TreeCurrentHighlight"] = ColorsConverter.GetColorName(this.currentNodeHighlightColor);
+                store.Values["TreeCommentHIghlight"] = ColorsConverter.GetColorName(this.commentNodeHighlightColor);
+            }
         }
 
         //// RestoreSettinsDefaults is called from the SomeSettings dialog when the user hits the Reset button.

@@ -14,7 +14,7 @@
     <Grid Background="#C7419082" x:Name="newDlgGrid" >
         <!-- Need inner grid so that outer grid overlays app, disabling it, while inner grid
              gets big margins to have dialog appear reasonably sized. -->
-        <Grid Margin="400,203,400,197">
+        <Grid Margin="300,100,200,100">
             <!-- Background="{StaticResource ApplicationPageBackgroundThemeBrush}"-->
             <!-- Not sure what these resources are or do, some holdover from long ago when I first created a dialog -->
             <Grid.Resources>
@@ -38,70 +38,69 @@
 
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
-                <ColumnDefinition />
+                <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
             <Grid.RowDefinitions>
-                <RowDefinition Height="30" />
-                <RowDefinition Height="10" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" /> <!-- feedback -->
+                <RowDefinition Height="Auto" /> <!-- tile size-->
+                <RowDefinition Height="Auto" /> <!-- indexes size -->
+                <RowDefinition Height="Auto" /> <!-- tree node size -->
+                <RowDefinition Height="Auto" /> <!-- tree node font -->
+                <RowDefinition Height="Auto" /> <!-- comment font -->
+                <RowDefinition Height="Auto" /> <!-- current highlight -->
+                <RowDefinition Height="Auto" /> <!-- comment highlight -->
+                <RowDefinition Height="Auto" /> <!-- buttons -->
             </Grid.RowDefinitions>
 
             <!-- Error Text -->
-            <TextBlock FontSize="20" FontWeight="Bold" HorizontalAlignment="Center"
-                       Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="0" 
+            <TextBlock FontWeight="Bold" HorizontalAlignment="Center" Foreground="White"
+                       Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="0" Margin="0,0,0,30"
                        x:Name="errorText">All values are integers or color names</TextBlock>
 
             <!-- Title Size -->
-            <TextBlock FontSize="20" FontWeight="Bold" Grid.Column="0" Grid.Row="2">File name font size:</TextBlock>
-            <TextBox Name="titleSizeText" Grid.Column="1" Grid.Row="2" BorderThickness="1" BorderBrush="Black" FontSize="20">
+            <TextBlock FontWeight="Bold" Grid.Column="0" Grid.Row="1">File name font size:</TextBlock>
+            <TextBox Name="titleSizeText" Grid.Column="1" Grid.Row="1" BorderThickness="1" BorderBrush="Black" FontSize="20">
             </TextBox>
 
             <!-- Board Index Labels -->
-            <TextBlock FontSize="20" FontWeight="Bold" Grid.Column="0" Grid.Row="3">Board indexes font size:</TextBlock>
-            <TextBox Name="indexSizeText" Grid.Column="1" Grid.Row="3" BorderThickness="1" BorderBrush="Black" FontSize="20">
+            <TextBlock FontWeight="Bold" Grid.Column="0" Grid.Row="2">Board indexes font size:</TextBlock>
+            <TextBox Name="indexSizeText" Grid.Column="1" Grid.Row="2" BorderThickness="1" BorderBrush="Black" FontSize="20">
             </TextBox>
 
             <!-- Tree Node Size -->
-            <TextBlock FontSize="20" FontWeight="Bold" Grid.Column="0" Grid.Row="4">Tree node size:</TextBlock>
-            <TextBox Name="treeNodeSizeText" Grid.Column="1" Grid.Row="4" BorderThickness="1" BorderBrush="Black" FontSize="20">
+            <TextBlock FontWeight="Bold" Grid.Column="0" Grid.Row="3">Tree node size:</TextBlock>
+            <TextBox Name="treeNodeSizeText" Grid.Column="1" Grid.Row="3" BorderThickness="1" BorderBrush="Black" FontSize="20">
             </TextBox>
 
             <!-- Tree Node Font Size -->
-            <TextBlock FontSize="20" FontWeight="Bold" Grid.Column="0" Grid.Row="5">Tree node font size:</TextBlock>
-            <TextBox Name="treeNodeFontSizeText" Grid.Column="1" Grid.Row="5" BorderThickness="1" BorderBrush="Black" FontSize="20">
+            <TextBlock FontWeight="Bold" Grid.Column="0" Grid.Row="4">Tree node font size:</TextBlock>
+            <TextBox Name="treeNodeFontSizeText" Grid.Column="1" Grid.Row="4" BorderThickness="1" BorderBrush="Black" FontSize="20">
             </TextBox>
 
             <!-- Comment Font Size -->
-            <TextBlock FontSize="20" FontWeight="Bold" Grid.Column="0" Grid.Row="6">Comment font size:</TextBlock>
-            <TextBox Name="commentSizeText" Grid.Column="1" Grid.Row="6" BorderThickness="1" BorderBrush="Black" FontSize="20">
+            <TextBlock FontWeight="Bold" Grid.Column="0" Grid.Row="5">Comment font size:</TextBlock>
+            <TextBox Name="commentSizeText" Grid.Column="1" Grid.Row="5" BorderThickness="1" BorderBrush="Black" FontSize="20">
             </TextBox>
 
             <!-- Current Move Highlight -->
-            <TextBlock FontSize="20" FontWeight="Bold" Grid.Column="0" Grid.Row="7">Tree current move highlight:</TextBlock>
-            <TextBox Name="treeCurrentHighlight" Grid.Column="1" Grid.Row="7" BorderThickness="1" BorderBrush="Black" FontSize="20">
+            <TextBlock FontWeight="Bold" Grid.Column="0" Grid.Row="6">Tree current move highlight:</TextBlock>
+            <TextBox Name="treeCurrentHighlight" Grid.Column="1" Grid.Row="6" BorderThickness="1" BorderBrush="Black" FontSize="20">
             </TextBox>
 
             <!-- Comment Moves Highlight -->
-            <TextBlock FontSize="20" FontWeight="Bold" Grid.Column="0" Grid.Row="8">Tree comment nodes highlight:</TextBlock>
-            <TextBox Name="treeCommentsHighlight" Grid.Column="1" Grid.Row="8" BorderThickness="1" BorderBrush="Black" FontSize="20">
+            <TextBlock FontWeight="Bold" Grid.Column="0" Grid.Row="7">Tree comment nodes highlight:</TextBlock>
+            <TextBox Name="treeCommentsHighlight" Grid.Column="1" Grid.Row="7" BorderThickness="1" BorderBrush="Black" FontSize="20">
             </TextBox>
 
             <!-- OK or Cancel -->
-            <StackPanel Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="9" Orientation="Horizontal">
-                <Button Name="resetButton" Click="resetButton_click" FontSize="20" Foreground="Black" Padding="0" 
-                        Height="40" Margin="20,0,40,0">Reset</Button>
-                <Button Name="okButton" Click="okButton_click" FontSize="20" Foreground="Black" Padding="0" 
-                        Height="40">OK</Button>
-                <Button Name="cancelButton" Click="cancelButton_click" FontSize="20" Foreground="Black" Padding="0" 
-                        Height="40">Cancel</Button>
+            <StackPanel Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="8" Orientation="Horizontal">
+                <Button Name="resetButton" Click="resetButton_click" Foreground="Black" Padding="0" 
+                        Height="40" Margin="0,30,40,0">Reset</Button>
+                <Button Name="okButton" Click="okButton_click" Foreground="Black" Padding="0" 
+                        Height="40" Margin="0,30,10,0">OK</Button>
+                <Button Name="cancelButton" Click="cancelButton_click" Foreground="Black" Padding="0" 
+                        Height="40" Margin="0,30,0,0">Cancel</Button>
             </StackPanel>
 
         </Grid>

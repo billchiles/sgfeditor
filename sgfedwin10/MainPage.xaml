@@ -23,7 +23,7 @@
     <Grid x:Name="mainLandscapeView" Background="#C7419082">
         <!-- Background="{StaticResource ApplicationPageBackgroundThemeBrush}" -->
         <Grid.RowDefinitions>
-            <RowDefinition Height="150" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
@@ -42,9 +42,9 @@
             </Grid.RowDefinitions>
             <!-- margin is "left, top, right, bottom"-->
             <StackPanel Grid.Row="0" Background="DarkKhaki" Margin="2,0,0,0">
-                <TextBlock Text="SGF Editor -- " FontSize="16" Margin="4,2,1,1"
+                <TextBlock Text="SGF Editor -- " FontSize="14" Margin="4,2,1,1"
                            VerticalAlignment="Center" HorizontalAlignment="Stretch" x:Name="Title"/>
-                <TextBlock Text="Move 0" FontSize="16" Margin="4,1,1,3"
+                <TextBlock Text="Move 0" FontSize="14" Margin="4,1,1,3"
                            VerticalAlignment="Center" HorizontalAlignment="Stretch" x:Name="TitleLine2"/>
             </StackPanel>
             <Rectangle Grid.Row="1" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
@@ -80,21 +80,6 @@
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <!-- Need to learn how to make a File menu ... -->
-            <!--
-            <Button Grid.Row="0" Height="30" HorizontalAlignment="Stretch" Margin="1" Name="newButton"
-                    VerticalAlignment="Top" Width="70" Click="newButton_left_down" 
-                    BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" Foreground="Black">
-                <TextBlock FontSize="14" FontStretch="ExtraExpanded" VerticalAlignment="Center"
-                           HorizontalAlignment="Center">New</TextBlock>
-            </Button>
-            <Button Grid.Row="0" Grid.Column="1" Height="30" HorizontalAlignment="Stretch" Margin="1" 
-                    Name="openButton" VerticalAlignment="Top" Width="70" Click="openButton_left_down"
-                    BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" Foreground="Black">
-                <TextBlock FontSize="14" FontStretch="ExtraExpanded" VerticalAlignment="Center" 
-                           Margin="0,0,0,3">Open</TextBlock>
-            </Button>
-            -->
 
             <!-- Grid for Save, Help, Branches, and move/triangle/square/letter palette -->
             <Grid Grid.Column="0" Grid.Row="0" Grid.ColumnSpan="4" 
@@ -106,41 +91,28 @@
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
+                <!-- Save and Help buttons -->
                 <Button Grid.Row="0" Grid.Column="2" Height="40" HorizontalAlignment="Stretch" Margin="1" 
                             Name="saveButton" VerticalAlignment="Center" Width="70" Click="saveButton_left_down"
                             BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" Foreground="Black">
-                    <TextBlock FontSize="16" VerticalAlignment="Center" Margin="0,0,0,3">Save</TextBlock>
+                    <TextBlock FontSize="14" VerticalAlignment="Center" Margin="0,0,0,3">Save</TextBlock>
                 </Button>
                 <Button Grid.Row="0" Grid.Column="3" Height="40" HorizontalAlignment="Stretch" Margin="1" 
                             Name="helpButton" VerticalAlignment="Center" Width="70" Click="helpButtonLeftDown"
                             BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" Foreground="Black">
-                    <TextBlock FontSize="16" VerticalAlignment="Center" Margin="0,0,0,3">Help</TextBlock>
+                    <TextBlock FontSize="14" VerticalAlignment="Center" Margin="0,0,0,3">Help</TextBlock>
                 </Button>
 
-                <!--
-                    <StackPanel Grid.Column="1" Grid.Row="1" Background="Transparent" Margin="0,2,0,2" Height="70"
-                            HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-                        <TextBlock FontSize="14" Margin="2,5,2,2" Width="120"
-                            >Clicking on board:</TextBlock>
-                        <ComboBox BorderThickness="1" Background="AntiqueWhite" Width="120" Height="25" SelectedIndex="0"
-                            Name="boardClickCombo"  IsEnabled="True" SelectionChanged="boardClickComboSelectionChanged">
-                            <ComboBoxItem>Move</ComboBoxItem>
-                            <ComboBoxItem>Letter</ComboBoxItem>
-                            <ComboBoxItem>Triangle</ComboBoxItem>
-                            <ComboBoxItem>Square</ComboBoxItem>
-                        </ComboBox>
-                    </StackPanel>
-                    -->
-
+                <!-- Title and Move status -->
                 <StackPanel Grid.Column="1" Grid.Row="0" Background="Transparent" Margin="0,5,20,2" Height="70"
                                 HorizontalAlignment="Center">
-                    <TextBlock FontSize="14" Name="branchLabel" Margin="2,5,2,2" Width="120"
-                               >No Branches:</TextBlock>
+                    <TextBlock FontSize="14" Name="branchLabel" Margin="2,5,2,2" Width="120">No Branches:</TextBlock>
                     <ComboBox BorderThickness="1" Background="White" Width="120" Height="30" 
                               Name="branchCombo"  IsEnabled="False" SelectionChanged="branchComboSelectionChanged">
                     </ComboBox>
                 </StackPanel>
 
+                <!-- Left click mode radio buttons -->
                 <Grid Grid.Row="0" Grid.Column="0"  Height="40" Margin="20,0,0,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="2*" />
@@ -148,10 +120,10 @@
                         <ColumnDefinition Width="2*" />
                         <ColumnDefinition Width="3*" />
                     </Grid.ColumnDefinitions>
+                    <!-- Black and White stone move mode image -->
                     <Button IsEnabled="False" BorderThickness="1" Click="MoveButtonClick" Grid.Column="0"
                                 HorizontalAlignment="Center" Background="LightGray" BorderBrush="Black"
-                            x:Name="MoveButton"
-                            >
+                            x:Name="MoveButton">
                         <Grid >
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
@@ -189,25 +161,26 @@
             </Button>
             -->
 
+            <!-- Move forward, backward, home, end buttons -->
             <Button Content="&lt;&lt;" Grid.Row="1" Grid.Column="0" HorizontalAlignment="Stretch" 
                     Margin="1,1,1,1" Name="homeButton" VerticalAlignment="Stretch" IsEnabled="False" 
-                    Click="homeButtonLeftDown" 
-                    FontSize="30" BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" 
+                    Click="homeButtonLeftDown" FontSize="30" 
+                    BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" 
                     Foreground="Black"/>
             <Button Content="&lt;" Grid.Row="1" Grid.Column="1" HorizontalAlignment="Stretch" 
-                    Margin="1,1,1,1" 
-                    Name="prevButton" VerticalAlignment="Stretch" IsEnabled="False" Click="prevButtonLeftDown" 
-                    FontSize="30" BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" 
+                    Margin="1,1,1,1" Name="prevButton" FontSize="30"
+                    VerticalAlignment="Stretch" IsEnabled="False" Click="prevButtonLeftDown" 
+                    BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" 
                     Foreground="Black"/>
             <Button Content="&gt;" Grid.Row="1" Grid.Column="2" HorizontalAlignment="Stretch" 
-                    Margin="1,1,1,1" 
-                    Name="nextButton" VerticalAlignment="Stretch"  IsEnabled="False" Click="nextButtonLeftDown"
-                    FontSize="30" BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" 
+                    Margin="1,1,1,1" Name="nextButton" FontSize="30" 
+                    VerticalAlignment="Stretch"  IsEnabled="False" Click="nextButtonLeftDown"
+                    BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" 
                     Foreground="Black"/>
             <Button Content="&gt;&gt;" Grid.Row="1" Grid.Column="3" HorizontalAlignment="Stretch" 
                     Margin="1,1,1,1" Name="endButton" VerticalAlignment="Stretch" IsEnabled="False" 
-                    Click="endButtonLeftDown"
-                    FontSize="30" BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" 
+                    Click="endButtonLeftDown" FontSize="30" 
+                    BorderThickness="1" BorderBrush="Black" Background="LightGray" Padding="0" 
                     Foreground="Black"/>
 
         </Grid>
@@ -250,22 +223,7 @@
                     <ColumnDefinition/>
                     <ColumnDefinition/>
                 </Grid.ColumnDefinitions>
-                <!-- Change what clicking on the board means ... -->
-                <!--
-                <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" FontSize="18" x:Name="appBarClickText"
-                           Margin="5,20">Clicking on board creates ... Moves</TextBlock>
-                <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal" Margin="20,0,10,10" >
-                    <Button IsEnabled="False" BorderThickness="1" Click="AppBarMoveButtonClick"
-                            x:Name="appBarMoveButton"
-                            >Move</Button>
-                    <Button IsEnabled="True" BorderThickness="1" Click="AppBarTriangleButtonClick"
-                            x:Name="appBarTriangleButton">Triangle</Button>
-                    <Button IsEnabled="True" BorderThickness="1" Click="AppBarLetterButtonClick"
-                            x:Name="appBarLetterButton">Letter</Button>
-                    <Button IsEnabled="True" BorderThickness="1" Click="AppBarSquareButtonClick"
-                            x:Name="appBarSquareButton">Square</Button>
-                </StackPanel>
-                -->
+                <!-- Game info, goto game, new, open, pass -->
                 <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal">
                     <Button IsEnabled="True" BorderThickness="1" Click="AppBarGameInfoClick"
                             >Game Info ...</Button>
@@ -282,8 +240,8 @@
                 </StackPanel>
 
                 <!-- Save As and Save Flipped ... -->
-                <TextBlock Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2" FontSize="18"
-                           Margin="20,20">Saving files:</TextBlock>
+                <TextBlock Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2" 
+                           FontSize="18" Margin="20,20">Saving files:</TextBlock>
                 <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Margin="35,0,0,10" >
                     <Button IsEnabled="True" BorderThickness="1" Click="AppBarSaveAsClick"
                             x:Name="appBarSaveAsButton"
@@ -292,8 +250,8 @@
                             x:Name="appBarSaveFlippedButton">Save Flipped ...</Button>
                 </StackPanel>
                 <!-- Move Branches up or down ... -->
-                <TextBlock Grid.Row="0" Grid.Column="2" Grid.ColumnSpan="2" FontSize="18"
-                           Margin="5,20">Move branch higher or lower:</TextBlock>
+                <TextBlock Grid.Row="0" Grid.Column="2" Grid.ColumnSpan="2" 
+                           FontSize="18" Margin="5,20">Move branch higher or lower:</TextBlock>
                 <StackPanel Grid.Row="1" Grid.Column="2" Orientation="Horizontal" Margin="20,0,0,10" >
                     <Button IsEnabled="True" BorderThickness="1" Click="AppBarMoveUpClick"
                             x:Name="appBarMoveUpButton"
@@ -302,8 +260,8 @@
                             x:Name="appBarMoveDownButton">Move Down</Button>
                 </StackPanel>
                 <!-- Cut or Paste a sub tree of moves ... -->
-                <TextBlock Grid.Row="0" Grid.Column="3" Grid.ColumnSpan="2" FontSize="18"
-                           Margin="5,20">Cut or Paste a sub tree of moves:</TextBlock>
+                <TextBlock Grid.Row="0" Grid.Column="3" Grid.ColumnSpan="2" 
+                           FontSize="18" Margin="5,20">Cut or Paste a sub tree of moves:</TextBlock>
                 <StackPanel Grid.Row="1" Grid.Column="3" Orientation="Horizontal" Margin="20,0,0,10" >
                     <Button IsEnabled="True" BorderThickness="1" Click="AppBarCutClick"
                             x:Name="appBarCutButton"

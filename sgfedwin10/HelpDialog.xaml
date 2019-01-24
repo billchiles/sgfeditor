@@ -17,9 +17,12 @@
                 <RowDefinition Height="10*" />
                 <RowDefinition Height="1*" />
             </Grid.RowDefinitions>
+            <!-- Default behavior is transparency which leaves a dingy faded green, so this makes it white -->
+            <Rectangle Grid.Row="0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                       Fill="GhostWhite" ></Rectangle>
             <TextBox Name="helpText" Grid.Row="0" BorderThickness="1" BorderBrush="Black"
                      HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
-                     TextWrapping="Wrap" Foreground="Black" FontSize="20"
+                     TextWrapping="Wrap" Foreground="Black" 
                      ScrollViewer.HorizontalScrollBarVisibility="Visible" 
                      ScrollViewer.VerticalScrollBarVisibility="Visible" >
             </TextBox>

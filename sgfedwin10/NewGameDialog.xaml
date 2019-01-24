@@ -12,7 +12,7 @@
     <Grid Background="#C7419082" x:Name="newDlgGrid" >
         <!-- Need inner grid so that outer grid overlays app, disabling it, while inner grid
              gets big margins to have dialog appear reasonably sized. -->
-        <Grid Margin="400,203,400,197">
+        <Grid Margin="400,200,400,200">
             <!-- Background="{StaticResource ApplicationPageBackgroundThemeBrush}"-->
             <!-- Not sure what these resources are or do, some holdover from long ago when I first created a dialog -->
             <Grid.Resources>
@@ -50,34 +50,36 @@
             </Grid.RowDefinitions>
 
             <!-- White -->
-            <TextBlock FontSize="14" Grid.Column="0" Grid.Row="0">White:</TextBlock>
+            <TextBlock FontWeight="Bold" Grid.Column="0" Grid.Row="0">White:</TextBlock>
             <TextBox Name="whiteText" Grid.Column="1" Grid.Row="0" BorderThickness="1" BorderBrush="Black">
             </TextBox>
 
             <!-- Black -->
-            <TextBlock FontSize="14" Grid.Column="0" Grid.Row="1">Black:</TextBlock>
+            <TextBlock FontWeight="Bold" Grid.Column="0" Grid.Row="1">Black:</TextBlock>
             <TextBox Name="blackText" Grid.Column="1" Grid.Row="1" BorderThickness="1" BorderBrush="Black" FontSize="14">
             </TextBox>
 
             <!-- Size -->
-            <TextBlock FontSize="14" Grid.Column="0" Grid.Row="2">Size:</TextBlock>
+            <TextBlock FontWeight="Bold" Grid.Column="0" Grid.Row="2">Size:</TextBlock>
             <TextBox Name="sizeText" Grid.Column="1" Grid.Row="2" BorderThickness="1" BorderBrush="Black">
             </TextBox>
 
             <!-- Handicap -->
-            <TextBlock FontSize="14" Grid.Column="0" Grid.Row="3">Handicap:</TextBlock>
+            <TextBlock FontWeight="Bold" Grid.Column="0" Grid.Row="3">Handicap:</TextBlock>
             <TextBox Name="handicapText" Grid.Column="1" Grid.Row="3" BorderThickness="1" BorderBrush="Black">
             </TextBox>
 
             <!-- Komi -->
-            <TextBlock FontSize="14" Grid.Column="0" Grid.Row="4">Komi:</TextBlock>
+            <TextBlock FontWeight="Bold" Grid.Column="0" Grid.Row="4">Komi:</TextBlock>
             <TextBox Name="komiText" Grid.Column="1" Grid.Row="4" BorderThickness="1" BorderBrush="Black">
             </TextBox>
 
             <!-- OK or Cancel -->
             <StackPanel Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="5" Orientation="Horizontal">
-                <Button Name="okButton" Click="okButton_click" FontSize="14" Foreground="Black" Padding="0" Height="40">OK</Button>
-                <Button Name="cancelButton" Click="cancelButton_click" FontSize="14" Foreground="Black" Padding="0" Height="40">Cancel</Button>
+                <Button Name="okButton" Click="okButton_click" Foreground="Black" 
+                        Padding="0" Height="40" Margin="0,30,10,0" Background="LightGray">OK</Button>
+                <Button Name="cancelButton" Click="cancelButton_click" Foreground="Black" 
+                        Padding="0" Height="40" Margin="0,30,0,0">Cancel</Button>
             </StackPanel>
 
         </Grid>

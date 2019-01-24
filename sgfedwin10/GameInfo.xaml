@@ -12,13 +12,13 @@
     <Grid Background="#C7419082" x:Name="gameInfoGrid">
         <!-- Need inner grid so that outer grid overlays app, disabling it, while inner grid
              gets big margins to have dialog appear reasonably sized. -->
-        <Grid Margin="200,100,200,100">
+        <Grid Margin="100,100,100,50">
 
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="135" />
-                <ColumnDefinition Width="3*" />
-                <ColumnDefinition Width="1*" />
-                <ColumnDefinition Width="3*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
             <Grid.RowDefinitions>
@@ -41,115 +41,114 @@
             </Grid.RowDefinitions>
 
             <!-- Black -->
-            <TextBlock FontSize="14" FontWeight="Bold" Grid.Column="0" Grid.Row="0">Player Black:</TextBlock>
-            <TextBox Name="gameInfoPB" Grid.Column="1" Grid.Row="0" BorderThickness="1" BorderBrush="Black" FontSize="14">
+            <TextBlock FontWeight="Bold" Grid.Column="0" Grid.Row="0">Player Black:</TextBlock>
+            <TextBox Name="gameInfoPB" Grid.Column="1" Grid.Row="0" BorderThickness="1" BorderBrush="Black">
             </TextBox>
 
-            <TextBlock FontSize="14" FontWeight="Bold" Grid.Column="0" Grid.Row="1">Black Rank:</TextBlock>
-            <TextBox Name="gameInfoBR" Grid.Column="1" Grid.Row="1" BorderThickness="1" BorderBrush="Black" FontSize="14">
+            <TextBlock FontWeight="Bold" Grid.Column="0" Grid.Row="1">Black Rank:</TextBlock>
+            <TextBox Name="gameInfoBR" Grid.Column="1" Grid.Row="1" BorderThickness="1" BorderBrush="Black">
             </TextBox>
 
-            <TextBlock FontSize="14" FontWeight="Bold" Grid.Column="0" Grid.Row="2">Black Team:</TextBlock>
-            <TextBox Name="gameInfoBT" Grid.Column="1" Grid.Row="2" BorderThickness="1" BorderBrush="Black" FontSize="14">
+            <TextBlock FontWeight="Bold" Grid.Column="0" Grid.Row="2">Black Team:</TextBlock>
+            <TextBox Name="gameInfoBT" Grid.Column="1" Grid.Row="2" BorderThickness="1" BorderBrush="Black">
             </TextBox>
 
             <!-- White -->
-            <TextBlock FontSize="14" FontWeight="Bold" Grid.Column="2" Grid.Row="0" Margin="10">Player White:</TextBlock>
+            <TextBlock FontWeight="Bold" Grid.Column="2" Grid.Row="0" Margin="10">Player White:</TextBlock>
             <TextBox Name="gameInfoPW" Grid.Column="3" Grid.Row="0" BorderThickness="1" BorderBrush="Black">
             </TextBox>
 
-            <TextBlock FontSize="14" FontWeight="Bold" Grid.Column="2" Grid.Row="1" Margin="10">White Rank:</TextBlock>
+            <TextBlock FontWeight="Bold" Grid.Column="2" Grid.Row="1" Margin="10">White Rank:</TextBlock>
             <TextBox Name="gameInfoWR" Grid.Column="3" Grid.Row="1" BorderThickness="1" BorderBrush="Black">
             </TextBox>
 
 
-            <TextBlock FontSize="14" FontWeight="Bold" Grid.Column="2" Grid.Row="2" Margin="10">White Team:</TextBlock>
+            <TextBlock FontWeight="Bold" Grid.Column="2" Grid.Row="2" Margin="10">White Team:</TextBlock>
             <TextBox Name="gameInfoWT" Grid.Column="3" Grid.Row="2" BorderThickness="1" BorderBrush="Black">
             </TextBox>
 
             <!-- Handicap -->
-            <TextBlock FontSize="14" FontWeight="Bold" Grid.Column="0" Grid.Row="3">Handicap:</TextBlock>
+            <TextBlock FontWeight="Bold" Grid.Column="0" Grid.Row="3">Handicap:</TextBlock>
             <TextBox Name="gameInfoHA" Grid.Column="1" Grid.Row="3" BorderThickness="1" BorderBrush="Black">
             </TextBox>
 
             <!-- Komi -->
-            <TextBlock FontSize="14" FontWeight="Bold" Grid.Column="2" Grid.Row="3" Margin="10">Komi:</TextBlock>
+            <TextBlock FontWeight="Bold" Grid.Column="2" Grid.Row="3" Margin="10">Komi:</TextBlock>
             <TextBox Name="gameInfoKM" Grid.Column="3" Grid.Row="3" BorderThickness="1" BorderBrush="Black">
             </TextBox>
 
             <!-- Rules -->
-            <TextBlock FontSize="14" FontWeight="Bold" Grid.Column="0" Grid.Row="4"
+            <TextBlock FontWeight="Bold" Grid.Column="0" Grid.Row="4"
                        >Rules:</TextBlock>
             <TextBox Name="gameInfoRU" Grid.Column="1" Grid.Row="4" BorderThickness="1" BorderBrush="Black">
             </TextBox>
 
             <!-- Size -->
-            <TextBlock FontSize="14" FontWeight="Bold" Grid.Column="2" Grid.Row="4" Margin="10">Size:</TextBlock>
+            <TextBlock FontWeight="Bold" Grid.Column="2" Grid.Row="4" Margin="10">Size:</TextBlock>
             <TextBox Name="gameInfoSZ" Grid.Column="3" Grid.Row="4" BorderThickness="1" BorderBrush="Black">
             </TextBox>
 
             <!-- Date -->
-            <TextBlock FontSize="14" FontWeight="Bold" Grid.Column="0" Grid.Row="5"
-                       >Date (yyyy-mm-dd):</TextBlock>
-            <TextBox Name="gameInfoDT" Grid.Column="1" Grid.Row="5" BorderThickness="1" BorderBrush="Black" FontSize="14">
+            <TextBlock FontWeight="Bold" Grid.Column="0" Grid.Row="5">Date (yyyy-mm-dd):</TextBlock>
+            <TextBox Name="gameInfoDT" Grid.Column="1" Grid.Row="5" BorderThickness="1" BorderBrush="Black">
             </TextBox>
 
             <!-- Time allotted for game -->
-            <TextBlock FontSize="14" FontWeight="Bold" Grid.Column="2" Grid.Row="5" Margin="10"
+            <TextBlock FontWeight="Bold" Grid.Column="2" Grid.Row="5" Margin="10"
                        >Time (seconds):</TextBlock>
-            <TextBox Name="gameInfoTM" Grid.Column="3" Grid.Row="5" BorderThickness="1" BorderBrush="Black" FontSize="14">
+            <TextBox Name="gameInfoTM" Grid.Column="3" Grid.Row="5" BorderThickness="1" BorderBrush="Black">
             </TextBox>
 
             <!-- Event Name -->
-            <TextBlock FontSize="14" FontWeight="Bold" Grid.Column="0" Grid.Row="6">Event Name:</TextBlock>
+            <TextBlock FontWeight="Bold" Grid.Column="0" Grid.Row="6">Event Name:</TextBlock>
             <TextBox Name="gameInfoEV" Grid.Column="1" Grid.Row="6" BorderThickness="1" BorderBrush="Black">
             </TextBox>
 
             <!-- Location -->
-            <TextBlock FontSize="14" FontWeight="Bold" Grid.Column="2" Grid.Row="6" Margin="10">Place:</TextBlock>
+            <TextBlock FontWeight="Bold" Grid.Column="2" Grid.Row="6" Margin="10">Place:</TextBlock>
             <TextBox Name="gameInfoPC" Grid.Column="3" Grid.Row="6" BorderThickness="1" BorderBrush="Black">
             </TextBox>
 
             <!-- Round number -->
-            <TextBlock FontSize="14" FontWeight="Bold" Grid.Column="0" Grid.Row="7">Round:</TextBlock>
+            <TextBlock FontWeight="Bold" Grid.Column="0" Grid.Row="7">Round:</TextBlock>
             <TextBox Name="gameInfoRO" Grid.Column="1" Grid.Row="7" BorderThickness="1" BorderBrush="Black" 
                      >
             </TextBox>
 
             <!-- Source (book, journal) -->
-            <TextBlock FontSize="14" FontWeight="Bold" Grid.Column="2" Grid.Row="7" Margin="10">Source:</TextBlock>
+            <TextBlock FontWeight="Bold" Grid.Column="2" Grid.Row="7" Margin="10">Source:</TextBlock>
             <TextBox Name="gameInfoSO" Grid.Column="3" Grid.Row="7" BorderThickness="1" BorderBrush="Black">
             </TextBox>
 
             <!-- Game name -->
-            <TextBlock FontSize="14" FontWeight="Bold" Grid.Column="0" Grid.Row="8">Game name:</TextBlock>
+            <TextBlock FontWeight="Bold" Grid.Column="0" Grid.Row="8">Game name:</TextBlock>
             <TextBox Name="gameInfoGN" Grid.Column="1" Grid.Row="8" BorderThickness="1" BorderBrush="Black" >
             </TextBox>
 
             <!-- opening name -->
-            <TextBlock FontSize="14" FontWeight="Bold" Grid.Column="2" Grid.Row="8" Margin="10">Opening name:</TextBlock>
+            <TextBlock FontWeight="Bold" Grid.Column="2" Grid.Row="8" Margin="10">Opening name:</TextBlock>
             <TextBox Name="gameInfoON" Grid.Column="3" Grid.Row="8" BorderThickness="1" BorderBrush="Black">
             </TextBox>
 
             <!-- Result -->
-            <TextBlock FontSize="14" FontWeight="Bold" Grid.Column="0" Grid.Row="9" Grid.ColumnSpan="2"
+            <TextBlock FontWeight="Bold" Grid.Column="0" Grid.Row="9" Grid.ColumnSpan="2"
                        >Result (must be of form B+5, W+5.5, B+Resign, etc.):</TextBlock>
             <TextBox Name="gameInfoRE" Grid.Column="1" Grid.Row="9" BorderThickness="1" BorderBrush="Black"
-                     HorizontalAlignment="Right" Width="125">
+                     HorizontalAlignment="Right" >
             </TextBox>
 
             <!-- Annotator -->
-            <TextBlock FontSize="14" FontWeight="Bold" Grid.Column="2" Grid.Row="9" Margin="10"
+            <TextBlock FontWeight="Bold" Grid.Column="2" Grid.Row="9" Margin="10"
                        >Annotator:</TextBlock>
             <TextBox Name="gameInfoAN" Grid.Column="3" Grid.Row="9" BorderThickness="1" BorderBrush="Black">
             </TextBox>
 
             <!-- Game comment -->
-            <TextBlock FontSize="14" FontWeight="Bold" Grid.Column="0" Grid.Row="10">Game comment:</TextBlock>
+            <TextBlock FontWeight="Bold" Grid.Column="0" Grid.Row="10">Game comment:</TextBlock>
             <!-- bogus text blocks to get textbox to span rows 
-            <TextBlock FontSize="14" FontWeight="Bold" Grid.Column="0" Grid.Row="11"></TextBlock>
-            <TextBlock FontSize="14" FontWeight="Bold" Grid.Column="0" Grid.Row="12"></TextBlock>
-            <TextBlock FontSize="14" FontWeight="Bold" Grid.Column="0" Grid.Row="13"></TextBlock>-->
+            <TextBlock FontWeight="Bold" Grid.Column="0" Grid.Row="11"></TextBlock>
+            <TextBlock FontWeight="Bold" Grid.Column="0" Grid.Row="12"></TextBlock>
+            <TextBlock FontWeight="Bold" Grid.Column="0" Grid.Row="13"></TextBlock>-->
             <TextBox Name="gameInfoGC" Grid.Column="1" Grid.Row="10" BorderThickness="1" BorderBrush="Black" 
                      Grid.RowSpan="4" HorizontalAlignment="Stretch" 
                      TextWrapping="Wrap" AcceptsReturn="True" Height="100"
@@ -163,9 +162,10 @@
             <!-- OK or Cancel -->
             <StackPanel Grid.Column="3" Grid.Row="15" Orientation="Horizontal" HorizontalAlignment="Right"
                         Height="60">
-                <Button Name="okButton" Click="okButton_click" FontSize="14" Foreground="Black" Padding="0" Height="40"
-                        Width="80" HorizontalAlignment="Left" Margin="5,0,20,0">OK</Button>
-                <Button Name="cancelButton" Click="cancelButton_click" FontSize="14" Foreground="Black" Padding="0" 
+                <Button Name="okButton" Click="okButton_click" Foreground="Black" Padding="0" Height="40"
+                        Width="80" HorizontalAlignment="Left" Margin="5,0,20,0"
+                        Background="LightGray">OK</Button>
+                <Button Name="cancelButton" Click="cancelButton_click" Foreground="Black" Padding="0" 
                         Height="40" Width="120" HorizontalAlignment="Right"
                         >Cancel</Button>
             </StackPanel>
