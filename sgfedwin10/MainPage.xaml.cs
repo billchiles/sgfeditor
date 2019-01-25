@@ -142,15 +142,14 @@ MISCELLANEOUS
         const int MAX_GAMES = 10;
 
         /// These get set in the constructor to get the program's defaults to support RestoreSettingsDefaults().
-        /// Commented values are from 13" HD display development on win8.
         /// 
-        private int _titleSizeDefault; // = 18; // (int)this.Title.FontSize;
-        private int _indexesSizeDefault; // = 18; // MainWindowAux.indexLabelFontSize;
-        private int _commentFontsizeDefault; // = 20; // (int)this.commentBox.FontSize;
-        private int _treeNodeSizeDefault; // = 50; // MainWindowAux.treeViewGridCellSize;
-        private int _treeNodeFontsizeDefault; // = 18; // MainWindowAux.treeViewFontSize;
-        private Color _treeCurrentHighlightDefault; // = ColorsConverter.ConvertToColor("Magenta").Value;
-        private Color _treeCommentsHighlightDefault; // = ColorsConverter.ConvertToColor("LightGreen").Value;
+        private int _titleSizeDefault; // (int)this.Title.FontSize;
+        private int _indexesSizeDefault; // MainWindowAux.indexLabelFontSize;
+        private int _commentFontsizeDefault; // (int)this.commentBox.FontSize;
+        private int _treeNodeSizeDefault; // MainWindowAux.treeViewGridCellSize;
+        private int _treeNodeFontsizeDefault; // MainWindowAux.treeViewFontSize;
+        private Color _treeCurrentHighlightDefault; // = this.currentNodeHighlightColor;
+        private Color _treeCommentsHighlightDefault; // = this.commentNodeHighlightColor;
 
 
         public MainWindow () {
@@ -1132,6 +1131,7 @@ MISCELLANEOUS
             newDialog.NewGameDialogClose += (s, e) => {
                 popup.IsOpen = false;
                 this.NewGameDialogDone(newDialog);
+                this.FocusOnStones();
             };
             popup.Child = newDialog;
             popup.IsOpen = true;
@@ -1745,6 +1745,7 @@ MISCELLANEOUS
             newDialog.GameInfoDialogClose += (s, args) => {
                 popup.IsOpen = false;
                 this.GameInfoDialogDone(newDialog);
+                this.FocusOnStones();
             };
             popup.Child = newDialog;
             popup.IsOpen = true;
@@ -2716,19 +2717,16 @@ MISCELLANEOUS
             var redrawTree = false;
             if (dlg.SettingsConfirmed) {
                 if (dlg.TitleSize != (int)this.Title.FontSize || dlg.ResetSettings) {
-                    // Xaml default is 18, which seems fine on 19x10 (HD) display, but 24 is better on 36x20 (UHD)
                     if (!SettingsSetTitleFontSize(dlg.TitleSize)) {
                         await GameAux.Message("Title font size seems a bit absurd, ignoring it ...");
                     }
                 }
                 if (dlg.IndexesSize != MainWindowAux.indexLabelFontSize || dlg.ResetSettings) {
-                    // Default is 18, which seems fine on 19x10 (HD) display, but 20 is better on 36x20 (UHD)
                     if (!SettingsSetIndexesFontSize(dlg.IndexesSize)) {
                         await GameAux.Message("Indexes font size seems a bit absurd, ignoring it ...");
                     }
                 }
                 if (dlg.CommentFontsize != (int)this.commentBox.FontSize || dlg.ResetSettings) {
-                    // Xaml default is 20, which seems fine on 19x10 (HD) display, but 24 is better on 36x20 (UHD)
                     if (dlg.CommentFontsize > MainWindow.MaxFontSize) {
                         await GameAux.Message("Comment font size seems a bit absurd, ignoring it ...");
                     }
@@ -2738,14 +2736,11 @@ MISCELLANEOUS
                 }
                 if (dlg.TreeNodeSize != MainWindowAux.treeViewGridCellSize || dlg.ResetSettings) {
                     // Note, this is actually the tree node grid cell size, from which we compute the circle node size.
-                    // Default is 50, which seems fine on 19x10 (HD) display, but 60 is better on 36x20 (UHD), and the
-                    // node default was 35, 45 for UHD.
                     this.SettingsSetTreeNodeSize(dlg.TreeNodeSize);
                     redrawTree = true;
                 }
                 // Must set font size after node size.
                 if (dlg.TreeNodeFontsize != MainWindowAux.treeViewFontSize || dlg.ResetSettings) {
-                    // Default is 18, which seems fine on 19x10 (HD) display, but 20 is better on 36x20 (UHD)
                     if (!SettingsSetTreeNodeFontsize(dlg.TreeNodeFontsize, dlg.TreeNodeSize))
                         await GameAux.Message("Tree node font size seems a bit absurd or too big for nodes, ignoring it ...");
                     redrawTree = true;
@@ -3420,10 +3415,10 @@ MISCELLANEOUS
         //// treeViewGridCellSize is the number of pixels along one side of a "grid cell"
         //// on the canvas.
         ////
-        internal static int treeViewGridCellSize = 45; // 50 on 13"UHD;
-        internal static int treeViewNodeSize = 30; // 35 on 13"UHD;
-        internal static int treeViewFontSize = 14; // 18 on 13"UHD;
-        internal static int treeViewFontSize2 = 10; //14 on 13"UHD;
+        internal static int treeViewGridCellSize = 40;
+        internal static int treeViewNodeSize = 25;
+        internal static int treeViewFontSize = 12;
+        internal static int treeViewFontSize2 = 10;
 
         //// DrawGameTreeLines draws all the lines from this node to its next nodes.
         //// Note, these are TreeViewNodes, not Moves, so some of the nodes simply denote
