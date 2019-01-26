@@ -95,11 +95,11 @@
 
             <!-- OK or Cancel -->
             <StackPanel Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="8" Orientation="Horizontal">
-                <Button Name="resetButton" Click="resetButton_click" Foreground="Black" Padding="0" 
+                <Button Name="resetButton" Click="resetButton_click" Foreground="White" Padding="0" 
                         Height="40" Margin="0,30,40,0">Reset</Button>
-                <Button Name="okButton" Click="okButton_click" Foreground="Black" Padding="0" 
+                <Button Name="okButton" Click="okButton_click" Foreground="White" Padding="0" 
                         Height="40" Margin="0,30,10,0">OK</Button>
-                <Button Name="cancelButton" Click="cancelButton_click" Foreground="Black" Padding="0" 
+                <Button Name="cancelButton" Click="cancelButton_click" Foreground="White" Padding="0" 
                         Height="40" Margin="0,30,0,0">Cancel</Button>
             </StackPanel>
 
