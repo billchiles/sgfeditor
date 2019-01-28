@@ -2494,7 +2494,9 @@ MISCELLANEOUS
         //// 
         private async Task FirstRhetoricalLineToStatement () {
             var s = this.CurrentComment;
-            var i = s.IndexOf("\r\n");  //Comments canonicalized because winRT TextBox forces that with no options
+            // WinRT used to force ALL newlines to be \r\n (without any option), but they randomly changed it to \r only.
+            // There is no documentation or guarantee of this, but it is what the crowd-sourced belief is.
+            var i = s.IndexOf("\r");  
             if (i > 0 && s[i - 1] == ' ') {
                 await GameAux.Message("Got whitespace at EOL.  Generalize your code, dude :-).");
             }
@@ -2510,7 +2512,9 @@ MISCELLANEOUS
         ////
         private async Task DeleteCommentLine (int num) {
             var s = this.CurrentComment;
-            var loc = s.IndexOf("\r\n");  //Comments canonical newline because winRT TextBox forces that with no options
+            // WinRT used to force ALL newlines to be \r\n (without any option), but they randomly changed it to \r only.
+            // There is no documentation or guarantee of this, but it is what the crowd-sourced belief is.
+            var loc = s.IndexOf("\r");  
             // If no newlines, delete single first line or punt
             if (loc < 0) {
                 if (s.Length != 0 && num == 1) {
@@ -2523,7 +2527,7 @@ MISCELLANEOUS
             // Find start and end of desired line
             int prevloc = 0;
             for (int i = 1; i < num; i++) {
-                var tmp = s.IndexOf("\r\n", loc + 2); // loc must point to \r\n, and starting at string.len returns -1
+                var tmp = s.IndexOf("\r", loc + 1); // loc must point to \r, and starting at string.len returns -1
                 if (tmp == -1) {
                     if (i == num - 1) { // Found num lines, last one does not end in newline sequence
                         tmp = s.Length;
@@ -2537,8 +2541,8 @@ MISCELLANEOUS
                 loc = tmp;
             }
             // Delete line from comment
-            if (s[prevloc] == '\r') prevloc += 2; // Might be beginning of comment, but if not leave this newline along
-            if (loc < s.Length) loc += 2; // Might be at end, but if not delete this newline
+            if (s[prevloc] == '\r') prevloc += 1; // Might be beginning of comment, but if not leave this newline alone
+            if (loc < s.Length) loc += 1; // Might be at end, but if not delete this newline
             if (prevloc == loc) {
                 await GameAux.Message("There is no line numbered " + num.ToString());
                 return;
