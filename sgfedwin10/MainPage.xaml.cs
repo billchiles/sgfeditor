@@ -2303,20 +2303,19 @@ MISCELLANEOUS
             if (this.theAppBar.IsOpen)
                 // If launched from appbar, and it remained open, close it.
                 this.theAppBar.IsOpen = false;
+            // If nothing selected, use first one because it looks selected, and user has chance to save
+            // Do not search for filename because 1) "No File Name" and 2) always finds first if two have same name
+            //var gindex = GameAux.ListFind(gfile, this.Games, (fname, game) => ((string)fname) == ((Game)game).Filename);
+            var selIndex = (dlg.GamesList.SelectedIndex == -1) ? 0 : dlg.GamesList.SelectedIndex;
             if (dlg.SelectionConfirmed == WindowSwitchingDialog.WindowSwitchResult.Switch) {
                 var gfile = dlg.SelectedGame;
-                // Do not search for filename because 1) "No File Name" and 2) always finds first if two have same name
-                //var gindex = GameAux.ListFind(gfile, this.Games, (fname, game) => ((string)fname) == ((Game)game).Filename);
-                var gindex = dlg.GamesList.SelectedIndex;
-                var g = this.Games[gindex];
+                var g = this.Games[selIndex];
                 if (Object.ReferenceEquals(g, this.Game))
                     return;
-                await this.GotoOpenGame(gindex);
+                await this.GotoOpenGame(selIndex);
             }
             else if (dlg.SelectionConfirmed == WindowSwitchingDialog.WindowSwitchResult.Delete) {
-                // Do not search for filename because 1) "No File Name" and 2) always finds first if two have same name
-                //var gindex = GameAux.ListFind(gfile, this.Games, (fname, game) => ((string)fname) == ((Game)game).Filename);
-                await CloseGame(this.Games[dlg.GamesList.SelectedIndex]);
+                await CloseGame(this.Games[selIndex]);
             }
             this.FocusOnStones();
         }
