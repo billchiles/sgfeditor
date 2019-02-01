@@ -15,7 +15,7 @@ using System.Text.RegularExpressions;
 
 using Windows.Storage; // StorageFile
 using System.Threading.Tasks; // Task
-
+using Windows.UI; // Color type for IMoveNext
 
 namespace SgfEdwin10 {
 
@@ -61,8 +61,7 @@ namespace SgfEdwin10 {
     } // ParsedGame class
 
 
-
-    public class ParsedNode {
+    public class ParsedNode : IMoveNext {
 
         public ParsedNode Next;
         public ParsedNode Previous;
@@ -83,11 +82,33 @@ namespace SgfEdwin10 {
             this.BadNodeMessage = null;
         }
 
-        //// node_str returns the string for one node, taking a flag for a
-        //// preceding newline and the dictionary of properties for the node.
-        //// Game uses this for error reporting.
-        ////
-        public string NodeString (bool newline) {
+
+        public IMoveNext IMNNext { get { return this.Next; } }
+        public List<IMoveNext> IMNBranches {
+            get {
+                return (this.Branches == null) ? null : new List<IMoveNext>(this.Branches);
+            }
+        }
+        public Color IMNColor {
+            get {
+                if (this.Properties.ContainsKey("B")) {
+                    return Colors.Black;
+                }
+                else if (this.Properties.ContainsKey("W")) {
+                    return Colors.White;
+                }
+                else {
+                    return GoBoardAux.NoColor;
+                }
+            }
+        }
+
+
+    //// node_str returns the string for one node, taking a flag for a
+    //// preceding newline and the dictionary of properties for the node.
+    //// Game uses this for error reporting.
+    ////
+    public string NodeString (bool newline) {
             var props = this.Properties;
             string s;
             if (newline)

@@ -159,10 +159,14 @@ namespace SgfEdwin10 {
         ////
         //// SGF format is col,row (count from left edge, count from top).
         ////
-        public static string GetParsedCoordinates (dynamic move_or_adornment, bool flipped) {
+        //// UWP runtime completely screws over dynamic, and while this function didn't take 4-6s
+        //// like some, it just seems prudent to complicate the code with two definitions to guard against
+        //// more lossage later (like they make dynamic actually not work).
+        ////
+        public static string GetParsedCoordinates (Move move_or_adornment, bool flipped) {
             int row = move_or_adornment.Row;
             int col = move_or_adornment.Column;
-            if (move_or_adornment is Move && move_or_adornment.IsPass)
+            if (move_or_adornment.IsPass)
                 return "";
             if (flipped)
                 // C# fails mutually distinct types on char and int, and string constructor lame.
@@ -170,6 +174,16 @@ namespace SgfEdwin10 {
                 return new string(new char[] {letters[20 - col], letters[20 - row]});
             else
                 return new string(new char[] {letters[col], letters[row]});
+        }
+        public static string GetParsedCoordinatesA (Adornments move_or_adornment, bool flipped) {
+            int row = move_or_adornment.Row;
+            int col = move_or_adornment.Column;
+            if (flipped)
+                // C# fails mutually distinct types on char and int, and string constructor lame.
+                // Must cons array so that string constructor doesn't interpret second char as count.
+                return new string(new char[] { letters[20 - col], letters[20 - row] });
+            else
+                return new string(new char[] { letters[col], letters[row] });
         }
 
         public static string FlipParsedCoordinates(string coords) {
@@ -228,7 +242,27 @@ namespace SgfEdwin10 {
 
 
 
-    public class Move {
+    //// IMoveNext exists to abstract property access across Move and ParsedNodes for computing
+    //// the layout of the visual tree of game moves.  We need this first class named type because
+    //// UWP has made C# dynamic so slow it is useless (computing a tree layout went from milliseconds
+    //// to taking 5s (debug on .net core) and 8s (release on .net native).
+    ////
+    //// These cannot be implicitly implemented and have distinct names because 1) collections cannot
+    //// implicitly convert to collections of supertypes, 2) Next needs to return a Move when we need
+    //// all the move functionality, and 3) Color doesn't exist on ParsedNode naturally.
+    ////
+    public interface IMoveNext {
+        Color IMNColor { get; }
+        IMoveNext IMNNext { get; }
+        List<IMoveNext> IMNBranches { get; }
+    }
+
+
+    //// Move represents moves that have been rendered on the go board, or moves created for next moves
+    //// of a current move, so that the current move can point to Moves.  These next moves are marked
+    //// Rendered==false.
+    ////
+    public class Move : IMoveNext {
         public int Row { get; set; }  // These count from top to bottom.
         public int Column { get; set; }  // These count from left to right
         public Color Color { get; set; }
@@ -272,7 +306,13 @@ namespace SgfEdwin10 {
             this.Rendered = true;
         }
 
-        
+        /// Thes IMN... member need to exist because C# dynamic is unusable in UWP (see IMoveNext type).
+        /// 
+        public IMoveNext IMNNext { get { return this.Next; } }
+        public List<IMoveNext> IMNBranches { get { return (this.Branches == null) ? null : new List<IMoveNext>(this.Branches); } }
+        public Color IMNColor { get { return this.Color; } }
+
+
         public Adornments AddAdornment (Adornments a) {
             this.Adornments.Add(a);
             return a;

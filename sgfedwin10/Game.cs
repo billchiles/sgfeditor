@@ -302,12 +302,18 @@ namespace SgfEdwin10 {
         ////
         private Move MakeBranchingMove (Move cur_move, Move move) {
             if (cur_move == null) {
-                move = this.MakeBranchingMoveBranches(this, this.FirstMove, move);
+                var stuff = this.MakeBranchingMoveBranches(this.Branches, this.FirstMove, move);
+                move = stuff.Item1;
+                this.Branches = stuff.Item2;
+                //move = this.MakeBranchingMoveBranches(this, this.FirstMove, move);
                 if (move == null) return null;  // Conflicting next stone location or bad parse node.
                 this.FirstMove = move;
             }
             else {
-                move = this.MakeBranchingMoveBranches(cur_move, cur_move.Next, move);
+                var stuff = this.MakeBranchingMoveBranches(cur_move.Branches, cur_move.Next, move);
+                move = stuff.Item1;
+                cur_move.Branches = stuff.Item2;
+                //move = this.MakeBranchingMoveBranches(cur_move, cur_move.Next, move);
                 if (move == null) return null;  // Conflicting next stone location or bad parse node.
                 cur_move.Next = move;
                 move.Previous = cur_move;
@@ -324,8 +330,7 @@ namespace SgfEdwin10 {
         //// there are still no branches yet.  This return null if it can't return a move,
         //// which happens if it finds an existing move in the tree, but that move has bad parse info.
         ////
-        private Move MakeBranchingMoveBranches (dynamic game_or_move, Move next, Move new_move) {
-            List<Move> branches = game_or_move.Branches;
+        private Tuple<Move, List<Move>> MakeBranchingMoveBranches (List<Move> branches, Move next, Move new_move) {
             if (branches == null) {
                 branches = new List<Move>() { next }; // Must pass non-null branches.
                 // Can't use'var', must decl with 'Move'.  C# desn't realize all MaybeUpdateBanches
@@ -335,17 +340,17 @@ namespace SgfEdwin10 {
                 if (object.ReferenceEquals(move, next)) {
                     // new_move and next are same, keep next and clean up branches.
                     //game_or_move.Branches = null;
-                    return next;
+                    return new Tuple<Move, List<Move>>(next, null);
                 }
                 else {
                     // new_move and next are not the same, so keep branches since there are two next moves now.
-                    game_or_move.Branches = branches;
+                    //game_or_move.Branches = branches;
                     // Keep branches and return move
-                    return move;
+                    return new Tuple<Move, List<Move>>(move, branches);
                 }
             }
             else
-                return this.MaybeUpdateBranches(branches, new_move);
+                return new Tuple<Move, List<Move>>(this.MaybeUpdateBranches(branches, new_move), branches);
         }
 
         //// _maybe_update_branches takes a branches list and a next move.  Branches must not be null.
@@ -355,9 +360,6 @@ namespace SgfEdwin10 {
         ////
         private Move MaybeUpdateBranches (List<Move> branches, Move move) {
             MyDbg.Assert(branches != null);
-            // Must bind branches so that generic ListFind dispatch works and get tooling help.
-            // PTVS does the tooling right, and if had disjunctive types decls, wouldn't need 'dynamic'.
-            //List<Move> branches = game_or_move.Branches;
             var already_move = GameAux.ListFind(
                                    move, branches,
                                    (x, y) => move.Row == ((Move)y).Row && move.Column == ((Move)y).Column);
@@ -1756,7 +1758,7 @@ namespace SgfEdwin10 {
             if (props.ContainsKey("LB"))
                 props.Remove("LB");
             foreach (var a in move.Adornments) {
-                var coords = GoBoardAux.GetParsedCoordinates(a, flipped);
+                var coords = GoBoardAux.GetParsedCoordinatesA(a, flipped);
                 if (a.Kind == AdornmentKind.Triangle) {
                     if (props.ContainsKey("TR"))
                         props["TR"].Add(coords);
@@ -2299,7 +2301,7 @@ namespace SgfEdwin10 {
         //// to descend straight downward before angling to draw next move in a branch.
         ////
         public static TreeViewNode[,] GetGameTreeModel (Game game) {
-            dynamic start = null;
+            IMoveNext start = null;
             // Get start node
             if (game.FirstMove != null) {
                 if (game.FirstMove.Rendered) {
@@ -2330,7 +2332,7 @@ namespace SgfEdwin10 {
         //// It returns the model for the start (empty board) node, after laying out the rest of the
         //// tree.
         ////
-        public static TreeViewNode LayoutGameTreeFromRoot (dynamic pn, TreeViewLayoutData layoutData) {
+        public static TreeViewNode LayoutGameTreeFromRoot (IMoveNext pn, TreeViewLayoutData layoutData) {
             // Vars to make arguments to calls below more readable.
             int tree_depth = 0;
             int new_branch_depth = 0;
@@ -2358,7 +2360,7 @@ namespace SgfEdwin10 {
             return model;
         }
 
-        private static TreeViewNode NewTreeModelStart (dynamic pn, TreeViewLayoutData layoutData) {
+        private static TreeViewNode NewTreeModelStart (IMoveNext pn, TreeViewLayoutData layoutData) {
             var model = new TreeViewNode(TreeViewNodeKind.StartBoard, pn);
             model.Row = 0;
             layoutData.MaxRows[0] = 1;
@@ -2372,14 +2374,14 @@ namespace SgfEdwin10 {
         //// necessary since Move nodes chain Next to the branch that is selected, but ParsedNodes
         //// always chain Next to Branches[0] if there are branches.  We always want the top branch.
         ////
-        private static dynamic GetLayoutGameTreeNext (dynamic pn) {
+        private static IMoveNext GetLayoutGameTreeNext (IMoveNext pn) {
             // Can't dynamically invoke Assert for some reason, and C# doesn't bind only matching
             // method at compile time.
             //Debug.Assert(pn.GetType() != typeof(Game));
-            if (pn.Branches != null)
-                return pn.Branches[0];
+            if (pn.IMNBranches != null)
+                return pn.IMNBranches[0];
             else
-                return pn.Next;
+                return pn.IMNNext;
         }
 
         //// layout recurses through the moves assigning them to a location in the display grid.
@@ -2390,7 +2392,7 @@ namespace SgfEdwin10 {
         //// tree_depth is just that, and branch_depth is the heigh to the closest root node of a
         //// branch, where its immediate siblings branch too.
         ////
-        public static TreeViewNode LayoutGameTree (dynamic pn, TreeViewLayoutData layoutData,
+        public static TreeViewNode LayoutGameTree (IMoveNext pn, TreeViewLayoutData layoutData,
                                                    int cum_max_row, int tree_depth, int branch_depth,
                                                    int branch_root_row) {
             // Check if done with rendered nodes and switch to parsed nodes.
@@ -2424,16 +2426,16 @@ namespace SgfEdwin10 {
             return bend;
         }
 
-        private static void LayoutGameTreeBranches (dynamic pn, TreeViewLayoutData layoutData, int tree_depth,
+        private static void LayoutGameTreeBranches (IMoveNext pn, TreeViewLayoutData layoutData, int tree_depth,
                                                     TreeViewNode model, TreeViewNode next_model) {
-            if (pn.Branches != null) {
+            if (pn.IMNBranches != null) {
                 model.Branches = new List<TreeViewNode>() { next_model };
                 // Skip branches[0] since caller already did branch zero as pn's next move, but note, when
                 // pn is a Move (that is, not a ParsedNode), then branches[0] may not equal pn.Next.
-                for (var i = 1; i < pn.Branches.Count; i++) {
+                for (var i = 1; i < pn.IMNBranches.Count; i++) {
                     // Can't use 'var', must decl with 'TreeViewNode'.  C# doesn't realize all LayoutGameTree
                     // definitions return a TreeViewNode.
-                    TreeViewNode branch_model = GameAux.LayoutGameTree(pn.Branches[i], layoutData, model.Row,
+                    TreeViewNode branch_model = GameAux.LayoutGameTree(pn.IMNBranches[i], layoutData, model.Row,
                                                                        tree_depth + 1, 1, model.Row);
                     model.Branches.Add(branch_model);
                 }
@@ -2444,7 +2446,7 @@ namespace SgfEdwin10 {
         //// setup_layout_model initializes the current node model for the display, with row, column,
         //// color, etc.  This returns the new model element.
         ////
-        private static TreeViewNode SetupTreeLayoutModel (object pn, TreeViewLayoutData layoutData,
+        private static TreeViewNode SetupTreeLayoutModel (IMoveNext pn, TreeViewLayoutData layoutData,
                                                           int cum_max_row, int tree_depth) {
             var model = new TreeViewNode(TreeViewNodeKind.Move, pn);
             // Get column's free row or use row from parent
@@ -2455,12 +2457,7 @@ namespace SgfEdwin10 {
             layoutData.MaxRows[tree_depth] = row + 1;
             model.Column = tree_depth;
             // Set color
-            if (pn is Move)
-                model.Color = ((Move)pn).Color;
-            else if (((ParsedNode)pn).Properties.ContainsKey("B"))
-                model.Color = Colors.Black;
-            else if (((ParsedNode)pn).Properties.ContainsKey("W"))
-                model.Color = Colors.White;
+            model.Color = pn.IMNColor;
             return model;
         }
 
@@ -2548,7 +2545,7 @@ namespace SgfEdwin10 {
         public TreeViewNodeKind Kind { get; set; }
         public UIElement Cookie { get; set; }
         public Color Color { get; set; }
-        public dynamic Node { get; set; } // public ParsedNode Node {get; set;}
+        public IMoveNext Node { get; set; } // public ParsedNode Node {get; set;}
         // Row has nothing to do with node's coordinates. It is about where this node appears
         // in the grid displaying the entire game tree.
         public int Row { get; set; }
@@ -2556,7 +2553,7 @@ namespace SgfEdwin10 {
         public TreeViewNode Next { get; set; }
         public List<TreeViewNode> Branches { get; set; }
 
-        public TreeViewNode (TreeViewNodeKind kind = TreeViewNodeKind.Move, dynamic node = null) {
+        public TreeViewNode (TreeViewNodeKind kind = TreeViewNodeKind.Move, IMoveNext node = null) {
             this.Kind = kind;
             this.Cookie = null;
             this.Node = node;
