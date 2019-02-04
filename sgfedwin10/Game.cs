@@ -836,17 +836,29 @@ namespace SgfEdwin10 {
         ////
         private void SaveComment (Move move = null) {
             var cur_comment = this.mainWin.CurrentComment;
+            // Need to bind this shit here due to C#'s lax lexical semantics for locals.
+            Tuple<bool, string> stuff;
+            bool same;
+            string newstr;
+            // If move is null, then the "current move" is the initial board state.
             if (move != null) {
-                if (move.Comments != cur_comment) {
-                    move.Comments = cur_comment;
+                stuff = GameAux.CompareComments(cur_comment, move.Comments);
+                same = stuff.Item1;
+                newstr = stuff.Item2;
+                if (!same) { //if (move.Comments != cur_comment) {
+                    move.Comments = newstr;
                     this.Dirty = true;
                 }
             }
-            else
-                if (this.Comments != cur_comment) {
-                    this.Comments = cur_comment;
+            else {
+                stuff = GameAux.CompareComments(cur_comment, this.Comments);
+                same = stuff.Item1;
+                newstr = stuff.Item2;
+                if (!same) { //this.Comments != cur_comment) {
+                    this.Comments = newstr;
                     this.Dirty = true;
                 }
+            }
         }
 
 
@@ -1878,6 +1890,40 @@ namespace SgfEdwin10 {
 
         public static Color OppositeMoveColor (Color color) {
             return color == Colors.Black ? Colors.White : Colors.Black;
+        }
+
+        //// CompareComments exists because UWP randomly between releases changed the TextBox behavior
+        //// to always return newline sequences as \r, regardless of what you put into it.  WinRT TextBox
+        //// kept \r\n, so reading files, storing comments in moves, and writing files was all consistent.
+        //// Now we have to explicitly compare and fix strings on the way out of TextBoxes.  This returns
+        //// if the strings match, and if they do not, then it also returns the fixed up string for storing
+        //// and writing to files.
+        ////
+        public static Tuple<bool, string> CompareComments (string uitext, string movetext) {
+            // Don't shortcut and check for len becuase this is all about disparity in line endings.
+            if (uitext == movetext)
+                return new Tuple<bool, string>(true, null);
+            int i = 0;
+            int j = 0;
+            while (i < uitext.Length && j < movetext.Length) {
+                // Common case until newline
+                if (uitext[i] == movetext[j]) {
+                    i += 1;
+                    j += 1;
+                    continue;
+                }
+                // Common case on mismatch
+                if (i > 0 && uitext[i - 1] == '\r' && movetext[j] == '\n') {
+                    j += 1;
+                    continue;
+                }
+            }
+            if (j == movetext.Length - 1) {
+                // Exited loop because uitext hit end while movtext is at \n
+                return new Tuple<bool, string>(true, null);
+            }
+            // Fix up new comment text
+            return new Tuple<bool, string>(false, uitext.Replace("\r", Environment.NewLine));
         }
 
 

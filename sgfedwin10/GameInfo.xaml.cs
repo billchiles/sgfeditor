@@ -104,8 +104,12 @@ namespace SgfEdwin10 {
             //        }
             //    }
             //}
-            if (this.gameInfoGC.Text != g.Comments) {
-                g.Comments = this.gameInfoGC.Text;
+            //
+            var stuff = GameAux.CompareComments(this.gameInfoGC.Text, g.Comments);
+            bool same = stuff.Item1;
+            string newstr = stuff.Item2;
+            if (!same) {
+                g.Comments = newstr;
                 g.Dirty = true;
                 this.CommentChanged = true;
             }

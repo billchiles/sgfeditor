@@ -49,7 +49,7 @@ namespace SgfEdwin10 {
                 res += nodes.NodeString(res != "");
                 if (nodes.Branches != null) {
                     foreach (var n in nodes.Branches)
-                        res = res + "\n(" + this.NodesString(n) + ")";
+                        res = res + Environment.NewLine + "(" + this.NodesString(n) + ")";
                     return res;
                 }
                 nodes = nodes.Next;
@@ -112,7 +112,7 @@ namespace SgfEdwin10 {
             var props = this.Properties;
             string s;
             if (newline)
-                s = "\n;";
+                s = Environment.NewLine + ";";
             else
                 s = ";";
             // Print move property first for readability of .sgf file by humans.
@@ -393,14 +393,12 @@ namespace SgfEdwin10 {
                     if (newline)
                         // Only map newline sequences according to keep_newlines.
                         if (keep_newlines) {
-                            //res.Append(c);
-                            //if (c2 != ((char)0))
-                            //    res.Append(c2);
-                            //
                             // Canonicalize newlines because 1) would write mixed newline sequences in different places
                             // in .sgf depending on comments vs. other syntax, and 2) winRT textbox converts all line
-                            // endings with no option to preserve them.
+                            // endings (with no option to preserve them) to \r\n.
                             res.Append('\r');
+                            // UWP randomly between two releases switched textbox newline seqs from \r\n to just \r
+                            // Still use canonical newline sequence in game model and for writing files.
                             res.Append('\n');
                         }
                         else
