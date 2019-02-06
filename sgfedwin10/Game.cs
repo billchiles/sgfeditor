@@ -1654,8 +1654,8 @@ namespace SgfEdwin10 {
             else {
                 foreach (var c in cmds)
                     msgdlg.Commands.Add(new UICommand(c, new UICommandInvokedHandler((cmd) => response = cmd.Label)));
-                   //msgdlg.Commands.Add(new UICommand("Close", new UICommandInvokedHandler(
-                   //                                                   GameAux.StonesPtrPressedMsgDlgHandler)));
+                //msgdlg.Commands.Add(new UICommand("Close", new UICommandInvokedHandler(
+                //                                                   GameAux.StonesPtrPressedMsgDlgHandler)));
                 // Set the command that will be invoked by default (enter)
                 msgdlg.DefaultCommandIndex = defaultIndex;
                 // Set the command to be invoked when escape is pressed 
@@ -1901,10 +1901,10 @@ namespace SgfEdwin10 {
         ////
         public static Tuple<bool, string> CompareComments (string uitext, string movetext) {
             // Don't shortcut and check for len becuase this is all about disparity in line endings.
-            if (uitext == movetext)
-                return new Tuple<bool, string>(true, null);
             int i = 0;
             int j = 0;
+            bool different = false;
+            int newlinecount = 0;
             while (i < uitext.Length && j < movetext.Length) {
                 // Common case until newline
                 if (uitext[i] == movetext[j]) {
@@ -1915,11 +1915,25 @@ namespace SgfEdwin10 {
                 // Common case on mismatch
                 if (i > 0 && uitext[i - 1] == '\r' && movetext[j] == '\n') {
                     j += 1;
-                    continue;
+                    newlinecount += 1;
+                } // Or the strings are just different at this i and j
+                else {
+                    different = true;
+                    break;
                 }
             }
-            if (j == movetext.Length - 1) {
-                // Exited loop because uitext hit end while movtext is at \n
+            if (different) { // Fix up new comment text
+                return new Tuple<bool, string>(false, uitext.Replace("\r", Environment.NewLine));
+            }
+            // If no differences seen, then some length terminated loop, and same lengths means same strings
+            if (newlinecount == 0) {
+                if (uitext.Length == movetext.Length) {
+                    // No newlines to separate indexes, no differences, and same lengths terminated loop
+                    return new Tuple<bool, string>(true, null);
+                }
+            }
+            else if (movetext.Length == uitext.Length + newlinecount) {
+                // Saw newlines separate indexes, but no differences, and same lengths except newlines
                 return new Tuple<bool, string>(true, null);
             }
             // Fix up new comment text
