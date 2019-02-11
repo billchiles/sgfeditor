@@ -1925,6 +1925,11 @@ namespace SgfEdwin10 {
             if (different) { // Fix up new comment text
                 return new Tuple<bool, string>(false, uitext.Replace("\r", Environment.NewLine));
             }
+            // Common case of same text: uitext at end, and newline is last char in movetext
+            if (i == uitext.Length && j == movetext.Length - 1 && movetext[j] == '\n') {
+                return new Tuple<bool, string>(true, null);
+            }
+            // If-then-else handles when last line does not end with newline sequence.
             // If no differences seen, then some length terminated loop, and same lengths means same strings
             if (newlinecount == 0) {
                 if (uitext.Length == movetext.Length) {
@@ -1934,6 +1939,7 @@ namespace SgfEdwin10 {
             }
             else if (movetext.Length == uitext.Length + newlinecount) {
                 // Saw newlines separate indexes, but no differences, and same lengths except newlines
+                // This happens when last line is not newline terminated.
                 return new Tuple<bool, string>(true, null);
             }
             // Fix up new comment text
