@@ -209,7 +209,7 @@ namespace SgfEdwin10 {
     internal static class ColorsConverter {
 
         public static Color? ConvertToColor (string colorName) {
-            Debug.Assert(!string.IsNullOrEmpty(colorName), "Must verify string, cannot be null or empty.");
+            MyDbg.Assert(!string.IsNullOrEmpty(colorName), "Must verify string, cannot be null or empty.");
             //if (string.IsNullOrEmpty(colorName)) throw new ArgumentNullException("colorName");
             MethodBase getColorMethod = FindGetColorMethod(colorName);
             if (getColorMethod == null) {
@@ -240,7 +240,7 @@ namespace SgfEdwin10 {
                 }
             }
             // We start with a named color and only allow users to choose named colors.
-            Debug.Assert(ColorsConverter.NamedColors.ContainsKey(colour), "Huh?!  How did unnamed color get into UI.");
+            MyDbg.Assert(ColorsConverter.NamedColors.ContainsKey(colour), "Huh?!  How did unnamed color get into UI.");
             return ColorsConverter.NamedColors[colour];
         }
 

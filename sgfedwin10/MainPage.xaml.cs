@@ -1485,12 +1485,30 @@ MISCELLANEOUS
                 this.ShowHelp();
                 e.Handled = true;
             }
+            //else if (e.Key == VirtualKey.A) {
+            //    //var template = new { name = "", age = 0 };
+            //    //var res = MainWindow.ValuesCall(MainWindow.FooAnon(50, "bill"), template);
+            //    (var name, var age) = MainWindow.FooTuple(50, "bill");
+            //    Debug.WriteLine(name);
+            //    Debug.WriteLine(age);
+            //    e.Handled = true;
+            //}
             else {
                 // Tell me what key I pressed.
                 //await GameAux.Message(e.Key.ToString() + (this.IsKeyPressed(VirtualKey.Shift)).ToString());
             }
         }  // mainWin_keydown
 
+        //static (string name, int age) FooTuple (int a, string b) {
+        //    return (b, a);
+        //}
+
+        //static object FooAnon (int a, string b) {
+        //    return new { name = b, age = a };
+        //}
+
+        //// one time overhead definition for entire program
+        //static T ValuesCall<T> (object res, T type) { return (T)res; }
 
 
         //// gameTree_mousedown handles clicks on the game tree graph canvas,
@@ -2086,7 +2104,7 @@ MISCELLANEOUS
         ////
         private Grid nextBranchGrid = null;
         private Rectangle nextBranchRect = null;
-        private double nextBranchRectStroke = 1.5;  // Was 0.7 which is just too light.  Should add this to settings.
+        private double nextBranchRectStroke = 1.0;  // Was 0.7 which is just too light.  Should add this to settings.
         private void UpdateTreeHighlightBranch (Move move) {
             TreeViewNode item = this.TreeViewNodeForMove(move);
             // Should always be item here since not wiping tree, and if node were new, then no branches.
@@ -2231,7 +2249,7 @@ MISCELLANEOUS
         //// The argument is an integer for gratuitous generality, but for now, this only goes one game.
         ////
         private async Task GotoNextGame (int howmany = 1) {
-            Debug.Assert(howmany == 1 || howmany == -1, "Only support changing game display by one game in list.");
+            MyDbg.Assert(howmany == 1 || howmany == -1, "Only support changing game display by one game in list.");
             var len = this.Games.Count;
             if (len == 1) {
                 await GameAux.Message("There is only one game open currently.  Use Open or New to change games.",
@@ -2240,7 +2258,7 @@ MISCELLANEOUS
             }
             // Find target game as valid index.
             var curindex = GameAux.ListFind(this.Game, this.Games);
-            Debug.Assert(curindex != -1, "Uh, how can the current game not be in the games list?!");
+            MyDbg.Assert(curindex != -1, "Uh, how can the current game not be in the games list?!");
             int target = curindex + howmany;
             if (target == len)
                 target = 0;

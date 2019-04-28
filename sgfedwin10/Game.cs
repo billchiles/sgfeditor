@@ -1284,16 +1284,27 @@ namespace SgfEdwin10 {
             try {
                 await FileIO.WriteTextAsync(sf, pg.ToString());
             }
+            // Catches case if user moved or deleted file while SGFEditor was holding a StorageFile on it.
+            // For soem reason Windows does not just write the file again, which is good since user clearly screwed up.
             catch (FileNotFoundException) {
                 caughtException = true;
             }
-            if (caughtException) { // Probably should check for autosave file mishap
+            // Win10 UWP build only has pseudo rare race condition where it cannot replace the existing file on write.
+            // This never occurred for years of daily usage on win8 or win8 build on win10.
+            // This catch block ignores it because always the next autosave succeeds.
+            catch (Exception e) when (e.HResult == -2147023721) {
+                //Debug.WriteLine("\nCaught bogus can't replace bug.\n");  // Comment out after verifying fix.
+                //MyDbg.Assert(autosave, "What?! Bogus can't replace happened on c-s?!");
+                return; // Nothing else to do, no need to update title for auto save
+            }
+            // Only exception we care about here is the user moved or deleted the file.
+            if (caughtException) { // Probably should check for autosave file mishap and handle differently
                 var res =  await GameAux.Message("You've moved or deleted the file (" + sf.Name +
                                                  ") since opening it or your last save.\n" +
                                                  "Save as?",
                                 "Previous File Missing", new List<string>() {"Save As", "Cancel"});
-                // There is a race condition here when auto saving calls WriteGame, but something bizarre
-                // would have to happen for the auto save file to cause an exception.
+                // There is a race condition here when auto saving calls WriteGame, but all outcomes of writing
+                // should be fine, resulting in explicit save and possibly a remnant unnecessary auto-save file.
                 if (res == "Save As") {
                     await this.mainWin.SaveAs();
                 }
@@ -1301,23 +1312,11 @@ namespace SgfEdwin10 {
             }
             if (! autosave) {
                 this.Dirty = false;
-                SaveGameFileInfo(sf);
-            }
-            // Clean up auto save file
-            StorageFile autoSf = await this.mainWin.GetAutoSaveFile(this.mainWin.GetAutoSaveName(sf.Name));
-            if (autoSf != null) {
-                await autoSf.DeleteAsync();
-            }
-            // Get number and is_pass, then set title
-            int number;
-            bool is_pass;
-            if (this.CurrentMove == null) {
-                number = 0;
-                is_pass = false;
-            }
-            else {
-                number = this.CurrentMove.Number;
-                is_pass = this.CurrentMove.IsPass;
+                SaveGameFileInfo(sf);  // In case save-as
+                StorageFile autoSf = await this.mainWin.GetAutoSaveFile(this.mainWin.GetAutoSaveName(sf.Name));
+                if (autoSf != null) {
+                    await autoSf.DeleteAsync();
+                }
             }
             this.mainWin.UpdateTitle();
         }

@@ -131,11 +131,17 @@
             </TextBox>
 
             <!-- Result -->
-            <TextBlock FontWeight="Bold" Grid.Column="0" Grid.Row="9" Grid.ColumnSpan="2"
-                       >Result (must be of form B+5, W+5.5, B+Resign, etc.):</TextBlock>
-            <TextBox Name="gameInfoRE" Grid.Column="1" Grid.Row="9" BorderThickness="1" BorderBrush="Black"
-                     HorizontalAlignment="Right" >
-            </TextBox>
+            <Grid Grid.Column="0" Grid.Row="9" Grid.ColumnSpan="2"  HorizontalAlignment="Stretch">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock FontWeight="Bold" Grid.Column="0" 
+                           >Result (must be of form B+5, W+5.5, B+Resign, etc.):</TextBlock>
+                <TextBox Name="gameInfoRE" Grid.Column="1" BorderThickness="1" BorderBrush="Black">
+                </TextBox>
+            </Grid>
+
 
             <!-- Annotator -->
             <TextBlock FontWeight="Bold" Grid.Column="2" Grid.Row="9" Margin="10"
