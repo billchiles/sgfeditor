@@ -939,6 +939,16 @@ MISCELLANEOUS
                                 + einfo.Message);
                 return null;
             }
+            catch (Exception einfo) when (einfo.HResult == -2147024662) {
+                // This is some bizarre win10 bug again -- More data is available. (Exception from HRESULT: 0x800700EA)
+                // Can't find info on why this is happening, except all posts indicate it is an asp.net cached assembly 
+                // load fail.  It seems safe to ignore as system far and type c-o again.
+                var ignoreTask = // Squelch warning that we're not awaiting Message, which we can't in catch blocks.
+                GameAux.Message("Weird win10 bug \"More data is available\" when trying to open file picker.  "
+                                + "Just try typing c-o again.\n\n"
+                                + einfo.Message);
+                return null;
+            }
             finally { this.inOpenFileDialog = false; }
             return sf;
         }
@@ -1485,9 +1495,7 @@ MISCELLANEOUS
                 this.ShowHelp();
                 e.Handled = true;
             }
-            //else if (e.Key == VirtualKey.A) {
-            //    //var template = new { name = "", age = 0 };
-            //    //var res = MainWindow.ValuesCall(MainWindow.FooAnon(50, "bill"), template);
+            //else if (e.Key == VirtualKey.A) { // Just testing if I can use C# v7, but UWP doesn't support it.
             //    (var name, var age) = MainWindow.FooTuple(50, "bill");
             //    Debug.WriteLine(name);
             //    Debug.WriteLine(age);
@@ -1502,14 +1510,6 @@ MISCELLANEOUS
         //static (string name, int age) FooTuple (int a, string b) {
         //    return (b, a);
         //}
-
-        //static object FooAnon (int a, string b) {
-        //    return new { name = b, age = a };
-        //}
-
-        //// one time overhead definition for entire program
-        //static T ValuesCall<T> (object res, T type) { return (T)res; }
-
 
         //// gameTree_mousedown handles clicks on the game tree graph canvas,
         //// navigating to the move clicked on.
