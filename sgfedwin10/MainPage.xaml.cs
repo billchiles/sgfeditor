@@ -1495,21 +1495,12 @@ MISCELLANEOUS
                 this.ShowHelp();
                 e.Handled = true;
             }
-            //else if (e.Key == VirtualKey.A) { // Just testing if I can use C# v7, but UWP doesn't support it.
-            //    (var name, var age) = MainWindow.FooTuple(50, "bill");
-            //    Debug.WriteLine(name);
-            //    Debug.WriteLine(age);
-            //    e.Handled = true;
-            //}
             else {
                 // Tell me what key I pressed.
                 //await GameAux.Message(e.Key.ToString() + (this.IsKeyPressed(VirtualKey.Shift)).ToString());
             }
         }  // mainWin_keydown
 
-        //static (string name, int age) FooTuple (int a, string b) {
-        //    return (b, a);
-        //}
 
         //// gameTree_mousedown handles clicks on the game tree graph canvas,
         //// navigating to the move clicked on.
