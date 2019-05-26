@@ -63,6 +63,8 @@ namespace SgfEdwin10 {
         public int MoveCount { get; set; }
         // parsed_game is not None when we opened a file to edit.
         public ParsedGame ParsedGame { get; set; }
+        // ParsedProperties is not null when we opened a file to edit.
+        public Dictionary<string, List<string>> ParsedProperties { get; set; }
         // MiscGameInfo is like ParsedGame.Nodes.Properties, but this is null unless the user edits these.
         // If there is no user edit, then the ParsedGames holds the misc properties, and we pass them through
         // when we save the file.
@@ -1358,25 +1360,31 @@ namespace SgfEdwin10 {
         ////
         internal ParsedGame UpdateParsedGameFromGame(bool flipped = false) {
             var pgame = new ParsedGame();
-            pgame.Nodes = this.GenParsedGameRoot(flipped);
+            //pgame.Nodes = this.GenParsedGameRoot(flipped);
+            pgame.GameNode = this.GenParsedGameRoot(flipped);
             if (this.Branches == null) {
                 if (this.FirstMove != null) {
-                    pgame.Nodes.Next = GameAux.GenParsedNodes(this.FirstMove, flipped);
-                    pgame.Nodes.Next.Previous = pgame.Nodes;
+                    //pgame.Nodes.Next = GameAux.GenParsedNodes(this.FirstMove, flipped);
+                    pgame.Nodes = GameAux.GenParsedNodes(this.FirstMove, flipped);
+                    // Only set Next to Game.FirstMove, but do not make first move Previous point at bogus GameNode.
+                    pgame.GameNode.Next = pgame.Nodes;
+                    //pgame.Nodes.Next.Previous = pgame.Nodes;
                 }
             }
             else {
-                var branches = new List<ParsedNode>();
+                var branches = new List<Move>();
                 foreach (var m in this.Branches) {
                     var tmp = GameAux.GenParsedNodes(m, flipped);
                     branches.Add(tmp);
-                    tmp.Previous = pgame.Nodes;
+                    // Don't set Prev pointers to bogus GameNode because 1) Prev pointers don't matter for writing
+                    // files and 2) if flipped == false, then setting Previous clobbers Move objects in Game.
+                    //tmp.Previous = pgame.GameNode;
                 }
-                pgame.Nodes.Branches = branches; 
-                pgame.Nodes.Next = branches[0];
+                pgame.GameNode.Branches = branches; 
+                pgame.GameNode.Next = branches[0];
             }
             // Need to store new game since creating the parsed game re-uses original nodes.
-            this.ParsedGame = pgame;
+            //this.ParsedGame = pgame;
             // Integrity checking code for debugging and testing, not for release.
             //this.mainWin.CheckTreeParsedNodes();
             return pgame;
@@ -1394,35 +1402,39 @@ namespace SgfEdwin10 {
         //// value with the game object's value.  It also needs to write properties from
         //// new games.
         ////
-        private ParsedNode GenParsedGameRoot(bool flipped) {
-            var n = new ParsedNode();
-            if (this.ParsedGame != null) {
+        private Move GenParsedGameRoot(bool flipped) {
+            var n = new Move();
+            if (this.ParsedProperties != null) {
                 if (this.MiscGameInfo != null)
                     // If this is not null, then user edited properties in GameInfo dialog.
-                    n.Properties = GameAux.CopyProperties(this.MiscGameInfo);
+                    n.ParsedProperties = GameAux.CopyProperties(this.MiscGameInfo);
                 else
                     // Misc properties still in parsed structure, so pass them through for saving.
-                    n.Properties = GameAux.CopyProperties(this.ParsedGame.Nodes.Properties);
+                    //n.ParsedProperties = GameAux.CopyProperties(this.ParsedGame.Nodes.ParsedProperties);
+                    n.ParsedProperties = GameAux.CopyProperties(this.ParsedProperties);
+
             }
+            // From here on out, n is bogus node representing empty board and first SGF node, and since all
+            // properties are copied from Game or parsed properties, it is ok if flipped clobbers indexes.
             var version = Windows.ApplicationModel.Package.Current.Id.Version;
-            n.Properties["AP"] = new List<string>() {"SGFEditor:" + version.Major.ToString() + "." + 
+            n.ParsedProperties["AP"] = new List<string>() {"SGFEditor:" + version.Major.ToString() + "." + 
                                                      version.Minor.ToString() + "." + version.Build.ToString()};
-            n.Properties["SZ"] = new List<string>() { this.Board.Size.ToString() };
+            n.ParsedProperties["SZ"] = new List<string>() { this.Board.Size.ToString() };
             // Comments
-            if (n.Properties.ContainsKey("C"))
+            if (n.ParsedProperties.ContainsKey("C"))
                 // game.comments has merged GC and C comments.
-                n.Properties.Remove("C");
+                n.ParsedProperties.Remove("C");
             if (this.Comments != "")
-                n.Properties["GC"] = new List<string>() { this.Comments };
-            else if (n.Properties.ContainsKey("GC"))
-                n.Properties.Remove("GC");
+                n.ParsedProperties["GC"] = new List<string>() { this.Comments };
+            else if (n.ParsedProperties.ContainsKey("GC"))
+                n.ParsedProperties.Remove("GC");
             // Komi
-            n.Properties["KM"] = new List<string>() { this.Komi };
+            n.ParsedProperties["KM"] = new List<string>() { this.Komi };
             // Handicap, all black, and all white properties
             this.GenParsedGameRootInitialStones(flipped, n);
             // Player names
-            n.Properties["PB"] = new List<string>() { this.PlayerBlack != "" ? this.PlayerBlack : "Black" };
-            n.Properties["PW"] = new List<string>() { this.PlayerWhite != "" ? this.PlayerWhite : "White" };
+            n.ParsedProperties["PB"] = new List<string>() { this.PlayerBlack != "" ? this.PlayerBlack : "Black" };
+            n.ParsedProperties["PW"] = new List<string>() { this.PlayerWhite != "" ? this.PlayerWhite : "White" };
             return n;
         }
 
@@ -1431,34 +1443,34 @@ namespace SgfEdwin10 {
         //// just laying down stones in a example pattern.
         ////
         ////
-        private void GenParsedGameRootInitialStones (bool flipped, ParsedNode n) {
+        private void GenParsedGameRootInitialStones (bool flipped, Move n) {
             // HA
             if (this.Handicap != 0)
-                n.Properties["HA"] = new List<string>() { this.Handicap.ToString() };
-            else if (n.Properties.ContainsKey("HA"))
-                n.Properties.Remove("HA");
+                n.ParsedProperties["HA"] = new List<string>() { this.Handicap.ToString() };
+            else if (n.ParsedProperties.ContainsKey("HA"))
+                n.ParsedProperties.Remove("HA");
             // AB
-            if (n.Properties.ContainsKey("AB")) {
+            if (n.ParsedProperties.ContainsKey("AB")) {
                 // Prefer to keep what we parsed.
                 if (flipped)
-                    n.Properties["AB"] = GameAux.FlipCoordinates(n.Properties["AB"]);
+                    n.ParsedProperties["AB"] = GameAux.FlipCoordinates(n.ParsedProperties["AB"]);
                 // else leave them as-is
             }
             else
                 if (this.HandicapMoves != null)
-                    n.Properties["AB"] =
+                    n.ParsedProperties["AB"] =
                         this.HandicapMoves.Select((m) => GoBoardAux.GetParsedCoordinates(m, flipped))
                                            .ToList();
             // AW
-            if (n.Properties.ContainsKey("AW")) {
+            if (n.ParsedProperties.ContainsKey("AW")) {
                 // Prefer to keep what we parsed.
                 if (flipped)
-                    n.Properties["AW"] = GameAux.FlipCoordinates(n.Properties["AW"]);
+                    n.ParsedProperties["AW"] = GameAux.FlipCoordinates(n.ParsedProperties["AW"]);
                 // else leave them as-is
             }
             // Should have AW in properties or null AllWhiteMoves since don't support adding all white setup.
             else if (this.AllWhiteMoves != null) { 
-                n.Properties["AW"] =
+                n.ParsedProperties["AW"] =
                     this.AllWhiteMoves.Select((m) => GoBoardAux.GetParsedCoordinates(m, flipped))
                                         .ToList();
             }
@@ -1687,23 +1699,25 @@ namespace SgfEdwin10 {
         //// with branches.  If flipped is true, then moves and adornment indexes are
         //// diagonally mirrored; see write_flipped_game.
         ////
-        public static ParsedNode GenParsedNodes (Move move, bool flipped) {
+        public static Move GenParsedNodes (Move move, bool flipped) {
             if (! move.Rendered) {
                 // If move exists and not rendered, then must be ParsedNode.
                 if (flipped)
-                    return CloneAndFlipNodes(move.ParsedNode);
+                    return CloneAndFlipNodes(move);
                 else
                     // Note: result re-uses original parsed nodes, and callers change this node
                     // to point to new parents.
-                    return move.ParsedNode;
+                    return move;
             }
             var cur_node = GenParsedNode(move, flipped);
             var first = cur_node;
             if (move.Branches == null) {
                 move = move.Next;
                 while (move != null) {
-                    cur_node.Next = GenParsedNode(move, flipped);
-                    cur_node.Next.Previous = cur_node;
+                    if (flipped) { // then new objects, so need to link them. Prev ptrs don't actually matter.
+                        cur_node.Next = GenParsedNode(move, flipped);
+                        //cur_node.Next.Previous = cur_node;
+                    }
                     if (move.Branches == null) {
                         cur_node = cur_node.Next;
                         move = move.Next;
@@ -1716,39 +1730,52 @@ namespace SgfEdwin10 {
             } // if
             // Only get here when move is None, or we're recursing on branches.
             if (move != null) {
-                cur_node.Branches = new List<ParsedNode>();
+                if (flipped) // Generating new nodes, so need new branches list.
+                    cur_node.Branches = new List<Move>();
                 foreach (var m in move.Branches) {
                     var tmp = GenParsedNodes(m, flipped);
-                    cur_node.Branches.Add(tmp);
-                    tmp.Previous = cur_node;
+                    if (flipped) {
+                        cur_node.Branches.Add(tmp);
+                        tmp.Previous = cur_node;
+                    }
                 }
-                cur_node.Next = cur_node.Branches[0];
+                if (flipped)
+                    cur_node.Next = cur_node.Branches[0];
             }
             return first;
         } // _gen_parsed_nodes
 
-        //// _gen_parsed_node returns a ParsedNode that is based on the Move object.  It
+        //// _gen_parsed_node returns move or a clone of move, depending on flipped.  This
         //// grabs any existing parsed node properties from move to preserve any move
         //// properties that we ignore from a file we read.  If flipped is true, then moves 
         //// and adornment indexes are diagonally mirrored; see write_flipped_game.
         ////
-        //// NOTE, this function needs to overwrite any node properties that the UI
-        //// supports editing.  For example, if the end user modified adornments.
+        //// NOTE, this function needs to overwrite any node ParsedProperties that the UI
+        //// supports editing.  For example, if the end user modified adornments.  If flipped,
+        //// then we clone move, so ok to clobber ParsedProperties.  If not flipped, we always
+        //// overwrite the ParsedProperties based on Game move state, and it is fine that they
+        //// no longer represent what we read from a file.
         ////
-        private static ParsedNode GenParsedNode (Move move, bool flipped) {
+        private static Move GenParsedNode (Move move, bool flipped) {
             if (! move.Rendered) {
                 // If move exists and not rendered, then must be ParsedNode.
                 if (flipped)
-                    return CloneAndFlipNodes(move.ParsedNode);
+                    return CloneAndFlipNodes(move);
                 else
                     // Note: result re-uses original parsed nodes, and callers change this node
                     // to point to new parents.
-                    return move.ParsedNode;
+                    //return move.ParsedNode;
+                    return move;
             }
-            var node = new ParsedNode();
-            node.Properties = (move.ParsedNode != null) ? CopyProperties(move.ParsedNode.Properties)
-                                                         : node.Properties;
-            var props = node.Properties;
+            //var node = new ParsedNode();
+            var node = flipped ? new Move() : move;
+            //node.ParsedProperties = (move.ParsedNode != null) ? CopyProperties(move.ParsedNode.ParsedProperties)
+            //                                             : node.ParsedProperties;
+            if (flipped) node.ParsedProperties = GameAux.CopyProperties(move.ParsedProperties);
+            // Even if not flipped and clobbering move object from Game, it is ok to overwrite ParsedProperty values
+            // with current Game/move state.
+            //
+            var props = node.ParsedProperties;
             // Color
             MyDbg.Assert(move.Color == Colors.Black || move.Color == Colors.White,
                          "Move color must be B or W?!");
@@ -1808,13 +1835,14 @@ namespace SgfEdwin10 {
         //// diagonal mirror image, see write_flipped_game.  This recurses on nodes with
         //// branches.
         ////
-        private static ParsedNode CloneAndFlipNodes (ParsedNode nodes) {
+        private static Move CloneAndFlipNodes (Move nodes) {
             var first = CloneAndFlipNode(nodes);
             var cur_node = first;
             if (nodes.Branches == null) {
                 nodes = nodes.Next;
                 while (nodes != null) {
                     cur_node.Next = CloneAndFlipNode(nodes);
+                    // Prev not used when writing files, but it doesn't hurt to set it on cloned nodes.
                     cur_node.Next.Previous = cur_node;
                     if (nodes.Branches == null) {
                         cur_node = cur_node.Next;
@@ -1828,10 +1856,11 @@ namespace SgfEdwin10 {
             }
             // Only get here when nodes is None from while loop, or we're recursing on branches.
             if (nodes != null) {
-                cur_node.Branches = new List<ParsedNode>();
+                cur_node.Branches = new List<Move>();
                 foreach (var m in nodes.Branches) {
                     var tmp = CloneAndFlipNodes(m);
                     cur_node.Branches.Add(tmp);
+                    // Prev not used when writing files, but it doesn't hurt to set it on cloned nodes.
                     tmp.Previous = cur_node;
                 }
                 cur_node.Next = cur_node.Branches[0];
@@ -1843,10 +1872,10 @@ namespace SgfEdwin10 {
         //// ParsedNode that is a clone of node, but any indexes are diagonally mirror
         //// transposed, see write_flipped_game.
         ////
-        private static ParsedNode CloneAndFlipNode (ParsedNode node) {
-            var new_node = new ParsedNode();
-            new_node.Properties = CopyProperties(node.Properties);
-            var props = new_node.Properties;
+        private static Move CloneAndFlipNode (Move node) {
+            var new_node = new Move();
+            new_node.ParsedProperties = CopyProperties(node.ParsedProperties);
+            var props = new_node.ParsedProperties;
             // Color
             MyDbg.Assert(props.ContainsKey("B") || props.ContainsKey("W"),
                          "Move color must be B or W?!");
@@ -2035,7 +2064,8 @@ namespace SgfEdwin10 {
             if (props.ContainsKey("GC"))
                 g.Comments = props["GC"][0] + g.Comments;
             // Setup remaining model for first moves and UI
-            g.ParsedGame = pgame;
+            //g.ParsedGame = pgame;
+            g.ParsedProperties = props; // Save these for pass through properties when writing files.
             GameAux.SetupFirstParsedMove(g, pgame.Nodes);
             // Setup navigation UI so that user can advance through game.
             if (g.FirstMove != null) {

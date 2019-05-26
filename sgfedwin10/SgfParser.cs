@@ -1,5 +1,5 @@
 ﻿//// sgfparser.cs parses .sgf files.  Each parse takes a file and creates a list
-//// of ParsedNodes.  The list of nodes may not adhere to normal game moves such
+//// of Moves.  The list of nodes may not adhere to normal game moves such
 //// as alternating colors, or starting with B in an even game and W with
 //// handicaps.  The first node is the root node and should be game properties
 //// while following nodes should represent a game, but the nodes could
@@ -19,9 +19,20 @@ using Windows.UI; // Color type for IMoveNext
 
 namespace SgfEdwin10 {
 
+    //// ParsedGame holds a list of Moves and can generate a string representation of the game for persisting.
+    //// Saving a file generates one of these, using the Move objects from a Game.
+    ////
     public class ParsedGame {
 
-        public ParsedNode Nodes { get; set; }
+        //// Nodes holds all parsed nodes when reading a file.
+        //// When generating a ParsedGame for writing a file nodes points points to the moves of Game, and
+        //// Nodes.Previous does not point to the bogus empty board representation in GameNode.
+        public Move Nodes { get; set; }
+        //// GameNode is only for writing files so that the previosu pointer of the first move in Game does
+        //// not get clobbered to point to the bogus Move object used to represent the empty board comments
+        //// and adornments.  GameNode.Next does point to Nodes (see ToString()).
+        public Move GameNode { get; set; }
+
 
         public ParsedGame () {
             // nodes is the only public member.
@@ -35,13 +46,13 @@ namespace SgfEdwin10 {
             if (this.Nodes == null)
                 return "";  // Min tree is "(;)", but that implies one empty node
             else
-                return "(" + this.NodesString(this.Nodes) + ")";
+                return "(" + this.NodesString(this.GameNode) + ")";
         }
 
         //// _nodes_string returns a string for a series of nodes, and the caller
         //// needs to supply the open and close parens that bracket the series.
         ////
-        private string NodesString (ParsedNode nodes) {
+        private string NodesString (Move nodes) {
             var res = "";
             while (nodes.Next != null) {
                 // Get one node's string with a leading newline if it is not the
@@ -61,97 +72,6 @@ namespace SgfEdwin10 {
     } // ParsedGame class
 
 
-    public class ParsedNode : IMoveNext {
-
-        public ParsedNode Next;
-        public ParsedNode Previous;
-        public List<ParsedNode> Branches;
-        public Dictionary<string, List<string>> Properties;
-
-        //// BadNodeMessage is non-null if processing or readying a node for rendering detects
-        //// an erroneous situation (SGF features not supported or something bogus).  Thsi then
-        //// contains the error msg that should be reported if not swalling the processing error.
-        ////
-        public string BadNodeMessage;
-
-        public ParsedNode () {
-            this.Next = null;
-            this.Previous = null;
-            this.Branches = null;
-            this.Properties = new Dictionary<string, List<string>>();
-            this.BadNodeMessage = null;
-        }
-
-
-        public IMoveNext IMNNext { get { return this.Next; } }
-        public List<IMoveNext> IMNBranches {
-            get {
-                return (this.Branches == null) ? null : new List<IMoveNext>(this.Branches);
-            }
-        }
-        public Color IMNColor {
-            get {
-                if (this.Properties.ContainsKey("B")) {
-                    return Colors.Black;
-                }
-                else if (this.Properties.ContainsKey("W")) {
-                    return Colors.White;
-                }
-                else {
-                    return GoBoardAux.NoColor;
-                }
-            }
-        }
-
-
-    //// node_str returns the string for one node, taking a flag for a
-    //// preceding newline and the dictionary of properties for the node.
-    //// Game uses this for error reporting.
-    ////
-    public string NodeString (bool newline) {
-            var props = this.Properties;
-            string s;
-            if (newline)
-                s = Environment.NewLine + ";";
-            else
-                s = ";";
-            // Print move property first for readability of .sgf file by humans.
-            if (props.ContainsKey("B"))
-                s = s + "B" + this.EscapePropertyValues("B", props["B"]);
-            if (props.ContainsKey("W"))
-                s = s + "W" + this.EscapePropertyValues("W", props["W"]);
-            foreach (var kv in props) {
-                var k = kv.Key;
-                if (k == "B" || k == "W") continue;
-                s = s + k + this.EscapePropertyValues(k, kv.Value);
-            }
-            return s;
-        }
-
-        //// _escaped_property_values returns a node's property value with escapes so that the .sgf
-        //// is valid.  So, ] and \ must be preceded by a backslash.
-        ////
-        private string EscapePropertyValues (string id, List<string> values) {
-            var res = "";
-            foreach (var v in values) {
-                res = res + "[";
-                if (v.Contains("]") || v.Contains("\\")) {
-                    var sb = new StringBuilder();
-                    foreach (var c in v) {
-                        if (c == ']' || c == '\\')
-                            sb.Append('\\');
-                        sb.Append(c);
-                    }
-                    res = res + sb.ToString() + "]";
-                }
-                else
-                    res = res + v + "]";
-            } //foreach
-            return res;
-        }
-    } // ParsedNode class
-
-
 
     //// ParserAux provides stateless helpers for parsing.  Public members are used throughout
     //// the program.
@@ -167,13 +87,13 @@ namespace SgfEdwin10 {
             return g;
         }
 
-        //// _parse_nodes returns a linked list of ParseNodes.  It starts scanning for a
+        //// _parse_nodes returns a linked list of Moves.  It starts scanning for a
         //// semi-colon for the start of the first node.  If it encounters an open
         //// paren, it recurses and creates branches that follow the current node,
         //// making the next pointer of the current node point to the first node in the
         //// first branch.
         ////
-        private static ParsedNode ParseNodes (Lexer lexer) {
+        private static Move ParseNodes (Lexer lexer) {
             lexer.ScanFor(";", "Must be one node in each branch");
             var cur_node = ParseNode(lexer);
             var first = cur_node;
@@ -194,7 +114,7 @@ namespace SgfEdwin10 {
                     if (! branching_yet) {
                         cur_node.Next = ParseNodes(lexer);
                         cur_node.Next.Previous = cur_node;
-                        cur_node.Branches = new List<ParsedNode>() { cur_node.Next };
+                        cur_node.Branches = new List<Move>() { cur_node.Next };
                         branching_yet = true;
                     }
                     else {
@@ -213,23 +133,23 @@ namespace SgfEdwin10 {
             throw new IOException("Unexpectedly hit EOF!");
         } // ParseNodes
 
-        //// _parse_node returns a ParseNode with its properties filled in.
+        //// _parse_node returns a Move with its properties filled in.
         ////
-        private static ParsedNode ParseNode (Lexer lexer) {
-            var node = new ParsedNode();
+        private static Move ParseNode (Lexer lexer) {
+            var node = new Move();
             // Loop properties ...
             while (lexer.HasData()) {
                 var id = lexer.GetPropertyId();
                 if (id == null)
                     // Expected to return from here due to no properties or syntax at end of properties.
                     return node;
-                if (node.Properties.ContainsKey(id))
+                if (node.ParsedProperties.ContainsKey(id))
                     throw new Exception(string.Format("Encountered ID, {0}, twice for node -- file location {1}.",
                                         id, lexer.Location));
                 lexer.ScanFor("[", "Expected property value");
                 var i = -1;
                 var values = new List<string>();
-                node.Properties[id] = values;
+                node.ParsedProperties[id] = values;
                 // Loop values for one property
                 while (lexer.HasData()) {
                     // C and GC properties allow newline sequences in value.

@@ -4,13 +4,8 @@
 using System;
 using System.Collections.Generic;
 using Windows.UI.Xaml; // UIElement
-// System.Windows: UIElement, MessageBox
-using System.Windows;
-//using System.Linq;
-//using System.Text;
 using Windows.UI; // Color, Colors
-//using System.Windows.Media; // Color, Colors
-using System.Diagnostics; // Debug.Assert
+using System.Text; // StringBuilder
 
 
 namespace SgfEdwin10 {
@@ -257,6 +252,15 @@ namespace SgfEdwin10 {
         List<IMoveNext> IMNBranches { get; }
     }
 
+    //// MoveState will mark a move object as just representing parsed file goo, or that Game modeling
+    //// can look at it, or that it has been rendered on the board.  We need this due to code evolution
+    //// that used to use a separate very lean object for file node modeling, ParsedNode, and an object
+    //// part of the game editing and view model, Move.  We may decided we don't need to gradually
+    //// realize the move objects and could go from Parsed to Rendered once we've converetd to Move only.
+    //// For now SGFParser creates Parsed state, showing a move puts it in Rendered state, and showing a
+    //// move puts its next move(s) into GameReady (also Rendered property == false).
+    ////
+    public enum MoveState { Parsed, GameReady, Rendered }
 
     //// Move represents moves that have been rendered on the go board, or moves created for next moves
     //// of a current move, so that the current move can point to Moves.  These next moves are marked
@@ -270,16 +274,31 @@ namespace SgfEdwin10 {
         public Move Next { get; set; }
         public int Number { get; set; }
         public bool IsPass { get; set; }
-        // DeadStones is always a list.
+        // DeadStones and Adornments are always a list.
         public List<Move> DeadStones { get; set; }
         public List<Adornments> Adornments { get; set; }
         public string Comments { get; set; }
         // Branches is null when there is zero or one next move.
         public List<Move> Branches { get; set; }
-        public ParsedNode ParsedNode { get; set; }
-        public bool Rendered { get; set; }
+        public Dictionary<string, List<string>> ParsedProperties { get; set; }
+        public bool Rendered { get; set { if (value) this.State = MoveState.Rendered} }
+        // For now we leave Rendered for existing code, and we may end up with just Rendered and ParsedOnly.
+        public MoveState State { get; set { if (value == MoveState.Rendered) this.Rendered = true; } }
 
-        public Move(int row, int col, Color color) {
+        // BadNodeMessage is non-null if processing or readying a node for rendering detects
+        // an erroneous situation (SGF features not supported or something bogus).  This then
+        // contains the error msg that should be reported if not swalling the processing error.
+        //
+        public string BadNodeMessage;
+
+
+        public Move () : this(GoBoardAux.NoIndex, GoBoardAux.NoIndex, GoBoardAux.NoColor) {
+            m.State = MoveState.Parsed;
+            m.IsPass = false;
+            return m;
+        }
+
+        public Move (int row, int col, Color color) {
             this.Row = row;
             this.Column = col;
             this.IsPass = (row == GoBoardAux.NoIndex) && (col == GoBoardAux.NoIndex);
@@ -296,10 +315,10 @@ namespace SgfEdwin10 {
             // Branches holds all the next moves, while next points to one of these.
             // This is None until there's more than one next move.
             this.Branches = null;
-            // parsed_node is a node from a .sgf file.  This holds properties we may ignore, but
-            // we include them when generating a file/persistence representation of moves, merging
-            // with an state that's changed from user edits.
-            this.ParsedNode = null;
+            // ParsedProperties is from an .sgf file or generated when writing a file.
+            // This holds properties we may ignore from an .sgf file, but we include them when generating a
+            // file/persistence representation of moves, merging with any state that's changed from user edits.
+            this.ParsedProperties = new Dictionary<string, List<string>>();
             // rendered by default is true assuming moves are made and immediately
             // displayed, but parsed nodes can have unprocessed branches or
             // annotations.
@@ -310,7 +329,24 @@ namespace SgfEdwin10 {
         /// 
         public IMoveNext IMNNext { get { return this.Next; } }
         public List<IMoveNext> IMNBranches { get { return (this.Branches == null) ? null : new List<IMoveNext>(this.Branches); } }
-        public Color IMNColor { get { return this.Color; } }
+        public Color IMNColor {
+            get {
+                if (this.State != MoveState.Parsed) {
+                    return this.Color;
+                }
+                else {
+                    if (this.Properties.ContainsKey("B")) {
+                        return Colors.Black;
+                    }
+                    else if (this.Properties.ContainsKey("W")) {
+                        return Colors.White;
+                    }
+                    else {
+                        return GoBoardAux.NoColor;
+                    }
+                }
+            }
+        }
 
 
         public Adornments AddAdornment (Adornments a) {
@@ -320,6 +356,57 @@ namespace SgfEdwin10 {
 
         public void RemoveAdornment(Adornments a) {
             this.Adornments.Remove(a);
+        }
+
+        ////
+        //// Generating string for writing files
+        //// 
+
+
+        //// node_str returns the string for one node, taking a flag for a
+        //// preceding newline and the dictionary of properties for the node.
+        //// Game uses this for error reporting.
+        ////
+        public string NodeString (bool newline) {
+            var props = this.ParsedProperties;
+            string s;
+            if (newline)
+                s = Environment.NewLine + ";";
+            else
+                s = ";";
+            // Print move property first for readability of .sgf file by humans.
+            if (props.ContainsKey("B"))
+                s = s + "B" + this.EscapePropertyValues("B", props["B"]);
+            if (props.ContainsKey("W"))
+                s = s + "W" + this.EscapePropertyValues("W", props["W"]);
+            foreach (var kv in props) {
+                var k = kv.Key;
+                if (k == "B" || k == "W") continue;
+                s = s + k + this.EscapePropertyValues(k, kv.Value);
+            }
+            return s;
+        }
+
+        //// _escaped_property_values returns a node's property value with escapes so that the .sgf
+        //// is valid.  So, ] and \ must be preceded by a backslash.
+        ////
+        private string EscapePropertyValues (string id, List<string> values) {
+            var res = "";
+            foreach (var v in values) {
+                res = res + "[";
+                if (v.Contains("]") || v.Contains("\\")) {
+                    var sb = new StringBuilder();
+                    foreach (var c in v) {
+                        if (c == ']' || c == '\\')
+                            sb.Append('\\');
+                        sb.Append(c);
+                    }
+                    res = res + sb.ToString() + "]";
+                }
+                else
+                    res = res + v + "]";
+            } //foreach
+            return res;
         }
 
     } // Move class
