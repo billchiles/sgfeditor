@@ -48,18 +48,14 @@ from buttons in the upper right of the display and from the app bar (right
 click on the game board or drag up from the bottom of the display).
 
 PLACING STONES AND ANNOTATIONS:
-Click on board location to place alternating colored stones.  If the last move
-is a misclick (at the end of a branch), click the last move again to undo it.
-Shift click to place square annotations, ctrl click for triangles, and
-alt click to place letter annotations.  If you click on an adornment location
-twice (for example shift-click twice in one spot), the second click removes
-the adornment.
+Click on board location to place alternating colored stones.  You can click the
+last move in a series of moves to undo or delete it.  Shift click to place square 
+annotations, ctrl click for triangles, and alt click to place letter annotations.  
+If you click on an adornment location twice, it toggles whether there is an adornment.
 
 KEEPING FOCUS ON BOARD FOR KEY BINDINGS
 Escape will always return focus to the board so that the arrow keys work
-and are not swallowed by the comment editing pane.  Sometimes opening and
-saving files leaves WPF in a weird state such that you must click somewhere
-to fix focus.
+and are not swallowed by the comment editing pane.
 
 NAVIGATING MOVES IN GAME TREE
 Right arrow moves to the next move, left moves to the previous, up arrow selects
@@ -67,8 +63,8 @@ another branch or the main branch, down arrow selects another branch, home moves
 to the game start, and end moves to the end of the game following the currently
 selected branches.  You can always click a node in the game tree graph.  Ctrl-left
 arrow moves to the closest previous move that has branches.  If the current move
-has branches following it, the selected branch's first node has a light grey
-square outlining it. Nodes that have comments have a light green highlight, and
+has branches following it, the selected branch's first node has a fushia
+square outlining it.  Nodes that have comments have a light green highlight, and
 the current node has a fuchsia highlight.
 
 CREATING NEW FILES
@@ -78,14 +74,12 @@ to save.
 
 OPENING EXISTING FILES
 The open button (or ctrl-o) prompts for a .sgf file name to open.  If the current
-game is dirty, this prompts to save.
+game is dirty, this prompts to save.  Opening a file already open switches to that game.
 
 MULTIPLE OPEN FILES
-You can have up to 10 games open.  Limit to 10 seems reasonable until understand
-store app VM profile.  Ctrl-w rotates through games.  Ctrl-g brings up dialog for
-switching to games and closing games.  When creating or opening games, SgfEditor
-closes the default game if it is unused. If you open a game that is already open,
-SgfEditor just displays the game where you were last viewing it.
+You can have up to 10 games open.  Ctrl-w rotates through games.  Ctrl-g brings up 
+a dialog for switching to games and closing games.  When creating or opening games, 
+SgfEditor closes the default game if it is unused.
 
 SAVING FILES, SAVE AS
 The save button (or ctrl-s) saves to the associated file name if there is one;
@@ -95,19 +89,19 @@ new name).  To explicitly get save-as behaivor, use ctrl-alt-s.
 
 SAVING REVERSE VIEW
 To save the game so that your opponent can review it from his point of view, use
-ctrl-alt-f.  (Would have preferred ctrl-shift-s or alt-s, but WPF was difficult.)
+ctrl-alt-f.  (Would prefer ctrl-shift-s or alt-s, .NET won't deliver them as input.)
 
 CUTTING MOVES/SUB-TREES AND PASTING
 Delete or c-x cuts the current move (and sub tree), making the previous move the
 current move.  C-v will paste a cut sub tree to be a next move after the current
 move.  If the the sub tree has a move that occupies a board location that already
-has a stone, you will not be able to advance past this position.
+has a stone, you will not be able to advance past this position.  Currently don't
+support cut/paste across different games.
 
 MOVING BRANCHES
-You can move branches up and down in the order in which they show up in the branch
-combo, including changing what is the main line branch of the game.  To move a
-a branch up, you must be on the first move of a branch, and then you can use
-ctrl-uparrow, and to move a branch down, use ctrl-downarrow.
+You can move branches up and down (affects branch combo and game tree display)
+You must be on the first move of a branch, and then you can use ctrl-uparrow or 
+ctrl-downarrow to move the branch up or down to change the order of branches.
 
 PASSING
 The Pass button or c-p will make a pass move.
@@ -123,6 +117,8 @@ MISCELLANEOUS
       puts entire comment's text on clipboard.
    Ctrl-t changes the first occurence of the move's board coordinates in the comment
       to 'this'; for example, 'd6 is strong cut' changes to 'this is strong cut'.
+   Ctrl-m changes the first occurence of board coordinates to 'marked stone',
+      'square-marked stone', or a letter depending on what adornment is at that location.
 ";
 
         // This is set in the constructor and SetupBoardDisplay to indicate first board setup, 0,
@@ -1569,6 +1565,11 @@ MISCELLANEOUS
         }
 
         private bool GotoGameTreeMove (ParsedNode move) {
+            // Hack attempt to abort tree clicks on bad parsenodes.  sgfparser.cs ParseNode funct didn't store
+            // msg, game.cs ParsedNodeToMove adds bad node msg, but this is a hack to see a sentinel taint
+            // (don't compare string's contents), then disallow clicking on bad parsenodes in the game tree.
+            if (move.BadNodeMessage != null)
+                return false;
             var res = true;
             var path = this.Game.GetPathToMove(move);
             if (path != this.Game.TheEmptyMovePath) {
@@ -2048,17 +2049,21 @@ MISCELLANEOUS
                     var transform = g.TransformToVisual(sv);
                     var pos = transform.TransformPoint(new Point(0, 0));
                     var gheight = g.ActualHeight;
+                    // win10 deprecated the win8 ScrollToVertical.., etc.
                     //if (pos.Y < 0 || (pos.Y + gheight) > sv.ViewportHeight)
                     //    sv.ScrollToVerticalOffset(sv.VerticalOffset + pos.Y - MainWindow.BringIntoViewPadding);
-                    //var gwidth = g.ActualWidth;
                     //if (pos.X < 0 || (pos.X + gwidth) > sv.ViewportWidth)
                     //    sv.ScrollToHorizontalOffset(sv.HorizontalOffset + pos.X - MainWindow.BringIntoViewPadding);
+                    //
+                    // Win10 code samples show this, and no community solutions to intermittent bug that the
+                    // vertical sometimes does not scroll right.  Stepped through several scenarios, same values flow
+                    // through here, but sometimes the viewport just does not move back up enough.
                     if (pos.Y < 0 || (pos.Y + gheight) > sv.ViewportHeight)
                         sv.ChangeView(null, sv.VerticalOffset + pos.Y - MainWindow.BringIntoViewPadding, null);
                     var gwidth = g.ActualWidth;
                     if (pos.X < 0 || (pos.X + gwidth) > sv.ViewportWidth)
                         sv.ChangeView(sv.HorizontalOffset + pos.X - MainWindow.BringIntoViewPadding, null, null);
-                    break;
+                    //break;
                 }
             }
         }

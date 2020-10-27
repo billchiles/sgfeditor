@@ -228,18 +228,22 @@ namespace SgfEdwin10 {
             }
             if (maybe_branching) {
                 var tmp = this.MakeBranchingMove(cur_move, move);
-                if (tmp == null) {
-                    // do not call GameAux.NextMoveDisplayError because new move object has no error msg.
-                    // NOTE, if we do not return here, ReplayMove below will report on the SGF issue, but
+                var ret_move = tmp.Item1;
+                if (ret_move == null || tmp.Item2) {
+                    // LONG TIME comment: do not call GameAux.NextMoveDisplayError because new move object has no
+                    // error msg. NOTE, if we do not return here, ReplayMove below will report on the SGF issue, but
                     // it puts up two dialogs which feels ugly (can get error msg by using arrows to next move.
+                    // UPDATE: can fetch msg sometimes since we can flow through here now if only some moves in a
+                    // branch had parsenode errors.
+                    var msg = GameAux.NextMoveGetMessage(ret_move) ?? "";
                     await GameAux.Message("You clicked where a next move exists in the game tree, but \n" +
                                           "the next move at that location had bad properties in the SGF file.\n" +
-                                          "You cannot play further down that branch.");
-                    return null;
+                                          "You cannot play further down that branch... " + msg);
+                    if (ret_move == null) return null;
                 }
                 // Just because we're branching, doesn't mean the game is dirty.
-                if (object.ReferenceEquals(tmp, move))
-                    // If added new move, mark dirty since user could have saved game.
+                if (object.ReferenceEquals(ret_move, move))
+                    // If added new move (our new move came back as the move added, not a pre-existing), mark dirty.
                     this.Dirty = true;
                 else
                     // Found existing move at location in branches, just replay it for capture effects, etc.
@@ -257,6 +261,7 @@ namespace SgfEdwin10 {
                 }
                 this.Dirty = true;
             }
+            // Move is new, regardless of branching, did not find pre-existing move where user clicked to advance to.
             this.SaveAndUpdateComments(cur_move, move);
             if (! move.IsPass)
                 this.Board.AddStone(move);
@@ -299,28 +304,32 @@ namespace SgfEdwin10 {
         //// a next move of cur_move, then this function dumps move in lieu of the
         //// existing next move.  This also sets up any next and prev pointers as
         //// appropriate and updates the branches combo.  This return null if it can't return a move.
+        //// This also returns if there was a parsenode rendering error to display.
         ////
-        private Move MakeBranchingMove (Move cur_move, Move move) {
+        private Tuple<Move, bool> MakeBranchingMove (Move cur_move, Move move) {
+            var err = false;
             if (cur_move == null) {
                 var stuff = this.MakeBranchingMoveBranches(this.Branches, this.FirstMove, move);
                 move = stuff.Item1;
                 this.Branches = stuff.Item2;
-                //move = this.MakeBranchingMoveBranches(this, this.FirstMove, move);
-                if (move == null) return null;  // Conflicting next stone location or bad parse node.
+                err = stuff.Item3;
+                if (move == null) // pre-existing move from file, but bad parse node when rendering move
+                    return new Tuple<Move, bool>(null, err);  
                 this.FirstMove = move;
             }
             else {
                 var stuff = this.MakeBranchingMoveBranches(cur_move.Branches, cur_move.Next, move);
                 move = stuff.Item1;
                 cur_move.Branches = stuff.Item2;
-                //move = this.MakeBranchingMoveBranches(cur_move, cur_move.Next, move);
-                if (move == null) return null;  // Conflicting next stone location or bad parse node.
+                err = stuff.Item3;
+                if (move == null) // pre-existing move from file, but bad parse node when rendering move
+                    return new Tuple<Move, bool>(null, err);  
                 cur_move.Next = move;
                 move.Previous = cur_move;
             }
             // move may be pre-existing move with branches, or may need to clear combo ...
             this.mainWin.UpdateBranchCombo(move.Branches, move.Next);
-            return move;
+            return new Tuple<Move, bool>(move, err);
         }
 
         //// _make_branching_move_branches takes a game or move object (the current
@@ -329,36 +338,45 @@ namespace SgfEdwin10 {
         //// same location as next and toss new_move in this case, which also means
         //// there are still no branches yet.  This return null if it can't return a move,
         //// which happens if it finds an existing move in the tree, but that move has bad parse info.
+        //// This also returns the branches in case they are new and whether there is a parsenode error to report.
         ////
-        private Tuple<Move, List<Move>> MakeBranchingMoveBranches (List<Move> branches, Move next, Move new_move) {
+        private Tuple<Move, List<Move>, bool> MakeBranchingMoveBranches (List<Move> branches, Move next, Move new_move) {
             if (branches == null) {
+                // We only get here when user is clicking and clicks the location of the next move (only next move)
                 branches = new List<Move>() { next }; // Must pass non-null branches.
-                // Can't use'var', must decl with 'Move'.  C# desn't realize all MaybeUpdateBanches
-                // definitions return a Move.
-                Move move = this.MaybeUpdateBranches(branches, new_move);
-                if (move == null) return null;  // Conflicting next stone location or bad parse node.
+                Tuple<Move, bool> stuff = this.MaybeUpdateBranches(branches, new_move);
+                Move move = stuff.Item1;
+                bool err = stuff.Item2;
+                if (move == null) {
+                    // Already move at location from file, but rendering it saw bad parsenode.
+                    // Since no good move to advance to, and just created branches, return null for branches.
+                    return new Tuple<Move, List<Move>, bool>(null, null, err); //null;
+                }
                 if (object.ReferenceEquals(move, next)) {
-                    // new_move and next are same, keep next and clean up branches.
-                    //game_or_move.Branches = null;
-                    return new Tuple<Move, List<Move>>(next, null);
+                    // MaybeUpdateBranches found the location represented by new_move already has a move, move,
+                    // which is the same object as next because MaybeUpdateBranches found next in branches.
+                    // Since we just created branches, and only single next move, next, return null for branches.
+                    return new Tuple<Move, List<Move>, bool>(next, null, err);
                 }
                 else {
                     // new_move and next are not the same, so keep branches since there are two next moves now.
-                    //game_or_move.Branches = branches;
-                    // Keep branches and return move
-                    return new Tuple<Move, List<Move>>(move, branches);
+                    return new Tuple<Move, List<Move>, bool>(move, branches, err);
                 }
             }
-            else
-                return new Tuple<Move, List<Move>>(this.MaybeUpdateBranches(branches, new_move), branches);
+            else {
+                Tuple<Move, bool> stuff = this.MaybeUpdateBranches(branches, new_move);
+                return new Tuple<Move, List<Move>, bool>(stuff.Item1, branches, stuff.Item2);
+            }
+                
         }
 
         //// _maybe_update_branches takes a branches list and a next move.  Branches must not be null.
         //// It returns a pre-existing move if the second argument represents a move at a location for which there
         //// already is a move; otherwise, this function returns the second argument as a new next
-        //// move.  If this is a new next move, we add it to branches.  This return null if it can't return a move.
+        //// move.  If this is a new next move, we add it to branches.  
+        //// This return null if it can't return a move, and it returns whether we tried to render a bad parsenode.
         ////
-        private Move MaybeUpdateBranches (List<Move> branches, Move move) {
+        private Tuple<Move, bool> MaybeUpdateBranches (List<Move> branches, Move move) {
             MyDbg.Assert(branches != null);
             var already_move = GameAux.ListFind(
                                    move, branches,
@@ -366,13 +384,12 @@ namespace SgfEdwin10 {
             if (already_move != -1) {
                 var m = branches[already_move];
                 if (! m.Rendered)
-                    if (this.ReadyForRendering(m) == null)  // Issue with parsed node, cannot go forward.
-                        return null;
-                return m;
+                    return this.ReadyForRendering(m); // returns m if can proceed (or null) + err bool
+                return new Tuple<Move,bool>(m, false);
             }
             else {
                 branches.Add(move);
-                return move;
+                return new Tuple<Move, bool>(move, false);
             }
         }
 
@@ -606,11 +623,16 @@ namespace SgfEdwin10 {
                              "Next button should be disabled if no next move.");
                 this.CurrentMove = this.CurrentMove.Next;
             }
-            if (this.ReplayMoveUpdateModel(this.CurrentMove) == null) {
+            var stuff = this.ReplayMoveUpdateModel(this.CurrentMove);
+            var ret_move = stuff.Item1;
+            if (ret_move == null) {
+                // Current move comes back if some branches had bad parsenodes, but some branches good.
                 await GameAux.NextMoveDisplayError(this.CurrentMove);
                 this.CurrentMove = fixupMove;
                 return null;
             }
+            if (stuff.Item2)
+                await GameAux.NextMoveDisplayError(this.CurrentMove);
             this.SaveAndUpdateComments(this.CurrentMove.Previous, this.CurrentMove);
             if (this.CurrentMove.Next == null) {
                 this.mainWin.DisableForwardButtons();
@@ -642,11 +664,15 @@ namespace SgfEdwin10 {
             // Setup for loop ...
             if (current == null) {
                 current = this.FirstMove;
-                if (this.ReplayMoveUpdateModel(current) == null) {
+                var stuff = this.ReplayMoveUpdateModel(current);
+                var ret_move = stuff.Item1;
+                if (ret_move == null) {
+                    // Current move comes back if some branches had bad parsenodes, but some branches good.
                     await GameAux.NextMoveDisplayError(current);
                     // No partial actions/state to clean up or revert.
                     return;
                 }
+                if (stuff.Item2) await GameAux.NextMoveDisplayError(current);
                 this.mainWin.AddNextStoneNoCurrent(current);
                 next = current.Next;
             }
@@ -688,9 +714,11 @@ namespace SgfEdwin10 {
         //// it had been rendedered before.  We must setup branches to Move objects,
         //// and make sure the next Move object is created and marked unrendered so
         //// that code elsewhere that checks move.next will know there's a next
-        //// move.  This return null if there is an issue replaying the move.
+        //// move.  This return null if there is an issue replaying the move, and it
+        //// returns a bool whether to display an error msg due to a bad parsenode.
+        //// The move obj returned is the arg obj.
         ////
-        private Move ReplayMoveUpdateModel (Move move) {
+        private Tuple<Move, bool> ReplayMoveUpdateModel (Move move) {
             var cleanup = false;
             if (! move.IsPass) {
                 // Check if board has stone already since might be replaying branch
@@ -700,22 +728,27 @@ namespace SgfEdwin10 {
                     cleanup = true;
                 }
                 else
-                    return null;
+                    return new Tuple<Move, bool>(null, false);
             }
             this.nextColor = GameAux.OppositeMoveColor(move.Color);
+            var err = false;
             if (! move.Rendered) {
                 // Move points to a ParsedNode and has never been displayed.
-                if (this.ReadyForRendering(move) == null) { // Issue with parsed node, cannot go forward.
+                var stuff = this.ReadyForRendering(move);
+                var ret_move = stuff.Item1;
+                if (ret_move == null) { // Issue with parsed node, cannot go forward.
+                    // Current move comes back if some branches had bad parsenodes, but good moves existed. 
                     if (cleanup) this.Board.RemoveStone(move);
-                    return null;
+                    return new Tuple<Move, bool>(null, stuff.Item2); //null;
                 }
-                // Don't need view model object, but need to ensure there is one mapped by move.
+                err = stuff.Item2;
+                // Don't need view model object in code here, but need to ensure there is one mapped by move.
                 this.mainWin.TreeViewNodeForMove(move);
             }
             this.MoveCount += 1;
             this.RemoveStones(move.DeadStones);
             this.UpdatePrisoners(move.Color, move.DeadStones.Count());
-            return move;
+            return new Tuple<Move, bool>(move, err);
         }
 
         private void RemoveStones (List<Move> stones) {
@@ -732,35 +765,57 @@ namespace SgfEdwin10 {
         //// model.  However, until the moves are actually ready to be displayed
         //// they do not have captured lists hanging off them, their next branches
         //// and moves set up, etc.  This function makes the moves completely ready
-        //// for display, or returns null if there was a problem.
+        //// for display.  This returns (same) move if we can advance the display, but this also
+        //// returns if there was an error with a parsenode.
         ////
-        private Move ReadyForRendering (Move move) {
+        private Tuple<Move, bool> ReadyForRendering (Move move) {
             if (! move.IsPass)
                 this.CheckForKill(move);
             var pn = move.ParsedNode;
             Move mnext = null;
+            bool err = false;
+            bool onegood = false;
             if (pn.Branches != null) {
                 var moves = new List<Move>();
                 foreach (var n in pn.Branches) {
                     var m = GameAux.ParsedNodeToMove(n);
-                    if (m == null) return null; // Unhandled parse node features
+                    // Changed this to continue since some branches are viewable, data model and display seem to
+                    // behave well.
+                    if (m == null) { // return null; // Unhandled parse node features
+                        // Indicate to callers, there's a parsenode issue, but continue since some branches may be good.
+                        err = true;
+                        continue;
+                    }
+                    onegood = true;
                     m.Number = this.MoveCount + 2;
                     m.Previous = move;
                     moves.Add(m);
                 }
-                move.Branches = moves;
+                if (! onegood)
+                    // Could be defensive programming, not sure if any clients produce SGF files with
+                    // branches of various weird nodes, for example, KGS collapses them to one.
+                    return new Tuple<Move, bool>(null, true);
+                if (moves.Count > 1) {
+                    move.Branches = moves;
+                }
                 mnext = moves[0];
             }
             else if (pn.Next != null) {
                 mnext = GameAux.ParsedNodeToMove(pn.Next);
-                if (mnext == null) return null; // Unhandled parse node features
+                if (mnext == null) {
+                    // Indicate to callers, there's a parsenode issue, no go forward case, so onegood = false.
+                    err = true;
+                    return new Tuple<Move, bool>(null, true); //null;
+                }
+                onegood = true;
                 mnext.Number = this.MoveCount + 2;
                 mnext.Previous = move;
             }
+            else onegood = true; // no branches, no next move to render, good to go
             move.Next = mnext;
             this.ReplayUnrenderedAdornments(move);
             move.Rendered = true;
-            return move;
+            return new Tuple<Move, bool>(onegood ? move : null, err);
         }
 
         //// _replay_unrendered_adornments is just a helper for
@@ -887,7 +942,8 @@ namespace SgfEdwin10 {
             else
                 // Handle regular move.
                 this.CutNextMove(prev_move, cut_move);
-            this.cutMove = cut_move;
+            if (cut_move.Next != null) // Only save for pasting if more intresting that last move
+                this.cutMove = cut_move;
             this.Dirty = true;
             // Update UI now that current move's next/branches have changed.
             if (prev_move == null) {
@@ -959,9 +1015,6 @@ namespace SgfEdwin10 {
                 // node does not either since we create Moves for parsed nodes ahead of fully rendering
                 // and consistently delete parsed nodes if delete moves.  Need to check if cut_move.ParsedNode
                 // is null because it could have been added after parsing file and have no ParsedNode.
-                // It also could be an auto-save stashed a parsed node tree in the game, in which case it
-                // would have a new parsed node we could not find anyway.  It does no harm if an extra branch
-                // hangs off the parsed node tree, and it goes away on the next auto save.
                 this.CutNextParsedNode(move.ParsedNode, cut_move.ParsedNode);
         }
 
@@ -975,10 +1028,24 @@ namespace SgfEdwin10 {
                 pn.Next = null;
             else {
                 var cut_index = GameAux.ListFind(cut_move, branches);
-                branches.RemoveAt(cut_index);
-                pn.Next = branches[0];
-                if (branches.Count == 1)
-                    pn.Branches = null;
+                if (cut_index != -1) {
+                    // VERY subtle interaction ... because we have an auto save timer, and we write files by
+                    // gen'ing fresh parsenodes and storing them in the root (simply solves hassles with editing the
+                    // tree and various state pointers), at any await or UI moment, the root parsenodes could be
+                    // written.  We don't update all the move's parsenode properites since if a move is unrendered
+                    // its parsenode properties are still accurate, and otherwise we ignore them.  This means
+                    // deleting the first node read from a file can have a parsenode object that is NOT in the
+                    // branches collection.
+                    // GENERAL CASE NOT ... any interior rendered move has parsenodes removed on deletions, and we never
+                    // add new ones.  We may clean it up here even though we would never see that parsenode again.
+                    // REPRO SCENARIO ... open a file, move out a couple of moves to render, go back to home, and
+                    // add a couple of moves so there's two branches.  Then wait a min to ensure autosave kicked in
+                    // and go delete the first node read from the file.
+                    branches.RemoveAt(cut_index);
+                    pn.Next = branches[0];
+                    if (branches.Count == 1)
+                        pn.Branches = null;
+                } 
             }
         }
 
@@ -1355,6 +1422,10 @@ namespace SgfEdwin10 {
         //// because re-using ParsedNode objects changes some previous pointners.
         //// We just keep the new one for consistency.  If flipped is true, then move
         //// and adornment indexes are diagonally mirrored; see write_flipped_game.
+        //// NOTE NOTE NOTE -- this gets called from auto save timer, so any await or
+        //// UI moment could clobber the root parsednodes, and we do not update all the
+        //// nodes below there with their new parsenode since any node not rendered still
+        //// has accurate parsenode properties hanging from it that were read from the file.
         ////
         internal ParsedGame UpdateParsedGameFromGame(bool flipped = false) {
             var pgame = new ParsedGame();
@@ -1559,8 +1630,21 @@ namespace SgfEdwin10 {
                 this.SetCurrentBranch(0);
             }
             var curMove = this.FirstMove; // Set after possible call to SetCurrentBranch.
-            if (this.ReplayMoveUpdateModel(curMove) == null) // may have issue with rendering parsed node
+            var stuff = this.ReplayMoveUpdateModel(curMove);
+            var ret_move = stuff.Item1;
+            if (ret_move == null || stuff.Item2) { // return false even if move to keep old behavior here.
+                // Current move comes back if some branches had bad parsenodes, but some branches good.
+                // However due to the uses of AdvanceToMovePath (clicking in tree view, switching games,
+                // undoing game creation as a cleanup), we stop propagating the difference of no possible move
+                // vs. a move that works while a sibling move has a parsenode issue.  Users can use arrows
+                // after the ffwd op to see the error display.
+                // BUG: If user clicks on treeview nodes representing bad parsenodes, the code will try to
+                // advance to it, users gets an err display, but you cannot then arrow around even when if you
+                // had only arrowed around to begin with, you could arrow all around the tree's good nodes.
                 return false;
+            }
+            //if (this.ReplayMoveUpdateModel(curMove) == null) // may have issue with rendering parsed node
+            //    return false;
             this.mainWin.AddNextStoneNoCurrent(curMove);
             var next = curMove.Next;
             // Walk to last move on path ...
@@ -2165,7 +2249,10 @@ namespace SgfEdwin10 {
         //// This returns null for failure cases, setting the parse nodes error msg.
         ////
         internal static Move ParsedNodeToMove (ParsedNode n) {
-            if (n.BadNodeMessage != null) return null;
+            // Removed optimization to avoid computing msg again, due to experiment to taint nodes in sgfparser
+            // so that clicking on treeview nodes can abort immeediately, and this can ignore the taint hack
+            // of a non-null msg from the parser.
+            //if (n.BadNodeMessage != null) return null;
             Color color;
             int row;
             int col;

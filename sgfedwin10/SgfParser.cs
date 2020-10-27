@@ -220,9 +220,13 @@ namespace SgfEdwin10 {
             // Loop properties ...
             while (lexer.HasData()) {
                 var id = lexer.GetPropertyId();
-                if (id == null)
+                if (id == null) {
+                    if (!(node.Properties.ContainsKey("B") || node.Properties.ContainsKey("W")))
+                        // This is overwritten in game.cs ParsenodeToMove.
+                        node.BadNodeMessage = "hmmmm, no B or W, flagging this as hack/test to stop treeview clicks";
                     // Expected to return from here due to no properties or syntax at end of properties.
                     return node;
+                }
                 if (node.Properties.ContainsKey(id))
                     throw new Exception(string.Format("Encountered ID, {0}, twice for node -- file location {1}.",
                                         id, lexer.Location));
