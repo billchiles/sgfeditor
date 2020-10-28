@@ -1393,9 +1393,9 @@ namespace SgfEdwin10 {
         ////
         public void SaveGameFileInfo (StorageFile sf) {
             this.Storage = sf;
-            var filename = sf.Name;
-            this.Filename = filename;
-            this.Filebase = filename.Substring(filename.LastIndexOf('\\') + 1);
+            this.Filename = sf.Path;
+            this.Filebase = sf.Name;
+            //this.Filebase = filename.Substring(filename.LastIndexOf('\\') + 1); // win10 semantics changed
         }
 
         //// write_flipped_game saves all the game moves as a diagonal mirror image.

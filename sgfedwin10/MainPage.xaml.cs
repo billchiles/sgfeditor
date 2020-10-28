@@ -1444,6 +1444,16 @@ MISCELLANEOUS
                 this.ShowGamesSettings();
                 e.Handled = true;
             }
+            // Copy Filename
+            else if (e.Key == VirtualKey.C && this.IsKeyPressed(VirtualKey.Control) &&
+                     this.commentBox.FocusState != FocusState.Keyboard && // Covers tabbing to txt box
+                     this.commentBox.FocusState != FocusState.Pointer) {  // Covers clicking in txt box
+                var fn = "no file name for game"; // Clipboard throws bogus null deref exception with empty string.
+                var d = new DataPackage();
+                d.SetText(this.Game.Filename ?? fn);
+                Clipboard.SetContent(d);
+                e.Handled = true;
+            }
             // Special Bill command because I do this ALL THE TIME
             // Delete entire comment.
             else if (e.Key == VirtualKey.K && this.IsKeyPressed(VirtualKey.Control)) {
