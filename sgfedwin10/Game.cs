@@ -1395,6 +1395,7 @@ namespace SgfEdwin10 {
             this.Storage = sf;
             this.Filename = sf.Path;
             this.Filebase = sf.Name;
+            //Discovered sf.Name no longer has path, and need path to match files when opening to show already open game.
             //this.Filebase = filename.Substring(filename.LastIndexOf('\\') + 1); // win10 semantics changed
         }
 

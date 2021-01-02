@@ -94,8 +94,8 @@ namespace SgfEdwin10
             if (args.PreviousExecutionState == ApplicationExecutionState.Running ||
                     args.PreviousExecutionState == ApplicationExecutionState.Suspended) {
                 mainwin = ((Frame)Window.Current.Content).Content as MainWindow;
-                // If file is already open, just show it.
-                var gindex = GameAux.ListFind(sf.Name, mainwin.Games, (sfname, g) => ((string)sfname) == ((Game)g).Filename);
+                // If file is already open, just show it.  NOTE, if change this, check DoOpenButton
+                var gindex = GameAux.ListFind(sf.Path, mainwin.Games, (sfname, g) => ((string)sfname) == ((Game)g).Filename);
                 if (gindex != -1) {
                     await mainwin.GotoOpenGame(gindex);
                     return;

@@ -75,6 +75,7 @@ to save.
 OPENING EXISTING FILES
 The open button (or ctrl-o) prompts for a .sgf file name to open.  If the current
 game is dirty, this prompts to save.  Opening a file already open switches to that game.
+Ctrl-c copies filepath to clipbard.
 
 MULTIPLE OPEN FILES
 You can have up to 10 games open.  Ctrl-w rotates through games.  Ctrl-g brings up 
@@ -85,7 +86,7 @@ SAVING FILES, SAVE AS
 The save button (or ctrl-s) saves to the associated file name if there is one;
 otherwise it prompts for a filename.  If there is a filename, but the game state
 is not dirty, then it prompts to save to a different filename (and tracks to the
-new name).  To explicitly get save-as behaivor, use ctrl-alt-s.
+new name).  To explicitly get save-as behaivor, use ctrl-alt-s.  Ctrl-c copies filepath to clipbard.
 
 SAVING REVERSE VIEW
 To save the game so that your opponent can review it from his point of view, use
@@ -893,8 +894,8 @@ MISCELLANEOUS
             await this.CheckDirtySave();
             var sf = await this.DoOpenGetFile();
             if (sf == null) return;
-            // If file is already open, just show it.
-            var gindex = GameAux.ListFind(sf.Name, this.Games, (sfname, game) => ((string)sfname) == ((Game)game).Filename);
+            // If file is already open, just show it.  NOTE, if change this, check OnFileActivated.
+            var gindex = GameAux.ListFind(sf.Path, this.Games, (sfname, game) => ((string)sfname) == ((Game)game).Filename);
             if (gindex != -1) {
                 await this.GotoOpenGame(gindex);
                 return;
