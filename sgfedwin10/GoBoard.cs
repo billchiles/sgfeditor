@@ -65,6 +65,29 @@ namespace SgfEdwin10 {
             return this.moves[row - 1, col - 1];
         }
 
+        //// BoardModelAsSTring returns a string to lightly display board state for debugging purposes.
+        ////
+        public string BoardModelAsString () {
+            var res = "";
+            for (var row = 0; row < this.Size; row++) {
+                for (var col = 0; col < this.Size; col++)
+                    if (this.moves[row, col] != null) {
+                        if (this.moves[row, col].Color == Colors.White) {
+                            res = res + "O";
+                        }
+                        else if (this.moves[row, col].Color == Colors.Black) {
+                            res = res + "X";
+                        }
+                        else
+                            res = res + "?";
+                    }
+                    else
+                        res = res + "+";
+                res = res + "\n";
+            }
+            return res;
+        }
+
         //// color_at returns the color of the stone at row, col (one-based), or None if there is not stone there.
         //// This assumes row, col are valid indexes.
         ////

@@ -189,6 +189,10 @@ namespace SgfEdwin10 {
                     MyDbg.Assert(handicap_stones.Count == handicap,
                                  "Handicap number is not equal to all " +
                                  "black stones in parsed root node.");
+                    // BUG -- Do not add moves to this.HandicapMoves, and do not add AB in GotoStart or
+                    // GotoSTartForGameSwap, which means these moves never get added back if hit Home key,
+                    // click in tree view, and things like checking for dead stones won't know they are there.
+                    // However, in 10 years never encounted a game with AB at start and no HA.
                     foreach (var m in handicap_stones)
                         this.Board.AddStone(m);
                 }
@@ -562,6 +566,10 @@ namespace SgfEdwin10 {
             this.SaveAndUpdateComments(current, null);
             this.Board.GotoStart();
             this.mainWin.ResetToStart(current);
+            if (this.HandicapMoves != null)
+                foreach (var m in this.HandicapMoves) 
+                    // board.gotostart above clears this model, mainwin.resettostart adds UIElts, need to fix board model
+                    this.Board.AddStone(m);
             this.nextColor = this.Handicap == 0 ? Colors.Black : Colors.White;
             this.CurrentMove = null;
             this.MoveCount = 0;
@@ -584,6 +592,11 @@ namespace SgfEdwin10 {
             // place in case this.Game is sitting at the intial board state.
             this.mainWin.CurrentComment = this.Comments; 
             this.Board.GotoStart();
+            if (this.HandicapMoves != null)
+                foreach (var m in this.HandicapMoves)
+                    // board.gotostart above clears board model, and SetupBoardDisplay has already UIElts display model
+                    // need to fix board model
+                    this.Board.AddStone(m);
             this.nextColor = this.Handicap == 0 ? Colors.Black : Colors.White;
             this.CurrentMove = null;
             this.MoveCount = 0;
@@ -1623,11 +1636,12 @@ namespace SgfEdwin10 {
                          "If first move is null, then path must be the empty path.");
             if (this.FirstMove == null) return true;
             // Setup for loop ...
-            if (path[0].Item1 == 0) {
+            if (path[0].Item1 == 0) {// taking not main branch from game start
                 this.SetCurrentBranch(path[0].Item2);
                 path.RemoveAt(0);
             }
             else if (this.Branches != null && this.FirstMove != this.Branches[0]) {
+                // taking main branch from start, but it is not current branch right now
                 this.SetCurrentBranch(0);
             }
             var curMove = this.FirstMove; // Set after possible call to SetCurrentBranch.

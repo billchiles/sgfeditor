@@ -422,6 +422,7 @@ MISCELLANEOUS
                     // Only labels in stones grid should be row/col labels because adornments are inside
                     // Grids (squares and triables) or Viewboxes (letters).
                     g.Children.Remove(elt);
+                    // Below set mainwin.stones to new matrix, so do not need to set elements to null here.
                 }
                 // Clear board just to make sure we drop all model refs.
                 // TODO Investigate this, probably was no-op for releasing memory before, and now that hold
@@ -433,6 +434,8 @@ MISCELLANEOUS
                 // If opening game file, next/end set to true by game code.
                 this.DisableForwardButtons();
                 MainWindowAux.stones = new Ellipse[Game.MaxBoardSize, Game.MaxBoardSize];
+                // After add initial stones, do not update board model because this is called after new Game(),
+                // which adds stones to the board when figuring out the handicap.
                 this.AddInitialStones(new_game);
             }
             else
@@ -1486,6 +1489,12 @@ MISCELLANEOUS
             else if (e.Key == VirtualKey.T && this.IsKeyPressed(VirtualKey.Control)) {
                 this.ReplaceIndexedMoveRef();
                 win.FocusOnStones();
+                e.Handled = true;
+                return;
+            }
+            // Debugging affordance, can comment out.
+            else if (e.Key == VirtualKey.B && this.IsKeyPressed(VirtualKey.Control)) {
+                await GameAux.Message(this.Game.Board.BoardModelAsString());
                 e.Handled = true;
                 return;
             }
