@@ -1055,9 +1055,18 @@ namespace SgfEdwin10 {
                     // add a couple of moves so there's two branches.  Then wait a min to ensure autosave kicked in
                     // and go delete the first node read from the file.
                     branches.RemoveAt(cut_index);
-                    pn.Next = branches[0];
-                    if (branches.Count == 1)
+                    // the parser creates branches based on file syntax and does not have the invariant Move objects
+                    // have (branches is null unless > 1).  OGS creates files where every node is the start of a new
+                    // branch, which renders fine since we fix branches lists when we reify a Move.
+                    if (branches.Count == 0) {
                         pn.Branches = null;
+                        pn.Next = null;
+                    }
+                    else {
+                        pn.Next = branches[0];
+                        if (branches.Count == 1)
+                            pn.Branches = null;
+                    }
                 } 
             }
         }

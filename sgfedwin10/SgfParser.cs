@@ -191,6 +191,9 @@ namespace SgfEdwin10 {
                     cur_node = cur_node.Next;
                 }
                 else if (chr == '(') {
+                    // This can parse degenerate files like OGS produces where every move is a new branch.
+                    // ReadyForRendering() forms a proper Move object, but CutNextParseNode has to
+                    // explicitly check for a branches list of length one.  GenParsedNodes forms proper ParseNodes.
                     if (! branching_yet) {
                         cur_node.Next = ParseNodes(lexer);
                         cur_node.Next.Previous = cur_node;
@@ -291,7 +294,7 @@ namespace SgfEdwin10 {
         }
 
         //// peek_for scans for any char in chars following whitespace.  If
-        //// non-whitespace intervenes, this is an error.  Scan_for leaves _index
+        //// non-whitespace intervenes, this is an error.  peek_for leaves _index
         //// unmodified.
         ////
         internal Tuple<int, char> PeekFor (string chars) {
