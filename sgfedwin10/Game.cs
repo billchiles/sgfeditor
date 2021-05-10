@@ -230,6 +230,12 @@ namespace SgfEdwin10 {
                 await GameAux.Message("You cannot make a move that removes a group's last liberty");
                 return null;
             }
+            if (cur_move != null && cur_move.DeadStones.Count == 1 && move.DeadStones.Count == 1 &&
+                object.ReferenceEquals(move.DeadStones[0], cur_move) && cur_move.DeadStones[0].Row == move.Row &&
+                cur_move.DeadStones[0].Column == move.Column) {
+                await GameAux.Message("KO !!  Can't take back the ko.");
+                return null;
+            }
             if (maybe_branching) {
                 var tmp = this.MakeBranchingMove(cur_move, move);
                 var ret_move = tmp.Item1;
@@ -2660,6 +2666,19 @@ namespace SgfEdwin10 {
                 // row - 1 does not index out of bounds since model.row would have to be zero,
                 // and zero minus anything will not be greater than branch depth (which would be zero)
                 // if row - 1 were less than zero.
+                // CHECK DIAGONAL to avoid zigzags (O(n2) but for very small n) walks diagonal back to branch root
+                // to ensure no nodes in the way that would cause a lesser branch_depth node to be pushed to a
+                // higher row than its next node.
+                var j = tree_depth - 1;
+                var z = branch_depth;
+                for (int i = model.Row - 2; i >= 0 && i > branch_root_row && j >= 0 && z > 0; i--) {
+                    if (layoutData.TreeGrid[i, j] == null) {
+                        j--; z--;
+                        continue;
+                    }
+                    else
+                        return;
+                }
                 layoutData.MaxRows[tree_depth] = model.Row;
                 model.Row = model.Row - 1;
             }
