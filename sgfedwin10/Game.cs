@@ -324,7 +324,7 @@ namespace SgfEdwin10 {
                 this.Branches = stuff.Item2;
                 err = stuff.Item3;
                 if (move == null) // pre-existing move from file, but bad parse node when rendering move
-                    return new Tuple<Move, bool>(null, err);  
+                    return new Tuple<Move, bool>(null, err);
                 this.FirstMove = move;
             }
             else {
@@ -333,7 +333,7 @@ namespace SgfEdwin10 {
                 cur_move.Branches = stuff.Item2;
                 err = stuff.Item3;
                 if (move == null) // pre-existing move from file, but bad parse node when rendering move
-                    return new Tuple<Move, bool>(null, err);  
+                    return new Tuple<Move, bool>(null, err);
                 cur_move.Next = move;
                 move.Previous = cur_move;
             }
@@ -377,7 +377,6 @@ namespace SgfEdwin10 {
                 Tuple<Move, bool> stuff = this.MaybeUpdateBranches(branches, new_move);
                 return new Tuple<Move, List<Move>, bool>(stuff.Item1, branches, stuff.Item2);
             }
-                
         }
 
         //// _maybe_update_branches takes a branches list and a next move.  Branches must not be null.
@@ -395,7 +394,7 @@ namespace SgfEdwin10 {
                 var m = branches[already_move];
                 if (! m.Rendered)
                     return this.ReadyForRendering(m); // returns m if can proceed (or null) + err bool
-                return new Tuple<Move,bool>(m, false);
+                return new Tuple<Move, bool>(m, false);
             }
             else {
                 branches.Add(move);
@@ -573,7 +572,7 @@ namespace SgfEdwin10 {
             this.Board.GotoStart();
             this.mainWin.ResetToStart(current);
             if (this.HandicapMoves != null)
-                foreach (var m in this.HandicapMoves) 
+                foreach (var m in this.HandicapMoves)
                     // board.gotostart above clears this model, mainwin.resettostart adds UIElts, need to fix board model
                     this.Board.AddStone(m);
             this.nextColor = this.Handicap == 0 ? Colors.Black : Colors.White;
@@ -596,7 +595,7 @@ namespace SgfEdwin10 {
         public void GotoStartForGameSwap () {
             // Comments for cur move have already been saved and cleared.  Put initial board comments in
             // place in case this.Game is sitting at the intial board state.
-            this.mainWin.CurrentComment = this.Comments; 
+            this.mainWin.CurrentComment = this.Comments;
             this.Board.GotoStart();
             if (this.HandicapMoves != null)
                 foreach (var m in this.HandicapMoves)
@@ -742,7 +741,7 @@ namespace SgfEdwin10 {
             if (! move.IsPass) {
                 // Check if board has stone already since might be replaying branch
                 // that was pasted into tree (and moves could conflict).
-                if (!this.Board.HasStone(move.Row, move.Column)) {
+                if (! this.Board.HasStone(move.Row, move.Column)) {
                     this.Board.AddStone(move);
                     cleanup = true;
                 }
@@ -780,7 +779,7 @@ namespace SgfEdwin10 {
         //// _ready_for_rendering puts move in a state as if it had been displayed
         //// on the screen before.  Moves from parsed nodes need to be created when
         //// their previous move is actually displayed on the board so that there is
-        //// a next Move object in the game three for consistency with the rest of
+        //// a next Move object in the game tree for consistency with the rest of
         //// model.  However, until the moves are actually ready to be displayed
         //// they do not have captured lists hanging off them, their next branches
         //// and moves set up, etc.  This function makes the moves completely ready
@@ -919,7 +918,7 @@ namespace SgfEdwin10 {
                 stuff = GameAux.CompareComments(cur_comment, move.Comments);
                 same = stuff.Item1;
                 newstr = stuff.Item2;
-                if (!same) { //if (move.Comments != cur_comment) {
+                if (! same) { //if (move.Comments != cur_comment) {
                     move.Comments = newstr;
                     this.Dirty = true;
                 }
@@ -928,7 +927,7 @@ namespace SgfEdwin10 {
                 stuff = GameAux.CompareComments(cur_comment, this.Comments);
                 same = stuff.Item1;
                 newstr = stuff.Item2;
-                if (!same) { //this.Comments != cur_comment) {
+                if (! same) { //this.Comments != cur_comment) {
                     this.Comments = newstr;
                     this.Dirty = true;
                 }
@@ -981,7 +980,7 @@ namespace SgfEdwin10 {
                 this.mainWin.UpdateBranchCombo(prev_move.Branches, prev_move.Next);
                 this.mainWin.UpdateTitle();
             }
-            this.mainWin.UpdateTreeView(prev_move, true);
+            this.mainWin.UpdateTreeView(prev_move, true); // true = redraw completely, move arg is unused.
         }
 
         //// CutFirstMove takes a Move that is a firstmove of the game.  This function cleans up next pointers
@@ -1073,7 +1072,7 @@ namespace SgfEdwin10 {
                         if (branches.Count == 1)
                             pn.Branches = null;
                     }
-                } 
+                }
             }
         }
 
@@ -1100,49 +1099,141 @@ namespace SgfEdwin10 {
                 await GameAux.Message("Cannot paste cut move that is same color as current move.");
                 return;
             }
-            // Need to ensure first cut move doesn't conflict, else checking self capture throws.
+            // Need to ensure first cut move doesn't conflict, else checking self capture throws in
+            // PasteMoveInsert.
             if (! this.cutMove.IsPass && this.Board.HasStone(this.cutMove.Row, this.cutMove.Column)) {
                 await GameAux.Message("Cannot paste cut move that is at same location as another stone.");
                 return;
             }
-            // If CheckSelfCaptureNoKill returns false, the it updates cutMove to have dead
-            // stones hanging from it so that calling DoNextButton removes them.
-            if (! this.cutMove.IsPass && this.CheckSelfCaptureNoKill(this.cutMove)) {
+            if (await PasteMoveNextConflict(this.cutMove)) return;
+            await this.PasteMoveInsert(this.cutMove);
+        }
+
+        //// PasteMoveOtherGame pastes the cut move of the supplied game.
+        //// This is very similar to PasteMove, but due to not having procedural macros and needing
+        //// to cons a new move before the third integrity check, C# dupes several lines of code.
+        ////
+        public async Task PasteMoveOtherGame (Game other) {
+            // These debug.asserts could arguably be throw's if we think of this function
+            // as platform/library.
+            MyDbg.Assert(other.cutMove != null, "There is no cut sub tree to paste in other game.  Try only two open games.");
+            if (other.cutMove.Color != this.nextColor) {
+                await GameAux.Message("Cannot paste cut move that is same color as current move.");
+                return;
+            }
+            // Need to ensure first cut move doesn't conflict, else checking self capture throws in
+            // PasteMoveInsert.
+            if (! other.cutMove.IsPass && this.Board.HasStone(other.cutMove.Row, other.cutMove.Column)) {
+                await GameAux.Message("Cannot paste cut move that is at same location as another stone.");
+                return;
+            }
+            var new_move = await this.PrepareMoveOtherGamePaste(other);
+            if (new_move == null) return;
+            await this.PasteMoveInsert(new_move);
+        }
+
+        //// PrepareMoveOtherGamePaste takes another game that has a cut move and makes a move to represent that
+        //// move in the current game with no aliasing into the other game's state.  The cut moves location has
+        //// been vetted for not colliding with an existing move, but this function also checks that the there is
+        //// no next move that is at the same location to keep the game model invariant that no two branches have
+        //// the same move location.
+        ////
+        private async Task<Move> PrepareMoveOtherGamePaste (Game other) {
+            var new_move = new Move(other.cutMove.Row, other.cutMove.Column, this.nextColor);
+            // Random integrity check that the first move is not already on the board.  We don't check all moves
+            // in PasteMove, and we don't here either.  In PasteMove due to the constraints of how we make moves
+            // and glom onto pre-existing moves, you can never cut and paste a move that conflicts with a next move.
+            if (await PasteMoveNextConflict(new_move)) return null;
+            // Convert cut moves to parsenodes to extract the moves from the other game's state model
+            var pnodes = GameAux.GenParsedNodes(other.cutMove, false); // false = no flipped coordinates
+            new_move.ParsedNode = pnodes;
+            var stuff = this.ReadyForRendering(new_move);
+            var ret_move = stuff.Item1;
+            if (ret_move == null || stuff.Item2) { // Issue with parsed node, cannot go forward.
+                // Current move comes back if some branches had bad parsenodes, but good moves existed. 
+                var msg = GameAux.NextMoveGetMessage(ret_move) ?? "";
+                await GameAux.Message("You pasted a move that had conflicts in the current game or nodes \n" +
+                                      "with bad properties in the SGF file.\n" +
+                                      "You cannot play further down that branch... " + msg);
+                if (ret_move == null) return null;
+            }
+            return new_move;
+        }
+
+        //// PasteMoveNextConflict takes a move representing a cut move and checks that it does not conflict with
+        //// a next move.  Some moves in the pasted branch may be in conflict, but we catch those as we replay
+        //// moves.  This check prevents branches where two branches are the same move but different sub trees.
+        ////
+        private async Task<bool> PasteMoveNextConflict (Move new_move) {
+            List<Move> branches;
+            if (this.CurrentMove != null)
+                branches = this.CurrentMove.Branches;
+            else
+                branches = this.Branches;
+            var error = false;
+            if (branches != null) {
+                var already_move = GameAux.ListFind(new_move, branches,
+                                                    (x, y) => new_move.Row == ((Move)y).Row &&
+                                                              new_move.Column == ((Move)y).Column);
+                error = already_move != -1;
+            }
+            else if (this.CurrentMove != null) {
+                if (this.CurrentMove.Next != null &&
+                    this.CurrentMove.Next.Row == new_move.Row && this.CurrentMove.Next.Column == new_move.Column)
+                    error = true;
+            }
+            else if (this.FirstMove != null &&
+                     this.FirstMove.Row == new_move.Row && this.FirstMove.Column == new_move.Column)
+                error = true;
+            if (error) {
+                await GameAux.Message("You pasted a move that conflicts with a next move of the current move.");
+                return true;
+            }
+            return false;
+        }
+
+        //// PasteMoveInsert take a move represneting a cut move and does the work of inserting the move
+        //// into the game model.  This assumes new_move is not in conflict with a move on the board, which
+        //// is necessary; otherwise, CheckSelfCaptureNoKill throws.
+        private async Task PasteMoveInsert (Move new_move) {
+            // If CheckSelfCaptureNoKill returns false, then it updates cutMove to have dead
+            // stones hanging from it so that calling DoNextButton below removes them.
+            if (! new_move.IsPass && this.CheckSelfCaptureNoKill(new_move)) {
                 await GameAux.Message("You cannot make a move that removes a group's last liberty");
                 return;
             }
             var cur_move = this.CurrentMove;
             if (cur_move != null)
-                GameAux.PasteNextMove(cur_move, this.cutMove);
+                GameAux.PasteNextMove(cur_move, new_move);
             else {
                 if (this.FirstMove != null) {
                     // branching initial board state
                     if (this.Branches == null)
-                        this.Branches = new List<Move>() { this.FirstMove, this.cutMove };
+                        this.Branches = new List<Move>() { this.FirstMove, new_move };
                     else
-                        this.Branches.Add(this.cutMove);
-                    this.FirstMove = this.cutMove;
+                        this.Branches.Add(new_move);
+                    this.FirstMove = new_move;
                     this.FirstMove.Number = 1;
                 }
                 else {
                     MyDbg.Assert(this.State == GameState.NotStarted,
                                  "Internal error: no first move and game not started?!");
                     // not branching initial board state
-                    this.FirstMove = this.cutMove;
+                    this.FirstMove = new_move;
                     this.FirstMove.Number = 1;
                     this.State = GameState.Started;
                 }
-                if (this.ParsedGame != null && this.cutMove.ParsedNode != null)
-                    GameAux.PasteNextParsedNode(this.ParsedGame.Nodes, this.cutMove.ParsedNode);
+                if (this.ParsedGame != null && new_move.ParsedNode != null)
+                    GameAux.PasteNextParsedNode(this.ParsedGame.Nodes, new_move.ParsedNode);
             }
-            this.cutMove.Previous = cur_move;  // stores null appropriately when no current
+            new_move.Previous = cur_move;  // stores null appropriately when no current
             this.Dirty = true;
-            GameAux.RenumberMoves(this.cutMove);
-            this.cutMove = null;
+            GameAux.RenumberMoves(new_move);
+            // If pasting this move's cut move, then set to null so that UI disables pasting.
+            if (object.ReferenceEquals(this.cutMove, new_move)) this.cutMove = null;
             await this.mainWin.DoNextButton();
-            this.mainWin.UpdateTreeView(cur_move, true);
+            this.mainWin.UpdateTreeView(cur_move, true); // true = redraw completely, move arg is unused.
         }
-
 
         ////
         //// Adornments
@@ -1271,7 +1362,7 @@ namespace SgfEdwin10 {
                 await this.MoveBranch(branches, cur_index, -1);
                 this.Dirty = true;
                 this.mainWin.UpdateTitle();
-                this.mainWin.UpdateTreeView(this.CurrentMove, true);
+                this.mainWin.UpdateTreeView(this.CurrentMove, true); // true = redraw completely, move arg is unused.
             }
         }
 
@@ -1283,7 +1374,7 @@ namespace SgfEdwin10 {
                 await this.MoveBranch(branches, cur_index, 1);
                 this.Dirty = true;
                 this.mainWin.UpdateTitle();
-                this.mainWin.UpdateTreeView(this.CurrentMove, true);
+                this.mainWin.UpdateTreeView(this.CurrentMove, true); // true = redraw completely, move arg is unused.
             }
         }
 

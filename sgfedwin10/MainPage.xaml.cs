@@ -96,8 +96,8 @@ CUTTING MOVES/SUB-TREES AND PASTING
 Delete or c-x cuts the current move (and sub tree), making the previous move the
 current move.  C-v will paste a cut sub tree to be a next move after the current
 move.  If the the sub tree has a move that occupies a board location that already
-has a stone, you will not be able to advance past this position.  Currently don't
-support cut/paste across different games.
+has a stone, you will not be able to advance past this position.  You can paste a
+cut sub tree from a second open game with c-s-v.
 
 MOVING BRANCHES
 You can move branches up and down (affects branch combo and game tree display)
@@ -1392,7 +1392,7 @@ MISCELLANEOUS
             else if ((e.Key == VirtualKey.Delete || (e.Key == VirtualKey.X && this.IsKeyPressed(VirtualKey.Control))) &&
                      this.commentBox.FocusState != FocusState.Keyboard && // Covers tabbing to it
                      this.commentBox.FocusState != FocusState.Pointer &&  // Covers clicking on it
-                     win.Game.CanUnwindMove() &&
+                     win.Game.CanUnwindMove() && // test not at start empty board
                      await GameAux.Message("Cut current move from game tree?", "Confirm cutting move",
                                            new List<string>() { "Yes", "No" }, 1, 1) ==
                          GameAux.YesMessage) {
@@ -1404,11 +1404,22 @@ MISCELLANEOUS
             else if (e.Key == VirtualKey.V && this.IsKeyPressed(VirtualKey.Control) &&
                      this.commentBox.FocusState != FocusState.Keyboard && // Covers tabbing to txt box
                      this.commentBox.FocusState != FocusState.Pointer) {  // Covers clicking in txt box
-                if (win.Game.CanPaste())
+                if (this.IsKeyPressed(VirtualKey.Shift)) {
+                    if (win.Games.Count > 1) {
+                        // Don't need to use FirstOrDefault because more than one game, one must not be current.
+                        var other = win.Games.Where((g) => ! object.ReferenceEquals(g, win.Game) &&
+                                                           g.CanPaste()).First();
+                        await win.Game.PasteMoveOtherGame(other);
+                    }
+                    else
+                        await GameAux.Message("Other game has no cut move to paste at this time.");
+                }
+                else if (win.Game.CanPaste()) {
                     await win.Game.PasteMove();
+                    this.appBarPasteButton.IsEnabled = false;
+                }
                 else
                     await GameAux.Message("No cut move to paste at this time.");
-                this.appBarPasteButton.IsEnabled = true;
                 e.Handled = true;
             }
             // Pass move
@@ -1977,8 +1988,10 @@ MISCELLANEOUS
 
 
         //// UpdateTreeView moves the current move highlighting as the user moves around in the
-        //// tree.  Various command handlers call this after they update the model.  Eventually,
-        //// this will look at some indication to redraw whole tree (cut, paste, maybe add move).
+        //// tree.  Various command handlers call this after they update the model.  wipeit says
+        //// redraw whole tree (cut, paste, move branch up or down), and if true, then DrawGameTree
+        //// calls UpdateTreeView as final act.  Move is the new move being shown for which you
+        //// want the current move highlighting and next branch move highlighting.
         ////
         public void UpdateTreeView (Move move, bool wipeit = false) {
             MyDbg.Assert(this.TreeViewDisplayed());
@@ -1988,9 +2001,8 @@ MISCELLANEOUS
             }
             else {
                 UpdateTreeHighlightMove(move);
+                UpdateTreeViewBranch(move);
             }
-            UpdateTreeViewBranch(move);
-
         }
 
         //// UpdateTreeHighlightMove handles the primary case of UpdateTreeView, moving the

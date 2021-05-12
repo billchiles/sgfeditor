@@ -286,13 +286,13 @@ namespace SgfEdwin10 {
     //// Rendered==false.
     ////
     public class Move : IMoveNext {
-        public int Row { get; set; }  // These count from top to bottom.
-        public int Column { get; set; }  // These count from left to right
+        public int Row { get; set; }  // These count from top to bottom, 1 based.
+        public int Column { get; set; }  // These count from left to right, 1 based.
         public Color Color { get; set; }
         public Move Previous { get; set; }
         public Move Next { get; set; }
         public int Number { get; set; }
-        public bool IsPass { get; set; }
+        public bool IsPass { get; set; }  // True when row, col are both GoBoardAux.NoIndex
         // DeadStones is always a list.
         public List<Move> DeadStones { get; set; }
         public List<Adornments> Adornments { get; set; }
