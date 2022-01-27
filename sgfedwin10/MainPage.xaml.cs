@@ -703,8 +703,7 @@ MISCELLANEOUS
         public void prevButtonLeftDown (object self, RoutedEventArgs e) {
             var move = this.Game.UnwindMove();
             //remove_stone(main_win.FindName("stonesGrid"), move)
-            if (! move.IsPass)
-                MainWindowAux.RemoveStone(this.stonesGrid, move);
+            MainWindowAux.RemoveStone(this.stonesGrid, move); // Handles Pass moves
             if (move.Previous != null)
                 this.AddCurrentAdornments(move.Previous);
             else
@@ -3160,17 +3159,20 @@ MISCELLANEOUS
         //// remove_stone takes a stones grid and a move.  It removes the Ellipse for
         //// the move and notes in stones global that there's no stone there in the
         //// display.  This function also handles the current move adornment and other
-        //// adornments since this is used to rewind the current move.
+        //// adornments since this is used to rewind the current move.  If move is Pass,
+        //// skip stone cleanup, but still do adornments.
         ////
         internal static void RemoveStone (Grid g, Move move) {
-            var stone = stones[move.Row - 1, move.Column - 1];
-            MyDbg.Assert(stone != null, "Shouldn't be removing stone if there isn't one.");
-            g.Children.Remove(stone);
-            stones[move.Row - 1, move.Column - 1] = null;
-            // Must remove current adornment before other adornments (or just call
-            // Adornments.release_current_move after loop).
-            if (move.Adornments.Contains(Adornments.CurrentMoveAdornment))
-                RemoveCurrentStoneAdornment(g, move);
+            if (! move.IsPass) {
+                var stone = stones[move.Row - 1, move.Column - 1];
+                MyDbg.Assert(stone != null, "Shouldn't be removing stone if there isn't one.");
+                g.Children.Remove(stone);
+                stones[move.Row - 1, move.Column - 1] = null;
+                // Must remove current adornment before other adornments (or just call
+                // Adornments.release_current_move after loop).
+                if (move.Adornments.Contains(Adornments.CurrentMoveAdornment))
+                    RemoveCurrentStoneAdornment(g, move);
+            }
             RemoveAdornments(g, move.Adornments);
         }
 

@@ -2371,7 +2371,7 @@ namespace SgfEdwin10 {
         ////
         internal static Move ParsedNodeToMove (ParsedNode n) {
             // Removed optimization to avoid computing msg again, due to experiment to taint nodes in sgfparser
-            // so that clicking on treeview nodes can abort immeediately, and this can ignore the taint hack
+            // so that clicking on treeview nodes can abort immediately, and this can ignore the taint hack
             // of a non-null msg from the parser.
             //if (n.BadNodeMessage != null) return null;
             Color color;
@@ -2389,6 +2389,11 @@ namespace SgfEdwin10 {
                 row = tmp.Item1;
                 col = tmp.Item2;
             }
+            // Hack idea to avoid model for all kinds of random board edits, ensure the bad node only has AB, AW,
+            // and maybe player color, and introduce a pass move here.  Add to the pass move adornments for all
+            // the AB and AW, and set a comment identifying them as random stones.  Can handle DL (delete?) to
+            // mark stones as pretend they aren't there.  Maybe use triangles for b, squares for w, and letters
+            // for deletions.  Need to get parsenode links right, but maybe trivial.
             else {
                 n.BadNodeMessage = "Next nodes must be moves, don't handle arbitrary nodes yet -- " +
                                    n.NodeString(false);
