@@ -192,7 +192,7 @@ namespace SgfEdwin10 {
                     // BUG -- Do not add moves to this.HandicapMoves, and do not add AB in GotoStart or
                     // GotoSTartForGameSwap, which means these moves never get added back if hit Home key,
                     // click in tree view, and things like checking for dead stones won't know they are there.
-                    // However, in 10 years never encounted a game with AB at start and no HA.
+                    // However, in 10 years never encountered a game with AB at start and no HA.
                     foreach (var m in handicap_stones)
                         this.Board.AddStone(m);
                 }
@@ -215,6 +215,7 @@ namespace SgfEdwin10 {
         //// there is a move on another branch following the current move).  This returns
         //// null if there are any problems playing at this location or rendering a
         //// pre-existing found move here.  This assumes it was called because the user clicked.
+        //// Passing in GoBoardAux.NoIndex for row and col creates a pass move.
         ////
         public async Task<Move> MakeMove (int row, int col) {
             var cur_move = this.CurrentMove;
@@ -796,7 +797,7 @@ namespace SgfEdwin10 {
             if (pn.Branches != null) {
                 var moves = new List<Move>();
                 foreach (var n in pn.Branches) {
-                    var m = GameAux.ParsedNodeToMove(n);
+                    var m = GameAux.ParsedNodeToMove(n, this.Board.Size);
                     // Changed this to continue since some branches are viewable, data model and display seem to
                     // behave well.
                     if (m == null) { // return null; // Unhandled parse node features
@@ -819,7 +820,7 @@ namespace SgfEdwin10 {
                 mnext = moves[0];
             }
             else if (pn.Next != null) {
-                mnext = GameAux.ParsedNodeToMove(pn.Next);
+                mnext = GameAux.ParsedNodeToMove(pn.Next, this.Board.Size);
                 if (mnext == null) {
                     // Indicate to callers, there's a parsenode issue, no go forward case, so onegood = false.
                     err = true;
@@ -1145,7 +1146,7 @@ namespace SgfEdwin10 {
             // and glom onto pre-existing moves, you can never cut and paste a move that conflicts with a next move.
             if (await PasteMoveNextConflict(new_move)) return null;
             // Convert cut moves to parsenodes to extract the moves from the other game's state model
-            var pnodes = GameAux.GenParsedNodes(other.cutMove, false); // false = no flipped coordinates
+            var pnodes = GameAux.GenParsedNodes(other.cutMove, false, this.Board.Size); // false = no flipped coordinates
             new_move.ParsedNode = pnodes;
             var stuff = this.ReadyForRendering(new_move);
             var ret_move = stuff.Item1;
@@ -1552,14 +1553,14 @@ namespace SgfEdwin10 {
             pgame.Nodes = this.GenParsedGameRoot(flipped);
             if (this.Branches == null) {
                 if (this.FirstMove != null) {
-                    pgame.Nodes.Next = GameAux.GenParsedNodes(this.FirstMove, flipped);
+                    pgame.Nodes.Next = GameAux.GenParsedNodes(this.FirstMove, flipped, this.Board.Size);
                     pgame.Nodes.Next.Previous = pgame.Nodes;
                 }
             }
             else {
                 var branches = new List<ParsedNode>();
                 foreach (var m in this.Branches) {
-                    var tmp = GameAux.GenParsedNodes(m, flipped);
+                    var tmp = GameAux.GenParsedNodes(m, flipped, this.Board.Size);
                     branches.Add(tmp);
                     tmp.Previous = pgame.Nodes;
                 }
@@ -1632,25 +1633,24 @@ namespace SgfEdwin10 {
             if (n.Properties.ContainsKey("AB")) {
                 // Prefer to keep what we parsed.
                 if (flipped)
-                    n.Properties["AB"] = GameAux.FlipCoordinates(n.Properties["AB"]);
+                    n.Properties["AB"] = GameAux.FlipCoordinates(n.Properties["AB"], this.Board.Size);
                 // else leave them as-is
             }
-            else
-                if (this.HandicapMoves != null)
-                    n.Properties["AB"] =
-                        this.HandicapMoves.Select((m) => GoBoardAux.GetParsedCoordinates(m, flipped))
-                                           .ToList();
+            else if (this.HandicapMoves != null)
+                n.Properties["AB"] =
+                    this.HandicapMoves.Select((m) => GoBoardAux.GetParsedCoordinates(m, flipped, this.Board.Size))
+                                      .ToList();
             // AW
             if (n.Properties.ContainsKey("AW")) {
                 // Prefer to keep what we parsed.
                 if (flipped)
-                    n.Properties["AW"] = GameAux.FlipCoordinates(n.Properties["AW"]);
+                    n.Properties["AW"] = GameAux.FlipCoordinates(n.Properties["AW"], this.Board.Size);
                 // else leave them as-is
             }
             // Should have AW in properties or null AllWhiteMoves since don't support adding all white setup.
             else if (this.AllWhiteMoves != null) { 
                 n.Properties["AW"] =
-                    this.AllWhiteMoves.Select((m) => GoBoardAux.GetParsedCoordinates(m, flipped))
+                    this.AllWhiteMoves.Select((m) => GoBoardAux.GetParsedCoordinates(m, flipped, this.Board.Size))
                                         .ToList();
             }
         }
@@ -1891,23 +1891,25 @@ namespace SgfEdwin10 {
         //// not have modified the game at this point.  This recurses on children of move objects
         //// with branches.  If flipped is true, then moves and adornment indexes are
         //// diagonally mirrored; see write_flipped_game.
+        //// This takes the game board size for computing indexes because SGF files
+        //// count rows from the top, but SGF programs display boards counting bottom up.
         ////
-        public static ParsedNode GenParsedNodes (Move move, bool flipped) {
+        public static ParsedNode GenParsedNodes (Move move, bool flipped, int size) {
             if (! move.Rendered) {
                 // If move exists and not rendered, then must be ParsedNode.
                 if (flipped)
-                    return CloneAndFlipNodes(move.ParsedNode);
+                    return CloneAndFlipNodes(move.ParsedNode, size);
                 else
                     // Note: result re-uses original parsed nodes, and callers change this node
                     // to point to new parents.
                     return move.ParsedNode;
             }
-            var cur_node = GenParsedNode(move, flipped);
+            var cur_node = GenParsedNode(move, flipped, size);
             var first = cur_node;
             if (move.Branches == null) {
                 move = move.Next;
                 while (move != null) {
-                    cur_node.Next = GenParsedNode(move, flipped);
+                    cur_node.Next = GenParsedNode(move, flipped, size);
                     cur_node.Next.Previous = cur_node;
                     if (move.Branches == null) {
                         cur_node = cur_node.Next;
@@ -1923,7 +1925,7 @@ namespace SgfEdwin10 {
             if (move != null) {
                 cur_node.Branches = new List<ParsedNode>();
                 foreach (var m in move.Branches) {
-                    var tmp = GenParsedNodes(m, flipped);
+                    var tmp = GenParsedNodes(m, flipped, size);
                     cur_node.Branches.Add(tmp);
                     tmp.Previous = cur_node;
                 }
@@ -1936,15 +1938,17 @@ namespace SgfEdwin10 {
         //// grabs any existing parsed node properties from move to preserve any move
         //// properties that we ignore from a file we read.  If flipped is true, then moves 
         //// and adornment indexes are diagonally mirrored; see write_flipped_game.
+        //// This takes the game board size for computing indexes because SGF files
+        //// count rows from the top, but SGF programs display boards counting bottom up.
         ////
         //// NOTE, this function needs to overwrite any node properties that the UI
         //// supports editing.  For example, if the end user modified adornments.
         ////
-        private static ParsedNode GenParsedNode (Move move, bool flipped) {
+        private static ParsedNode GenParsedNode (Move move, bool flipped, int size) {
             if (! move.Rendered) {
                 // If move exists and not rendered, then must be ParsedNode.
                 if (flipped)
-                    return CloneAndFlipNodes(move.ParsedNode);
+                    return CloneAndFlipNodes(move.ParsedNode, size);
                 else
                     // Note: result re-uses original parsed nodes, and callers change this node
                     // to point to new parents.
@@ -1958,9 +1962,9 @@ namespace SgfEdwin10 {
             MyDbg.Assert(move.Color == Colors.Black || move.Color == Colors.White,
                          "Move color must be B or W?!");
             if (move.Color == Colors.Black)
-                props["B"] = new List<string>() { GoBoardAux.GetParsedCoordinates(move, flipped) };
+                props["B"] = new List<string>() { GoBoardAux.GetParsedCoordinates(move, flipped, size) };
             else if (move.Color == Colors.White)
-                props["W"] = new List<string>() { GoBoardAux.GetParsedCoordinates(move, flipped) };
+                props["W"] = new List<string>() { GoBoardAux.GetParsedCoordinates(move, flipped, size) };
             // Comments
             if (move.Comments != "")
                 props["C"] = new List<string>() { move.Comments };
@@ -1974,7 +1978,7 @@ namespace SgfEdwin10 {
             if (props.ContainsKey("LB"))
                 props.Remove("LB");
             foreach (var a in move.Adornments) {
-                var coords = GoBoardAux.GetParsedCoordinatesA(a, flipped);
+                var coords = GoBoardAux.GetParsedCoordinatesA(a, flipped, size);
                 if (a.Kind == AdornmentKind.Triangle) {
                     if (props.ContainsKey("TR"))
                         props["TR"].Add(coords);
@@ -2013,13 +2017,13 @@ namespace SgfEdwin10 {
         //// diagonal mirror image, see write_flipped_game.  This recurses on nodes with
         //// branches.
         ////
-        private static ParsedNode CloneAndFlipNodes (ParsedNode nodes) {
-            var first = CloneAndFlipNode(nodes);
+        private static ParsedNode CloneAndFlipNodes (ParsedNode nodes, int size) {
+            var first = CloneAndFlipNode(nodes, size);
             var cur_node = first;
             if (nodes.Branches == null) {
                 nodes = nodes.Next;
                 while (nodes != null) {
-                    cur_node.Next = CloneAndFlipNode(nodes);
+                    cur_node.Next = CloneAndFlipNode(nodes, size);
                     cur_node.Next.Previous = cur_node;
                     if (nodes.Branches == null) {
                         cur_node = cur_node.Next;
@@ -2035,7 +2039,7 @@ namespace SgfEdwin10 {
             if (nodes != null) {
                 cur_node.Branches = new List<ParsedNode>();
                 foreach (var m in nodes.Branches) {
-                    var tmp = CloneAndFlipNodes(m);
+                    var tmp = CloneAndFlipNodes(m, size);
                     cur_node.Branches.Add(tmp);
                     tmp.Previous = cur_node;
                 }
@@ -2048,7 +2052,7 @@ namespace SgfEdwin10 {
         //// ParsedNode that is a clone of node, but any indexes are diagonally mirror
         //// transposed, see write_flipped_game.
         ////
-        private static ParsedNode CloneAndFlipNode (ParsedNode node) {
+        private static ParsedNode CloneAndFlipNode (ParsedNode node, int size) {
             var new_node = new ParsedNode();
             new_node.Properties = CopyProperties(node.Properties);
             var props = new_node.Properties;
@@ -2056,34 +2060,34 @@ namespace SgfEdwin10 {
             MyDbg.Assert(props.ContainsKey("B") || props.ContainsKey("W"),
                          "Move color must be B or W?!");
             if (props.ContainsKey("B"))
-                props["B"] = FlipCoordinates(props["B"]);
+                props["B"] = FlipCoordinates(props["B"], size);
             else if (props.ContainsKey("W"))
-                props["W"] = FlipCoordinates(props["W"]);
+                props["W"] = FlipCoordinates(props["W"], size);
             // Adornments
             if (props.ContainsKey("TR"))
-                props["TR"] = FlipCoordinates(props["TR"]);
+                props["TR"] = FlipCoordinates(props["TR"], size);
             if (props.ContainsKey("SQ"))
-                props["SQ"] = FlipCoordinates(props["SQ"]);
+                props["SQ"] = FlipCoordinates(props["SQ"], size);
             if (props.ContainsKey("LB"))
-                props["LB"] = FlipCoordinates(props["LB"], true);
+                props["LB"] = FlipCoordinates(props["LB"], size, true);
             return new_node;
         }
 
         //// flip_coordinates takes a list of parsed coordinate strings and returns the
         //// same kind of list with the coorindates diagonally flipped (see
-        //// write_flipped_game).
+        //// write_flipped_game).  This takes the game board size for computing the diagonally flipped index.
         ////
-        public static List<string> FlipCoordinates (List<string> coords, bool labels = false) {
+        public static List<string> FlipCoordinates (List<string> coords, int size, bool labels = false) {
             if (labels)
                 // coords elts are "<col><row>:<letter>"
-                return GameAux.FlipCoordinates(coords.Select((c) => c.Substring(0, c.Length - 2)).ToList())
+                return GameAux.FlipCoordinates(coords.Select((c) => c.Substring(0, c.Length - 2)).ToList(), size)
                               .Zip(coords.Select((c) => c.Substring(2, 2)),
                                    (x, y) => x + y)
                               .ToList();
             //[x + y for x in flip_coordinates([l[:2] for l in coords])
             //       for y in [lb[2:] for lb in coords]]
             else
-                return coords.Select((c) => GoBoardAux.FlipParsedCoordinates(c)).ToList();
+                return coords.Select((c) => GoBoardAux.FlipParsedCoordinates(c, size)).ToList();
             //[goboard.flip_parsed_coordinates(yx) for yx in coords]
         }
 
@@ -2158,7 +2162,7 @@ namespace SgfEdwin10 {
             mainwin.DefaultGame = GameAux.CreateGame(mainwin, Game.MaxBoardSize, 0, Game.DefaultKomi);
             return mainwin.DefaultGame;
         }
-        
+
         public static Game CreateGame (MainWindow mainwin, int size, int handicap, string komi,
                                        List<Move> handicap_stones = null, List<Move> all_white = null) {
             var g = new Game(mainwin, size, handicap, komi, handicap_stones, all_white);
@@ -2332,7 +2336,7 @@ namespace SgfEdwin10 {
                 // Game starts with branches
                 var moves = new List<Move>();
                 foreach (var n in nodes.Branches) {
-                    m = ParsedNodeToMove(n);
+                    m = ParsedNodeToMove(n, g.Board.Size);
                     if (m == null) {
                         MyDbg.Assert(n.BadNodeMessage != null);
                         throw new Exception(n.BadNodeMessage);
@@ -2349,7 +2353,7 @@ namespace SgfEdwin10 {
                 if (nodes == null)
                     m = null;
                 else {
-                    m = ParsedNodeToMove(nodes);
+                    m = ParsedNodeToMove(nodes, g.Board.Size);
                     if (m == null) {
                         MyDbg.Assert(nodes.BadNodeMessage != null);
                         throw new Exception(nodes.BadNodeMessage);
@@ -2367,16 +2371,23 @@ namespace SgfEdwin10 {
         //// _parsed_node_to_move takes a ParsedNode and returns a Move model for it.
         //// For now, this is fairly constrained to expected next move colors and no
         //// random setup nodes that place several moves or just place adornments.
+        //// This takes the game board size for computing indexes because SGF files
+        //// count rows from the top, but SGF programs display boards counting bottom up.
         //// This returns null for failure cases, setting the parse nodes error msg.
         ////
-        internal static Move ParsedNodeToMove (ParsedNode n) {
+        //// This participated in an experiment with ParserAux.ParseNode to mark nodes that had no B or W
+        //// notation with a special BadNodeMessage.  That was why we first removed the check
+        //// for BadNodeMessage being non-null.  We used to immediately return null that there is no next
+        //// move we can represent for the user.  Later we added code to work around some bad node
+        //// situations, the pass node hack.
+        internal static Move ParsedNodeToMove (ParsedNode n, int size) {
             // Removed optimization to avoid computing msg again, due to experiment to taint nodes in sgfparser
-            // so that clicking on treeview nodes can abort immediately, and this can ignore the taint hack
-            // of a non-null msg from the parser.
+            // so that clicking on treeview nodes can abort immediately (due to have a BadNodeMessage).
             //if (n.BadNodeMessage != null) return null;
-            Color color;
-            int row;
-            int col;
+            Color color; // Color apparently has a default value and doesn't need an initial value.
+            int row = GoBoardAux.NoIndex; // Not all paths set the value, so need random initial value.
+            int col = GoBoardAux.NoIndex;
+            Move pass_move = null; // null signals we did not substitute a pass move.
             if (n.Properties.ContainsKey("B")) {
                 color = Colors.Black;
                 var tmp = GoBoardAux.ParsedToModelCoordinates(n.Properties["B"][0]);
@@ -2389,17 +2400,24 @@ namespace SgfEdwin10 {
                 row = tmp.Item1;
                 col = tmp.Item2;
             }
-            // Hack idea to avoid model for all kinds of random board edits, ensure the bad node only has AB, AW,
-            // and maybe player color, and introduce a pass move here.  Add to the pass move adornments for all
-            // the AB and AW, and set a comment identifying them as random stones.  Can handle DL (delete?) to
-            // mark stones as pretend they aren't there.  Maybe use triangles for b, squares for w, and letters
-            // for deletions.  Need to get parsenode links right, but maybe trivial.
+            else if (n.Properties.ContainsKey("AW") || n.Properties.ContainsKey("AB") ||
+                     n.Properties.ContainsKey("AE")) {
+                // Don't handle setup nodes in the middle of game nodes.  This is a light hack to use
+                // a Pass node with a big comment and adornments to show what the setup node described.
+                pass_move = GameAux.SetupNodeToPassNode(n, size);
+                // NOTE we set this to null to stop UI from popping dialogs that you cannot advance to
+                // this node, but we modify this when trying to ready moves for rendering, which we do
+                // when the user advances through the tree.  If the user clicks on a tree view node based
+                // on the parsed node only, 1) they will still get the error dialog 2) the node doesn't
+                // show the green highlight that there is a comment.
+                n.BadNodeMessage = null;
+            }
             else {
                 n.BadNodeMessage = "Next nodes must be moves, don't handle arbitrary nodes yet -- " +
                                    n.NodeString(false);
                 return null;
             }
-            var m = new Move(row, col, color);
+            var m = pass_move ?? new Move(row, col, color);
             m.ParsedNode = n;
             m.Rendered = false;
             if (n.Properties.ContainsKey("C"))
@@ -2407,6 +2425,122 @@ namespace SgfEdwin10 {
             return m;
         }
 
+        //// SetupNodeToPassNode takes a Parsenode and board size and returns a Pass move as a hack to
+        //// handle nodes in the middle of a game that are setup nodes (AB, AE, AW, etc.).  The view model
+        //// and tree view model and advancing and rewinding move operatios don't handle arbitrary
+        //// transitions and transformations to the board.  This hack just turns those nodes into a Pass
+        //// move with various adornments and a comment explaining what the user sees.  Before, the program
+        //// showed the node, popped a dialog that it was not viewable, and that was it.  This assumes
+        //// caller sets the new move's parse node and not rendered state.
+        ////
+        private static Move SetupNodeToPassNode (ParsedNode n, int size) {
+            // Capture any existing comment to tack on at the end.
+            string comment = n.Properties.ContainsKey("C") ? n.Properties["C"][0] : "";
+            if (comment != "")
+                comment = "The following is the original comment from the SGF file ...\n" + comment;
+            string new_comment = "Detected setup node in middle of move nodes.\n" +
+                                 "Don't handle arbitrary nodes in the middle of a game.\n" +
+                                 "Converting node to Pass move and adding adornments as follows:\n";
+            var props = new Dictionary<string, List<string>>(); // New props to replace parsenode's
+            // Don't call Game.MakeMove which acts like the user clicked to move.  Chose black for no reason.
+            // Caller sets pass_move.ParsedNode and pass_move.Rendered.
+            var pass_move = new Move(GoBoardAux.NoIndex, GoBoardAux.NoIndex, Colors.Black);
+            foreach (var kv in n.Properties) {
+                var k = kv.Key;
+                var v = kv.Value;
+                if (k == "AB") {
+                    new_comment = GameAux.SetupNodeDisplayCoords(props, new_comment, "All Black stones", "TR", v, size);
+                    if (n.Properties.ContainsKey("TR")) {
+                        new_comment = GameAux.SetupNodeDisplayCoords(props, new_comment, "triangles", "TR",
+                                                                     n.Properties["TR"], size, true); // true = concat
+                    }
+                }
+                else if (k == "AW") {
+                    new_comment = GameAux.SetupNodeDisplayCoords(props, new_comment, "All White stones", "SQ", v, size);
+                    if (n.Properties.ContainsKey("SQ")) {
+                        new_comment = GameAux.SetupNodeDisplayCoords(props, new_comment, "squares", "SQ",
+                                                                     n.Properties["SQ"], size, true); // true = concat
+                    }
+                }
+                else if (k == "AE") {
+                    new_comment = GameAux.SetupNodeDisplayCoords(props, new_comment, "All Empty points (X)", "LB", v,
+                                                                 size);
+                    if (n.Properties.ContainsKey("LB")) {
+                        new_comment = GameAux.SetupNodeDisplayCoords(props, new_comment, "letters", "LB", 
+                                                                     n.Properties["LB"], size, true); // true = concat
+                    }
+                }
+                else if ((k == "TR") || (k == "SQ") || (k == "LB") || (k == "C"))
+                    // Already swept these up.
+                    continue;
+                else {
+                    props[k] = v;
+                    new_comment = new_comment + "Setup node also had this unrecognized notation:\n" +
+                                  "     " + k + "[" + string.Join("][", v) + "]\n";
+                }
+            }
+            new_comment = new_comment + "\n\n" + comment;
+            props["C"] = new List<string>();
+            props["C"].Add(new_comment);
+            n.Properties = props; // Necessary for when move is rendered.
+            return pass_move;
+        }
+
+        //// SetupNodeDisplayCoords creates comment text describing the nodes conversion to a pass move
+        //// with adornments, where we placed adornments, and what they mean.  This takes the new properties
+        //// dictionary for the node, the new comment being built up, a string describing the setup notation
+        //// ("all black"), the adornment notation as a string for indexing, the notation's value for reporting
+        //// where we're adding markup notation, and the size of the board.  This takes the game board size for
+        //// computing indexes because SGF files count rows from the top, but SGF programs display boards counting
+        //// bottom up.
+
+        private static string SetupNodeDisplayCoords (Dictionary<string, List<string>> props, string new_comment,
+                                                      string setup, string adornment, List<string> v, int size,
+                                                      bool concat = false) {
+            string ch = "X";
+            if (concat)
+                // Picking up explict notation from SGF file that is the same as we chose to note unhandled notations.
+                // Just add it in here, below add to the comment what's going on.
+                props[adornment] = props[adornment].Concat(v).ToList();
+            else if (adornment == "LB") {
+                // Convert value from just indexes to <indexes>:<char> form.
+                // Use X for labels (not A, B, C, ...) because marking all clear (AE) notation.
+                props[adornment] = v.Select((c) => {
+                    c = c + ":" + ch;
+                    //ch = ((char)((int)ch[0] + 1)).ToString();  In case you want to use A, B, C, ...
+                    return c;
+                }).ToList();
+            }
+            else
+                // The value used for the unsupported SGF notation is good as-is to use with the new adornment.
+                props[adornment] = v;
+            //ch = "A";
+            new_comment = new_comment + "\nThis node adds " + setup + " at ";
+            var coords = v.Select((c) => {
+                var tmp = GoBoardAux.ParsedToModelCoordinates(c);
+                var row = tmp.Item1; 
+                // SGF indexes count down from top of board, but Go programs display boards counting from bottom.
+                var row_str = (size + 1 - row).ToString();
+                var col = tmp.Item2;
+                var display_col = GoBoardAux.ModelCoordinateToDisplayLetter(col);
+                if (adornment == "LB") {
+                    if (concat)
+                        return new string(display_col, 1) + row_str + c.Substring(2, 2); // readable coords + :<letter>
+                    else {
+                        c = new string(display_col, 1) + row_str + ":" + ch;// + ", ";
+                        //ch = ((char)((int)ch[0] + 1)).ToString();  In case you want to use A, B, C, ...
+                        return c;
+                    }
+                }
+                else
+                    return new string(display_col, 1) + row_str; //+ ", ";
+            }).ToList();  // Select method
+            new_comment = new_comment + string.Join(", ", coords);
+            new_comment = new_comment + ".\n";
+            var word = (adornment == "TR") ? "triangles" : ((adornment == "SQ") ? "squares" : "letters");
+            new_comment = new_comment + "SGFEditor shows these as " + word + " on the board.\n";
+            return new_comment;
+        }
 
         //// NextMoveDisplayError figures out the error msg for the user when trying to replay
         //// or render next moves.  It gives a general message if there is nothing specific.
@@ -2417,7 +2551,7 @@ namespace SgfEdwin10 {
                 await GameAux.Message(msg);
             else
                 await GameAux.Message("You are likely replaying moves from a pasted branch that have conflicts " +
-                                      "with stones on the board, or you encounted a node with bad properties " +
+                                      "with stones on the board, or you encountered a node with bad properties " +
                                       "from and SGF file.");
         }
 

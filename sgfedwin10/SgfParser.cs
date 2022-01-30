@@ -225,7 +225,7 @@ namespace SgfEdwin10 {
                 var id = lexer.GetPropertyId();
                 if (id == null) {
                     if (!(node.Properties.ContainsKey("B") || node.Properties.ContainsKey("W")))
-                        // This is overwritten in game.cs ParsenodeToMove.
+                        // This is overwritten in game.cs ParsedNodeToMove.
                         node.BadNodeMessage = "hmmmm, no B or W, flagging this as hack/test to stop treeview clicks";
                     // Expected to return from here due to no properties or syntax at end of properties.
                     return node;

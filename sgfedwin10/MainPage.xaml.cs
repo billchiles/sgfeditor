@@ -1549,7 +1549,7 @@ MISCELLANEOUS
                     break;
                 }
             }
-            if (!found) return; // User did not click on node.
+            if (! found) return; // User did not click on node.
             // Reset board before advancing to move.
             var move = n.Node as Move;
             if (this.Game.CurrentMove != null) { // Same as checking game state is not NotStarted.
@@ -1566,7 +1566,8 @@ MISCELLANEOUS
                         // Do not go back to start, then user sees where the issue is.
                         await GameAux.Message("You are replaying moves from a pasted branch that has conflicts " +
                                               "with stones on the board, or replaying moves with bad properties " +
-                                              "from an SGF file.");
+                                              "from an SGF file.  If you clicked in the tree view, try clicking an " +
+                                              "earlier node and using arrows to advance to the move.");
                     }
                 }
             }
@@ -1576,7 +1577,8 @@ MISCELLANEOUS
                     // Hit conflicting move location due to pasted node or rendering bad parsed node
                     await GameAux.Message("You are replaying moves from a pasted branch that has conflicts " +
                                           "with stones on the board, or replaying moves with bad properties " +
-                                          "from an SGF file.");
+                                          "from an SGF file.  If you clicked in the tree view, try clicking an " +
+                                          "earlier node and using arrows to advance to the move.");
             }
             this.UpdateTitle();
             this.UpdateTreeView(this.Game.CurrentMove);
@@ -1587,7 +1589,7 @@ MISCELLANEOUS
             var res = true;
             var path = this.Game.GetPathToMove(move);
             if (path != this.Game.TheEmptyMovePath) {
-                if (!this.Game.AdvanceToMovePath(path)) res = false; // conflicting stone loc or bad parse node
+                if (! this.Game.AdvanceToMovePath(path)) res = false; // conflicting stone loc or bad parse node
                 // Do not update UI using move, use CurrentMove because we didn't make it to move's position.
                 GotoGameTreeMoveUpdateUI(this.Game.CurrentMove);
             }
@@ -2597,9 +2599,10 @@ MISCELLANEOUS
         //// ReplaceIndexedMoveRef is a pet feature that replaces an indexed reference to a move (d4) with
         //// a word ("this").  This confirms index is to current move.
         ////
-        //// For some reason the convention on computer go boards is to count rows from the bottom to the top,
-        //// and SGF format for some reason records moves as col,row pairs.  Hence, we build moveRef backwards
-        //// with column first and flipping row from bottom of board.
+        //// For some reason the convention on computer go board displays is to count rows from the bottom
+        //// to the top, and SGF for some reason records moves as col,row pairs instead of row,col, and
+        //// it counts the rows from the top to the bottom.
+        //// Hence, we build moveRef backwards with column first and flipping row from bottom of board.
         ////
         private void ReplaceIndexedMoveRef () {
             var m = this.Game.CurrentMove;
@@ -2626,9 +2629,9 @@ MISCELLANEOUS
         //// ReplaceIndexedMarkedRef is a pet feature that replaces an indexed reference to a location (d4) with
         //// a word ("marked", "marked group", etc.).  This confirms index has an adornment marking it.
         ////
-        //// For some reason the convention on computer go boards is to count rows from the bottom to the top,
-        //// and SGF format for some reason records moves as col,row pairs.  Hence, we build moveRef backwards
-        //// with column first and flipping row from bottom of board.
+        //// For some reason the convention on computer go board displays is to count rows from the bottom
+        //// to the top, and SGF for some reason records moves as col,row pairs instead of row,col.
+        //// Hence, we build moveRef backwards with column first and flipping row from bottom of board.
         ////
         private void ReplaceIndexedMarkedRef () {
             var comment = this.CurrentComment;
@@ -2765,12 +2768,12 @@ MISCELLANEOUS
             var redrawTree = false;
             if (dlg.SettingsConfirmed) {
                 if (dlg.TitleSize != (int)this.Title.FontSize || dlg.ResetSettings) {
-                    if (!SettingsSetTitleFontSize(dlg.TitleSize)) {
+                    if (! SettingsSetTitleFontSize(dlg.TitleSize)) {
                         await GameAux.Message("Title font size seems a bit absurd, ignoring it ...");
                     }
                 }
                 if (dlg.IndexesSize != MainWindowAux.indexLabelFontSize || dlg.ResetSettings) {
-                    if (!SettingsSetIndexesFontSize(dlg.IndexesSize)) {
+                    if (! SettingsSetIndexesFontSize(dlg.IndexesSize)) {
                         await GameAux.Message("Indexes font size seems a bit absurd, ignoring it ...");
                     }
                 }
@@ -2789,7 +2792,7 @@ MISCELLANEOUS
                 }
                 // Must set font size after node size.
                 if (dlg.TreeNodeFontsize != MainWindowAux.treeViewFontSize || dlg.ResetSettings) {
-                    if (!SettingsSetTreeNodeFontsize(dlg.TreeNodeFontsize, dlg.TreeNodeSize))
+                    if (! SettingsSetTreeNodeFontsize(dlg.TreeNodeFontsize, dlg.TreeNodeSize))
                         await GameAux.Message("Tree node font size seems a bit absurd or too big for nodes, ignoring it ...");
                     redrawTree = true;
                 }

@@ -161,7 +161,7 @@ namespace SgfEdwin10 {
         ////
         internal static Color NoColor = default(Color);
 
-        //// NoIndex represents coordinates for pass moves, which seems better than boxing null or other C# issues.
+        //// NoIndex represents coordinates for pass moves.
         ////
         internal static int NoIndex = -100;
 
@@ -184,9 +184,11 @@ namespace SgfEdwin10 {
         ////
         //// UWP runtime completely screws over dynamic, and while this function didn't take 4-6s
         //// like some, it just seems prudent to complicate the code with two definitions to guard against
-        //// more lossage later (like they make dynamic actually not work).
+        //// more lossage later (like they make dynamic actually not work).  And sure enough, by 2018,
+        //// they screwed the pooch so bad on dynamic by throwing away the inline caching and interpreting
+        //// all dynamic code such that function calls took several seconds instead of micro-seconds.
         ////
-        public static string GetParsedCoordinates (Move move_or_adornment, bool flipped) {
+        public static string GetParsedCoordinates (Move move_or_adornment, bool flipped, int size) {
             int row = move_or_adornment.Row;
             int col = move_or_adornment.Column;
             if (move_or_adornment.IsPass)
@@ -194,29 +196,33 @@ namespace SgfEdwin10 {
             if (flipped)
                 // C# fails mutually distinct types on char and int, and string constructor lame.
                 // Must cons array so that string constructor doesn't interpret second char as count.
-                return new string(new char[] {letters[20 - col], letters[20 - row]});
+                return new string(new char[] {letters[size + 1 - col], letters[size + 1 - row]});
             else
                 return new string(new char[] {letters[col], letters[row]});
         }
-        public static string GetParsedCoordinatesA (Adornments move_or_adornment, bool flipped) {
+        public static string GetParsedCoordinatesA (Adornments move_or_adornment, bool flipped, int size) {
             int row = move_or_adornment.Row;
             int col = move_or_adornment.Column;
             if (flipped)
                 // C# fails mutually distinct types on char and int, and string constructor lame.
                 // Must cons array so that string constructor doesn't interpret second char as count.
-                return new string(new char[] { letters[20 - col], letters[20 - row] });
+                return new string(new char[] { letters[size + 1 - col], letters[size + 1 - row] });
             else
                 return new string(new char[] { letters[col], letters[row] });
         }
 
-        public static string FlipParsedCoordinates(string coords) {
+        //// FlipParsedCoordinates is only called from GameAux.FlipCoordinates, which is only used for
+        //// writing files.  Hence, we represent pass coordinates as the empty string.  Apparently, some
+        //// programs use "tt" due to older format conventions.
+        ////
+        public static string FlipParsedCoordinates(string coords, int size) {
             var mcoords = GoBoardAux.ParsedToModelCoordinates(coords);
             if (mcoords.Item1 == GoBoardAux.NoIndex)
                 return "";
             else
                 // C# fails mutually distinct types on char and int, and string constructor lame.
                 // Must cons array so that string constructor doesn't interpret second char as count.
-                return new string(new char[] { letters[20 - mcoords.Item2], letters[20 - mcoords.Item1] });
+                return new string(new char[] { letters[size + 1 - mcoords.Item2], letters[size + 1 - mcoords.Item1] });
         }
     
 
