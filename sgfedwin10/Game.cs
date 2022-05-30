@@ -808,6 +808,11 @@ namespace SgfEdwin10 {
                     onegood = true;
                     m.Number = this.MoveCount + 2;
                     m.Previous = move;
+                    // Check if parsed node was a setup node in the middle of game nodes. Need to set color
+                    // because ParsedNodeToMove has no access to Game.nextColor.
+                    if (m.Comments.Contains(GameAux.SetupNodeCommentStart)) {
+                        m.Color = GameAux.OppositeMoveColor(move.Color);
+                    }
                     moves.Add(m);
                 }
                 if (! onegood)
@@ -829,6 +834,12 @@ namespace SgfEdwin10 {
                 onegood = true;
                 mnext.Number = this.MoveCount + 2;
                 mnext.Previous = move;
+                // Check if parsed node was a setup node in the middle of game nodes. Need to set color
+                // because ParsedNodeToMove has no access to Game.nextColor.
+                if (mnext.Comments.Contains(GameAux.SetupNodeCommentStart)) {
+                    mnext.Color = GameAux.OppositeMoveColor(move.Color);
+                    //this.nextColor = GameAux.OppositeMoveColor(this.nextColor);
+                }
             }
             else onegood = true; // no branches, no next move to render, good to go
             move.Next = mnext;
@@ -1453,7 +1464,9 @@ namespace SgfEdwin10 {
         //// write_game takes a storage to write an .sgf file.  This maps the game
         //// to a ParsedGame and uses its ToString() method to produce the output.
         //// This also handles if the write fails, which can happen if the user deletes the
-        //// file after opening the file or since the last save.
+        //// file after opening the file or since the last save.  This saves sf, path, and base filename
+        //// in the this Game in case this is from a SaveAs call.  This checks for an autosave
+        //// file based on sf's name and deletes it if found since user explicitly saved.
         ////
         public async Task WriteGame (StorageFile sf = null, bool autosave = false) {
             string filename = null;
@@ -1500,6 +1513,7 @@ namespace SgfEdwin10 {
             if (! autosave) {
                 this.Dirty = false;
                 SaveGameFileInfo(sf);  // In case save-as
+                // Clean up auto save files to avoid getting false dialog about unsaved file.
                 StorageFile autoSf = await this.mainWin.GetAutoSaveFile(this.mainWin.GetAutoSaveName(sf.Name));
                 if (autoSf != null) {
                     await autoSf.DeleteAsync();
@@ -2425,6 +2439,11 @@ namespace SgfEdwin10 {
             return m;
         }
 
+        public static string SetupNodeCommentStart =
+            "Detected setup node in middle of move nodes.\n" +
+            "Don't handle arbitrary nodes in the middle of a game.\n" +
+            "Converting node to Pass move and adding adornments as follows:\n";
+
         //// SetupNodeToPassNode takes a Parsenode and board size and returns a Pass move as a hack to
         //// handle nodes in the middle of a game that are setup nodes (AB, AE, AW, etc.).  The view model
         //// and tree view model and advancing and rewinding move operatios don't handle arbitrary
@@ -2438,13 +2457,11 @@ namespace SgfEdwin10 {
             string comment = n.Properties.ContainsKey("C") ? n.Properties["C"][0] : "";
             if (comment != "")
                 comment = "The following is the original comment from the SGF file ...\n" + comment;
-            string new_comment = "Detected setup node in middle of move nodes.\n" +
-                                 "Don't handle arbitrary nodes in the middle of a game.\n" +
-                                 "Converting node to Pass move and adding adornments as follows:\n";
+            string new_comment = GameAux.SetupNodeCommentStart;
             var props = new Dictionary<string, List<string>>(); // New props to replace parsenode's
             // Don't call Game.MakeMove which acts like the user clicked to move.  Chose black for no reason.
             // Caller sets pass_move.ParsedNode and pass_move.Rendered.
-            var pass_move = new Move(GoBoardAux.NoIndex, GoBoardAux.NoIndex, Colors.Black);
+            var pass_move = new Move(GoBoardAux.NoIndex, GoBoardAux.NoIndex, GoBoardAux.NoColor);
             foreach (var kv in n.Properties) {
                 var k = kv.Key;
                 var v = kv.Value;
@@ -2869,6 +2886,8 @@ namespace SgfEdwin10 {
             layoutData.MaxRows[tree_depth] = row + 1;
             model.Column = tree_depth;
             // Set color
+            // If the node is a setup node in the middle of move nodes, this is GoBoardAux.NoColor, signalling
+            // an odd node.  As the user views and reifies nodes to Moves, the nodes get color when the tree redraws.
             model.Color = pn.IMNColor;
             return model;
         }

@@ -300,8 +300,9 @@ MISCELLANEOUS
             }
         }
 
-        //// DeleteUnnamedAutoSave is used for just cleaning up the unnamed auto save file
-        //// when OnNavigatedTo forgoes checking the file.
+        //// DeleteUnnamedAutoSave is used for cleaning up the unnamed auto save file
+        //// when OnNavigatedTo forgoes checking the file.  We also use it when saving edits to the
+        //// default board (no file name associated) to remove an unneeded autosave file.
         ////
         private async Task DeleteUnnamedAutoSave () {
             var autoSf = await this.GetAutoSaveFile(MainWindow.UnnamedAutoSaveName);
@@ -1039,7 +1040,7 @@ MISCELLANEOUS
         }
 
         //// GetAutoSaveFile checks if the file exists, returning the StorageFile if it does.
-        //// This is public so that game.writegame can use it to clean up autosave file.
+        //// This is public so that game.writegame and others can use it to clean up autosave file.
         ////
         public async Task<StorageFile> GetAutoSaveFile (string autosaveName) {
             var tempFolder = ApplicationData.Current.TemporaryFolder;
@@ -1108,7 +1109,7 @@ MISCELLANEOUS
             g.SaveCurrentComment();
             if (g.Dirty &&
                     await GameAux.Message("Game is unsaved, save it?", "Confirm saving file",
-                                    new List<string>() { "Yes", "No" }) == GameAux.YesMessage) {
+                                          new List<string>() { "Yes", "No" }) == GameAux.YesMessage) {
                 StorageFile sf;
                 if (g.Storage != null) {
                     sf = g.Storage;
@@ -1118,6 +1119,22 @@ MISCELLANEOUS
                 }
                 if (sf != null)
                     await g.WriteGame(sf);
+            }
+            else {
+                // Clean up autosave file to avoid dialog when re-opening about unsaved file edis.
+                // IF the user saved the g.Storage, then WriteGame cleaned up the auto save file.
+                // If user saved to a new file name, then there was no storage or specific autosave file.
+                // If the user didn't save, still clean up the autosave since they don't want it.
+                var sf = g.Storage;
+                if (sf != null) {
+                    StorageFile autoSf = await this.GetAutoSaveFile(this.GetAutoSaveName(sf.Name));
+                    if (autoSf != null) {
+                        await autoSf.DeleteAsync();
+                    }
+                }
+                else
+                    // User didn't save default scatch board, so clean up any unnamed file auto save.
+                    await this.DeleteUnnamedAutoSave();
             }
         }
 
@@ -1218,7 +1235,16 @@ MISCELLANEOUS
             var sf = await MainWindowAux.GetSaveFilename();
             if (sf != null) {
                 this.Game.SaveCurrentComment(); // Persist UI edits to model.
+                var oldsf = this.Game.Storage;
                 await this.Game.WriteGame(sf);
+                // WriteGame checks for an autosave file associated with sf, which doesn't have one since it is new.
+                // Clean up auto save files to avoid getting dialog about unsaved file that user explicitly abandonded.
+                if (oldsf != null) {
+                    StorageFile autoSf = await this.GetAutoSaveFile(this.GetAutoSaveName(oldsf.Name));
+                    if (autoSf != null) {
+                        await autoSf.DeleteAsync();
+                    }
+                }
             }
         }
 

@@ -97,7 +97,10 @@ namespace SgfEdwin10 {
                 else if (this.Properties.ContainsKey("W")) {
                     return Colors.White;
                 }
-                else {
+                else { 
+                    // Note, setup nodes in the middle of game moves initially show up transparent in the game tree.
+                    // That signals an odd node. Converting to a Move object as we reify moves gives it color
+                    // when the tree redraws.
                     return GoBoardAux.NoColor;
                 }
             }
