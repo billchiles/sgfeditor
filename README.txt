@@ -1,4 +1,17 @@
 
+The ARCHITECTURE secton below is still relevant, but all other notes are were porting and bread
+crumb notes for things to port or commits to merge to other branches that just do not matter anymore.
+
+The mainline development is now sgfedwin10 via sgfedwin10\sgfedwin10.sln.  The root sgfed.sln and
+sgfed2.sln are ancient and meaningless (see just below under OLD).
+
+Soon, I will embark on converting the UWP (now deprecated by Microsoft) to WinUI3, their new go
+forward path that may last longer than UWP's four years.  I may investigate creating a React
+Desktop version if an AI can do most of the converstion to Typescript for me.  That perhaps could
+be the most furture-proof version.
+
+
+OLD ...
 sgfedwin8\sgfedwin8.sln is the VS 2012 solution file for the Windows App Store version.
    This is the most up to date, actively developed version.
    sgfedwin8\zzzz-notes.txt has some specific notes to win8 port and issues.
