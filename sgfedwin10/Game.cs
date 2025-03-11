@@ -6,9 +6,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 //using System.Text;
-using Windows.UI; // Colors
+using Microsoft.UI; // Color, UIElement ?
+using Color = Windows.UI.Color; // Color
 //using System.Windows.Media; // Colors
-using Windows.UI.Xaml.Controls; // ViewBox
+using Microsoft.UI.Xaml.Controls; // ViewBox
 using System.Windows; // Label (need to coerce type to fetch label cookie)
 //using System.Windows.Controls; // MessageBox
 using Windows.UI.Popups; // MessageDialog
@@ -16,7 +17,9 @@ using System.IO; // StreamWriter
 using System.Threading.Tasks; // Task<string> for GameAux.Message
 using Windows.Storage; // StorageFile
 using System.Diagnostics; // Debug.Assert
-using Windows.UI.Xaml; // UIElement
+using Microsoft.UI.Xaml;
+using Windows.Storage.Pickers;
+
 
 
 
@@ -31,7 +34,7 @@ namespace SgfEdwin10 {
         private Color nextColor = Colors.Black;
 
         // _main_win is the WPF application object.
-        private MainWindow mainWin = null;
+        private MainWinPg mainWin = null;
         // board holds the GoBoard model.
         public GoBoard Board { get; set; }
         // komi is either 0.5, 6.5, or <int>.5
@@ -87,7 +90,7 @@ namespace SgfEdwin10 {
         public DateTime LastVisited;
 
 
-        public Game (MainWindow main_win, int size, int handicap, string komi, List<Move> handicap_stones = null,
+        public Game (MainWinPg main_win, int size, int handicap, string komi, List<Move> handicap_stones = null,
                      List<Move> all_white = null) {
             if (size != Game.MaxBoardSize)
                 // Change this eventually to check min size and max size.
@@ -1523,7 +1526,7 @@ namespace SgfEdwin10 {
         }
 
         //// SaveGameFileInfo updates the games storage object and filename properties.
-        //// This is public since it is called from MainWindow.xaml.cs and App.xaml.cs.
+        //// This is public since it is called from MainWinPg.xaml.cs and App.xaml.cs.
         ////
         public void SaveGameFileInfo (StorageFile sf) {
             this.Storage = sf;
@@ -1838,7 +1841,7 @@ namespace SgfEdwin10 {
 
 
 
-    //// GameAux provides stateless helpers for Game and MainWindow.  Members
+    //// GameAux provides stateless helpers for Game and MainWinPg.  Members
     //// marked internal should only be used by Game.
     ////
     public static class GameAux {
@@ -1846,7 +1849,7 @@ namespace SgfEdwin10 {
         //// User notification and prompting utility.
         ////
         //// Since Game/GameAux is the controller (and view-model) in MVVC, this is the
-        //// location for this since it is used by Game and MainWindow.
+        //// location for this since it is used by Game and MainWinPg.
         ////
 
         public static string OkMessage = "OK";
@@ -1880,6 +1883,7 @@ namespace SgfEdwin10 {
                 msgdlg.CancelCommandIndex = cancelIndex == 9999 ? (uint)(cmds.Count() - 1) : cancelIndex;
             }
             // Show the message dialog 
+            WinRT.Interop.InitializeWithWindow.Initialize(msgdlg, App.WindowHandle);
             await msgdlg.ShowAsync();
             return response;
         }
@@ -2172,12 +2176,12 @@ namespace SgfEdwin10 {
         //// CreateDefaultGame stashed the new game in DefaultGame so that we can throw it away if
         //// the user does not use it and opens a file or creates a new game.
         ////
-        public static Game CreateDefaultGame (MainWindow mainwin) {
+        public static Game CreateDefaultGame (MainWinPg mainwin) {
             mainwin.DefaultGame = GameAux.CreateGame(mainwin, Game.MaxBoardSize, 0, Game.DefaultKomi);
             return mainwin.DefaultGame;
         }
 
-        public static Game CreateGame (MainWindow mainwin, int size, int handicap, string komi,
+        public static Game CreateGame (MainWinPg mainwin, int size, int handicap, string komi,
                                        List<Move> handicap_stones = null, List<Move> all_white = null) {
             var g = new Game(mainwin, size, handicap, komi, handicap_stones, all_white);
             mainwin.SetupBoardDisplay(g);
@@ -2205,7 +2209,7 @@ namespace SgfEdwin10 {
         //// Game (which cleans up the current game) and sets up the first moves so that
         //// the user can start advancing through the moves.
         ////
-        public static async Task<Game> CreateParsedGame (ParsedGame pgame, MainWindow main_win) {
+        public static async Task<Game> CreateParsedGame (ParsedGame pgame, MainWinPg main_win) {
             // Check some root properties
             var props = pgame.Nodes.Properties;
             // Handicap stones
@@ -2398,7 +2402,11 @@ namespace SgfEdwin10 {
             // Removed optimization to avoid computing msg again, due to experiment to taint nodes in sgfparser
             // so that clicking on treeview nodes can abort immediately (due to have a BadNodeMessage).
             //if (n.BadNodeMessage != null) return null;
-            Color color; // Color apparently has a default value and doesn't need an initial value.
+            //
+            // In UWP Color had a default value and did't need an initial value, but in winui3 there
+            // is a bogus compiler error that color is unassigned before use.  That's a bogus message
+            // because you cannot execute beyond the if stmt without setting color.
+            Color color = Colors.Black; 
             int row = GoBoardAux.NoIndex; // Not all paths set the value, so need random initial value.
             int col = GoBoardAux.NoIndex;
             Move pass_move = null; // null signals we did not substitute a pass move.

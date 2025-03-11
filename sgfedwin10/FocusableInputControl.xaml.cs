@@ -2,22 +2,22 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Windows.Foundation;
-using Windows.Foundation.Collections;
-using Windows.UI.Xaml;
-using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Controls.Primitives;
-using Windows.UI.Xaml.Data;
-using Windows.UI.Xaml.Input;
-using Windows.UI.Xaml.Media;
-using Windows.UI.Xaml.Navigation;
+using Microsoft.Foundation;
+//using Microsoft.Foundation.Collections;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Data;
+using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Navigation;
 
 // The User Control item template is documented at http://go.microsoft.com/fwlink/?LinkId=234236
 
 namespace SgfEdwin10 {
 
     //// FocusableInputControl exists because in WinRT, grids cannot have keyboard or mouse handlers.
-    //// This is only referenced in XAML for MainWindow to capture input.
+    //// This is only referenced in XAML for MainWinPg to capture input.
     ////
     public sealed partial class FocusableInputControl : UserControl {
 

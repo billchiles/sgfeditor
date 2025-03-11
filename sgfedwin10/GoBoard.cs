@@ -3,12 +3,13 @@
 
 using System;
 using System.Collections.Generic;
-using Windows.UI.Xaml; // UIElement
+using Microsoft.UI.Xaml; // UIElement
 // System.Windows: UIElement, MessageBox
 using System.Windows;
 //using System.Linq;
 //using System.Text;
-using Windows.UI; // Color, Colors
+using Microsoft.UI; // Color, Colors
+using Color = Windows.UI.Color;
 //using System.Windows.Media; // Color, Colors
 using System.Diagnostics; // Debug.Assert
 

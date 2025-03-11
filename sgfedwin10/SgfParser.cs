@@ -15,7 +15,9 @@ using System.Text.RegularExpressions;
 
 using Windows.Storage; // StorageFile
 using System.Threading.Tasks; // Task
-using Windows.UI; // Color type for IMoveNext
+using Microsoft.UI; 
+using Color = Windows.UI.Color; // Color type for IMoveNext
+
 
 namespace SgfEdwin10 {
 

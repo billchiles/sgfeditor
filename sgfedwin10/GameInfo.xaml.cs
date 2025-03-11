@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using Windows.UI.Xaml;
-using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Input;
-using Windows.UI.Xaml.Navigation;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Navigation;
 
-using Windows.System; // VirtualKeyModifiers
+using Windows.System; // VirtualKey, VirtualKeyModifiers
 
 
 namespace SgfEdwin10 {
@@ -23,7 +23,7 @@ namespace SgfEdwin10 {
             this.CommentChanged = false;
             this.InitializeComponent();
             // Ensure dialog overlays entire main window so that it cannot handle input.
-            var bounds = Window.Current.Bounds;
+            var bounds = App.Window.Bounds;
             this.gameInfoGrid.Width = bounds.Width;
             this.gameInfoGrid.Height = bounds.Height;
             // Fill in dialog ...

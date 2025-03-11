@@ -1,9 +1,10 @@
 ﻿using System;
-using Windows.UI.Xaml;
-using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Input;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
+using Windows.System; // VirutalKey
 
-using Windows.System; // VirtualKeyModifiers
+using Microsoft.Windows.System; // VirtualKeyModifiers
 
 
 namespace SgfEdwin10 {
@@ -27,7 +28,7 @@ namespace SgfEdwin10 {
             this.handicapText.Text = "0";
             this.komiText.Text = "6.5";
             // Ensure dialog overlays entire main window so that it cannot handle input.
-            var bounds = Window.Current.Bounds;
+            var bounds = App.Window.Bounds;
             this.newDlgGrid.Width = bounds.Width;
             this.newDlgGrid.Height = bounds.Height;
         }
@@ -37,7 +38,7 @@ namespace SgfEdwin10 {
         ////// required crufty hacks to coordinate and synchronize with MianWindow.
         //////
         //protected override void OnNavigatedTo (NavigationEventArgs e) {
-        //    this.mainWin = (MainWindow)e.Parameter;
+        //    this.mainWin = (MainWinPg)e.Parameter;
         //    this.mainWin.NewDiaogDone = false;
         //}
 

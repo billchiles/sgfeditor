@@ -1,12 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
-using Windows.UI.Xaml;
-using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Input;
-using Windows.UI.Xaml.Media;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 
-using Windows.System; // VirtualKey
-using Windows.UI; // Color
+using Microsoft.Windows.System; // VirtualKey -- not sure if this was migration tool gen'ed
+using Microsoft.UI.Input; // VirtualKey - this was bogus renaming of windows -> microsoft
+using Windows.System; // actually where VirtualKey comes from
+
+using Microsoft.UI; 
+using Color = Windows.UI.Color; // Color
+
 using System.Reflection; // Used to get color names and map strings to colors in ColorsConverter
 using System.Diagnostics; // Debug.Assert
 
@@ -19,7 +24,7 @@ namespace SgfEdwin10 {
         public bool SettingsConfirmed { get; set; }
 
         // Needed to reset settings
-        private MainWindow mainWin;
+        private MainWinPg mainWin;
 
         // Used to mark if user hit reset.
         public bool ResetSettings { get; set; }
@@ -72,14 +77,14 @@ namespace SgfEdwin10 {
         /// Need to expose this because controls are privately declared.
         public Button CancelButton { get { return this.cancelButton; } }
 
-        public SomeSettings (MainWindow win) {
+        public SomeSettings (MainWinPg win) {
             this.InitializeComponent();
             this._treeCurrentHighlight = this._sentinelColor;
             this._treeCommentsHighlight = this._sentinelColor;
             this.mainWin = win;
             //var c = ColorsConverter.GetColorName(this.TreeCurrentHighlight); // Error test for sentinel
             // Ensure dialog overlays entire main window so that it cannot handle input.
-            var bounds = Window.Current.Bounds;
+            var bounds = App.Window.Bounds;
             this.newDlgGrid.Width = bounds.Width;
             this.newDlgGrid.Height = bounds.Height;
         }
@@ -163,7 +168,7 @@ namespace SgfEdwin10 {
                 this.SettingsDialogClose(this, EventArgs.Empty);
         }
 
-        //// resetButton_click calls back to MainWindow to push the defaults into the dialog.
+        //// resetButton_click calls back to MainWinPg to push the defaults into the dialog.
         //// The property setters notice it is not the first time they were called and restores sentinel
         //// values to the backing store, while putting default values into the UI elements.  This
         //// means the OK code will see the values changed and put the default values from the UI into code.

@@ -2,28 +2,34 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Windows.Foundation;
-using Windows.UI.Xaml;
-using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Controls.Primitives;
-using Windows.UI.Xaml.Data;
-using Windows.UI.Xaml.Input;
-using Windows.UI.Xaml.Media;
-using Windows.UI.Xaml.Navigation;
+using Microsoft.Foundation;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Data;
+using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Navigation;
 
 
-using Windows.UI.Xaml.Shapes; // Rectangle
-using Windows.UI; // Color
+using Microsoft.UI.Xaml.Shapes; // Rectangle
+using Microsoft.UI; // Color
+using Color = Windows.UI.Color;
 using Windows.UI.Popups; // MessageDialog
-using Windows.UI.Core; // CoreWindow, PointerEventArgs
-using Windows.System; // VirtualKeyModifiers
+//using Windows.UI.Core; // CoreWindow, PointerEventArgs -- was ambiguous for win sz chg args
+using CoreVirtualKeyStates = Windows.UI.Core.CoreVirtualKeyStates;
 using Windows.Storage.Pickers;  // FileOpenPicker
 using Windows.Storage; // FileIO
 using System.Threading.Tasks; // Task<T>
 using System.Diagnostics; // Debug.Assert
-using Windows.UI.Text; // FontWeight
+using Point = Windows.Foundation.Point;
+using Microsoft.UI.Text; // FontWeight
 using Windows.UI.ViewManagement; // ApplicationView (for snap view)
 using Windows.ApplicationModel.DataTransfer; // DataPackage and Clipboard
+using Microsoft.UI.Windowing;
+using Microsoft.Windows.System; // VirtualKeyModifiers
+using Windows.System; // get VirtualKey here now
+using Microsoft.UI.Input; // used to get VirtualKey from windows.ui.input
 
 
 // The Blank Page item template is documented at http://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
@@ -38,7 +44,7 @@ namespace SgfEdwin10 {
     /// <summary>
     /// An empty page that can be used on its own or navigated to within a Frame.
     /// </summary>
-    public sealed partial class MainWindow : Page {
+    public sealed partial class MainWinPg : Page {
 
     private const string HelpString = @"
 SGFEditor can read and write .sgf files, edit game trees, etc.
@@ -129,7 +135,7 @@ MISCELLANEOUS
 
         public Game Game { get; set; }
         // Public because helpers in view controller GameAux add games here.  Could put
-        // helpers in MainwindowAux, but it is meant for use in this file only.  No great design choice.
+        // helpers in MainWinPgAux, but it is meant for use in this file only.  No great design choice.
         public List<Game> Games = new List<Game>();
         // Helps cleanup when there are lexing, parsing, or game construction errors when opening files.
         public Game LastCreatedGame = null;
@@ -141,15 +147,15 @@ MISCELLANEOUS
         /// These get set in the constructor to get the program's defaults to support RestoreSettingsDefaults().
         /// 
         private int _titleSizeDefault; // (int)this.Title.FontSize;
-        private int _indexesSizeDefault; // MainWindowAux.indexLabelFontSize;
+        private int _indexesSizeDefault; // MainWinPgAux.indexLabelFontSize;
         private int _commentFontsizeDefault; // (int)this.commentBox.FontSize;
-        private int _treeNodeSizeDefault; // MainWindowAux.treeViewGridCellSize;
-        private int _treeNodeFontsizeDefault; // MainWindowAux.treeViewFontSize;
+        private int _treeNodeSizeDefault; // MainWinPgAux.treeViewGridCellSize;
+        private int _treeNodeFontsizeDefault; // MainWinPgAux.treeViewFontSize;
         private Color _treeCurrentHighlightDefault; // = this.currentNodeHighlightColor;
         private Color _treeCommentsHighlightDefault; // = this.commentNodeHighlightColor;
 
 
-        public MainWindow () {
+        public MainWinPg () {
             this.InitializeComponent();
             // Calling FocusOnStones in the CreateDefaultGame call here seems too early in UI setup,
             // do put this post loaded event handler to pull focus out of comment box.
@@ -157,10 +163,10 @@ MISCELLANEOUS
             this.prevSetupSize = 0;
 
             this._titleSizeDefault = (int)this.Title.FontSize; // 18
-            this._indexesSizeDefault = MainWindowAux.indexLabelFontSize; // 18
+            this._indexesSizeDefault = MainWinPgAux.indexLabelFontSize; // 18
             this._commentFontsizeDefault = (int)this.commentBox.FontSize; // 20
-            this._treeNodeSizeDefault = MainWindowAux.treeViewGridCellSize; // 50
-            this._treeNodeFontsizeDefault = MainWindowAux.treeViewFontSize; // 18
+            this._treeNodeSizeDefault = MainWinPgAux.treeViewGridCellSize; // 50
+            this._treeNodeFontsizeDefault = MainWinPgAux.treeViewFontSize; // 18
             this._treeCurrentHighlightDefault = this.currentNodeHighlightColor; // Magenta
             this._treeCommentsHighlightDefault = this.commentNodeHighlightColor; // LightGreen
 
@@ -184,7 +190,7 @@ MISCELLANEOUS
         //// 
         protected override void OnNavigatedTo (NavigationEventArgs e) {
             // Examples use e.Parameter here, but this e.Parameter has a string or other weird types.
-            // MainWindow mainWin = e.Parameter as MainWindow;
+            // MainWinPg mainWin = e.Parameter as MainWinPg;
             // WE NO LONGER DO THIS for snapped view or to square the board.  Wrong place to square board.
             //Window.Current.SizeChanged += this.MainView_SizeChanged;
             base.OnNavigatedTo(e);
@@ -215,10 +221,10 @@ MISCELLANEOUS
         //// below.
         //// 
         private async Task onNavigatedToCheckAutoSave () {
-            if (MainWindow.FileActivatedNoUnnamedAutoSave) {
+            if (MainWinPg.FileActivatedNoUnnamedAutoSave) {
                 // Reset var for cleanliness.  Shouldn't matter if reset it since it is only set when launching
-                // cold from file, and when launching warm from file, then we do frame.nav to MainWindow.
-                MainWindow.FileActivatedNoUnnamedAutoSave = false;
+                // cold from file, and when launching warm from file, then we do frame.nav to MainWinPg.
+                MainWinPg.FileActivatedNoUnnamedAutoSave = false;
                 await this.DeleteUnnamedAutoSave();
             }
             else if (! this.inOpenFileDialog) {
@@ -230,15 +236,19 @@ MISCELLANEOUS
                 if (this.Game.Dirty)
                     return;
                 // Need to cover UI to block user from mutating state while checking autosave.
-                Popup popup = null;
+                // WINUI3 Popup must be parented, couldn't figure out how to parent it, so trying
+                // this.isenabled property.
+                //Popup popup = null;
                 try {
-                    popup = new Popup();
-                    popup.Child = this.GetUIDike();
-                    popup.IsOpen = true;
+                    this.IsEnabled = false;
+                    //popup = new Popup();
+                    //popup.Child = this.GetUIDike();
+                    //popup.IsOpen = true;
                     await CheckUnnamedAutoSave();
                 }
                 finally {
-                    popup.IsOpen = false;
+                    this.IsEnabled = true;
+                    //popup.IsOpen = false;
                 }
             }
             else
@@ -276,7 +286,7 @@ MISCELLANEOUS
         //// prompt to open it, but assume user doesn't care otherwise.
         ////
         private async Task CheckUnnamedAutoSave () {
-            var autoSf = await this.GetAutoSaveFile(MainWindow.UnnamedAutoSaveName);
+            var autoSf = await this.GetAutoSaveFile(MainWinPg.UnnamedAutoSaveName);
             if (autoSf != null) {
                 if ((DateTimeOffset.Now - autoSf.DateCreated).Hours < 12 &&
                         await GameAux.Message("Found unnamed auto saved file.", "Confirm opening auto saved file",
@@ -305,7 +315,7 @@ MISCELLANEOUS
         //// default board (no file name associated) to remove an unneeded autosave file.
         ////
         private async Task DeleteUnnamedAutoSave () {
-            var autoSf = await this.GetAutoSaveFile(MainWindow.UnnamedAutoSaveName);
+            var autoSf = await this.GetAutoSaveFile(MainWinPg.UnnamedAutoSaveName);
             if (autoSf != null)
                 await autoSf.DeleteAsync();
         }
@@ -343,7 +353,7 @@ MISCELLANEOUS
 
         //// SetupSnappedViewDisplay creates a small static board view so that the user can see
         //// the current state of the game.  Need to refactor some code and state maintenance in
-        //// MainWindowAux that assumes there's only one live view of the game: stones matrix for
+        //// MainWinPgAux that assumes there's only one live view of the game: stones matrix for
         //// mapping where stone UIElements are in the view and current move adorment UIelement.
         //// 
         //private bool DisplayedSnappedViewBefore = false;
@@ -362,9 +372,9 @@ MISCELLANEOUS
             //for (var row = 0; row < size; row++)
             //    for (var col = 0; col < size; col++)
             //    {
-            //        var stone = MainWindowAux.stones[row, col];
+            //        var stone = MainWinPgAux.stones[row, col];
             //        if (stone != null)
-            //            MainWindowAux.AddStoneNoMapping(this.collapsedStonesGrid, row + 1, col + 1,
+            //            MainWinPgAux.AddStoneNoMapping(this.collapsedStonesGrid, row + 1, col + 1,
             //                                            this.Game.Board.ColorAt(row + 1, col + 1));
             //    }
         }
@@ -407,7 +417,7 @@ MISCELLANEOUS
 
                 this.SetupLinesGrid(new_game.Board.Size);
                 this.SetupStonesGrid(new_game.Board.Size);
-                MainWindowAux.SetupIndexLabels(this.stonesGrid, new_game.Board.Size);
+                MainWinPgAux.SetupIndexLabels(this.stonesGrid, new_game.Board.Size);
                 this.prevSetupSize = new_game.Board.Size;
                 this.AddInitialStones(new_game);
             }
@@ -417,7 +427,7 @@ MISCELLANEOUS
                 var g = this.stonesGrid;
                 // Must remove current adornment before other adornments.
                 if (cur_move != null)
-                    MainWindowAux.RemoveCurrentStoneAdornment(g, cur_move);
+                    MainWinPgAux.RemoveCurrentStoneAdornment(g, cur_move);
                 // Remove stones and adornments, so don't just loop over stones.
                 foreach (var elt in g.Children.OfType<UIElement>().Where((o) => !(o is TextBlock)).ToList()) {
                     // Only labels in stones grid should be row/col labels because adornments are inside
@@ -434,7 +444,7 @@ MISCELLANEOUS
                 this.DisableBackwardButtons();
                 // If opening game file, next/end set to true by game code.
                 this.DisableForwardButtons();
-                MainWindowAux.stones = new Ellipse[Game.MaxBoardSize, Game.MaxBoardSize];
+                MainWinPgAux.stones = new Ellipse[Game.MaxBoardSize, Game.MaxBoardSize];
                 // After add initial stones, do not update board model because this is called after new Game(),
                 // which adds stones to the board when figuring out the handicap.
                 this.AddInitialStones(new_game);
@@ -446,7 +456,7 @@ MISCELLANEOUS
         }
 
         //// SetupLinesGrid takes an int for the board size (as int) and returns a WPF Grid object for
-        //// adding to the MainWindow's Grid.  The returned Grid contains lines for the Go board.
+        //// adding to the MainWinPg's Grid.  The returned Grid contains lines for the Go board.
         ////
         private Grid SetupLinesGrid (int size, Grid g = null) {
             MyDbg.Assert(size >= Game.MinBoardSize && size <= Game.MaxBoardSize,
@@ -463,19 +473,19 @@ MISCELLANEOUS
                 this.boardGrid = g;
             }
             //Grid g = ((Grid)this.inputFocus.Content).Children[0] as Grid;
-            MainWindowAux.DefineLinesColumns(g, size);
-            MainWindowAux.DefineLinesRows(g, size);
-            MainWindowAux.PlaceLines(g, size);
+            MainWinPgAux.DefineLinesColumns(g, size);
+            MainWinPgAux.DefineLinesRows(g, size);
+            MainWinPgAux.PlaceLines(g, size);
             if (size == Game.MaxBoardSize) {
-                MainWindowAux.AddHandicapPoint(g, 4, 4);
-                MainWindowAux.AddHandicapPoint(g, 4, 10);
-                MainWindowAux.AddHandicapPoint(g, 4, 16);
-                MainWindowAux.AddHandicapPoint(g, 10, 4);
-                MainWindowAux.AddHandicapPoint(g, 10, 10);
-                MainWindowAux.AddHandicapPoint(g, 10, 16);
-                MainWindowAux.AddHandicapPoint(g, 16, 4);
-                MainWindowAux.AddHandicapPoint(g, 16, 10);
-                MainWindowAux.AddHandicapPoint(g, 16, 16);
+                MainWinPgAux.AddHandicapPoint(g, 4, 4);
+                MainWinPgAux.AddHandicapPoint(g, 4, 10);
+                MainWinPgAux.AddHandicapPoint(g, 4, 16);
+                MainWinPgAux.AddHandicapPoint(g, 10, 4);
+                MainWinPgAux.AddHandicapPoint(g, 10, 10);
+                MainWinPgAux.AddHandicapPoint(g, 10, 16);
+                MainWinPgAux.AddHandicapPoint(g, 16, 4);
+                MainWinPgAux.AddHandicapPoint(g, 16, 10);
+                MainWinPgAux.AddHandicapPoint(g, 16, 16);
             }
             return g;
         } // SetupLinesGrid
@@ -511,7 +521,7 @@ MISCELLANEOUS
         // Attempted hack around winRT's internals stealing focus to hidden root ScrollViewer.
         //
         //protected override void OnNavigatedTo (NavigationEventArgs e) {
-        //    MainWindow mainWin = e.Parameter as MainWindow;
+        //    MainWinPg mainWin = e.Parameter as MainWinPg;
         //    // These don't work because mainwin's frame is always null (here and in constructor)
         //    //mainWin.Frame.KeyDown += this.mainWin_keydown;
         //    //mainWin.Frame.AddHandler(UIElement.KeyDownEvent, (KeyEventHandler)this.mainWin_keydown, true);
@@ -535,7 +545,7 @@ MISCELLANEOUS
         //Lost focus. source: Windows.UI.Xaml.Controls.TextBox, new focus: SgfEdWin8.FocusableInputControl
         //SgfEdWin8.FocusableInputControl
         // => Windows.UI.Xaml.Controls.Grid
-        // => SgfEdWin8.MainWindow
+        // => SgfEdWin8.MainWinPg
         // => Windows.UI.Xaml.Controls.ContentPresenter
         // => Windows.UI.Xaml.Controls.Border
         // => Windows.UI.Xaml.Controls.Frame
@@ -553,25 +563,25 @@ MISCELLANEOUS
         //Windows.UI.Xaml.Controls.ScrollViewer
 
         //// OnLostFocus works around winRT bug that steals focus to a hidden root ScrollViewer,
-        //// disabling MainWindow's mainwin_keydown handler.  Can't just call FocusOnStones because
+        //// disabling MainWinPg's mainwin_keydown handler.  Can't just call FocusOnStones because
         //// if commentBox gets focus, want it to be there, and it turns out all the command buttons
         //// quit working too since this somehow runs first, puts focus on stones, then button never
         //// gets click event.
         ////
-        private ScrollViewer hiddenRootScroller = null;
+        //private ScrollViewer hiddenRootScroller = null;
         protected override void OnLostFocus (RoutedEventArgs e) {
-            if (hiddenRootScroller == null) {
-                var d = FocusManager.GetFocusedElement() as DependencyObject;
-                // When new game dialog gets shown, d is null;
-                if (d == null) return;
-                while (d.GetType() != typeof(ScrollViewer)) {
-                    d = VisualTreeHelper.GetParent(d);
-                    if (d == null) return;
-                }
-                hiddenRootScroller = d as ScrollViewer;
-            }
-            if (FocusManager.GetFocusedElement() == hiddenRootScroller)
-                this.FocusOnStones();
+            //if (hiddenRootScroller == null) {
+            //    var d = FocusManager.GetFocusedElement() as DependencyObject;
+            //    // When new game dialog gets shown, d is null;
+            //    if (d == null) return;
+            //    while (d.GetType() != typeof(ScrollViewer)) {
+            //        d = VisualTreeHelper.GetParent(d);
+            //        if (d == null) return;
+            //    }
+            //    hiddenRootScroller = d as ScrollViewer;
+            //}
+            //if (FocusManager.GetFocusedElement() == hiddenRootScroller)
+            //    this.FocusOnStones();
 
             // Diagnostic output that helped show FocusOnStones wasn't working because something
             // deep in winRT was stealing focus to a hidden root ScrollViewer, which mean mainwin_keydown
@@ -617,14 +627,15 @@ MISCELLANEOUS
         private void ShowHelp () {
             var helpDialog = new HelpDialog();
             var helpText = helpDialog.FindName("helpText") as TextBox;
-            helpText.Text = "Note: text has scroll bar to view all help.\n\n" + MainWindow.HelpString;
+            helpText.Text = "Note: text has scroll bar to view all help.\n\n" + MainWinPg.HelpString;
             var popup = new Popup();
             helpDialog.HelpDialogClose += (s, e) => {
                 popup.IsOpen = false;
             };
             popup.Child = helpDialog;
+            popup.XamlRoot = this.XamlRoot;
             popup.IsOpen = true;
-            // Put focus into dialog, good for user, but also stops mainwindow from handling kbd events
+            // Put focus into dialog, good for user, but also stops MainWinPg from handling kbd events
             helpDialog.OK_Button.IsEnabled = true;
             helpDialog.OK_Button.IsTabStop = true;
             helpDialog.OK_Button.IsHitTestVisible = true;
@@ -643,18 +654,18 @@ MISCELLANEOUS
         private async void StonesPointerPressed (object sender, PointerRoutedEventArgs e) {
             var g = (Grid)sender;
             if (e.GetCurrentPoint(g).Properties.IsLeftButtonPressed) {
-                var cell = MainWindowAux.GridPixelsToCell(g, e.GetCurrentPoint(g).Position.X,
+                var cell = MainWinPgAux.GridPixelsToCell(g, e.GetCurrentPoint(g).Position.X,
                                                           e.GetCurrentPoint(g).Position.Y);
                 //MessageDialog.Show(cell.X.ToString() + ", " + cell.Y.ToString());
                 // cell x,y is col, row from top left, and board is row, col.
                 if (this.IsKeyPressed(VirtualKey.Shift) || this.whatBoardClickCreates == AdornmentKind.Square)
-                    await MainWindowAux.AddOrRemoveAdornment(this.stonesGrid, (int)cell.Y, (int)cell.X,
+                    await MainWinPgAux.AddOrRemoveAdornment(this.stonesGrid, (int)cell.Y, (int)cell.X,
                                                              AdornmentKind.Square, this.Game);
                 else if (this.IsKeyPressed(VirtualKey.Control) || this.whatBoardClickCreates == AdornmentKind.Triangle)
-                    await MainWindowAux.AddOrRemoveAdornment(this.stonesGrid, (int)cell.Y, (int)cell.X,
+                    await MainWinPgAux.AddOrRemoveAdornment(this.stonesGrid, (int)cell.Y, (int)cell.X,
                                                              AdornmentKind.Triangle, this.Game);
                 else if (this.IsKeyPressed(VirtualKey.Menu) || this.whatBoardClickCreates == AdornmentKind.Letter)
-                    await MainWindowAux.AddOrRemoveAdornment(this.stonesGrid, (int)cell.Y, (int)cell.X,
+                    await MainWinPgAux.AddOrRemoveAdornment(this.stonesGrid, (int)cell.Y, (int)cell.X,
                                                              AdornmentKind.Letter, this.Game);
                 else {
                     MyDbg.Assert(this.whatBoardClickCreates == AdornmentKind.CurrentMove);
@@ -704,11 +715,11 @@ MISCELLANEOUS
         public void prevButtonLeftDown (object self, RoutedEventArgs e) {
             var move = this.Game.UnwindMove();
             //remove_stone(main_win.FindName("stonesGrid"), move)
-            MainWindowAux.RemoveStone(this.stonesGrid, move); // Handles Pass moves
+            MainWinPgAux.RemoveStone(this.stonesGrid, move); // Handles Pass moves
             if (move.Previous != null)
                 this.AddCurrentAdornments(move.Previous);
             else
-                MainWindowAux.RestoreAdornments(this.stonesGrid, this.Game.SetupAdornments);
+                MainWinPgAux.RestoreAdornments(this.stonesGrid, this.Game.SetupAdornments);
             if (this.Game.CurrentMove != null) {
                 this.UpdateTreeView(this.Game.CurrentMove);
                 this.UpdateTitle();
@@ -729,13 +740,13 @@ MISCELLANEOUS
             // Setup for loop so do not stop on current move if it has branches.
             var move = this.Game.UnwindMove();
             if (! move.IsPass)
-                MainWindowAux.RemoveStone(this.stonesGrid, move);
+                MainWinPgAux.RemoveStone(this.stonesGrid, move);
             var curmove = this.Game.CurrentMove;
             // Find previous with branches.
             while (curmove != null && curmove.Branches == null) {
                 move = this.Game.UnwindMove();
                 if (! move.IsPass)
-                    MainWindowAux.RemoveStone(this.stonesGrid, move);
+                    MainWinPgAux.RemoveStone(this.stonesGrid, move);
                 curmove = move.Previous;
             }
             if (curmove != null) {
@@ -744,7 +755,7 @@ MISCELLANEOUS
                 this.UpdateTitle();
             }
             else {
-                MainWindowAux.RestoreAdornments(this.stonesGrid, this.Game.SetupAdornments);
+                MainWinPgAux.RestoreAdornments(this.stonesGrid, this.Game.SetupAdornments);
                 this.UpdateTreeView(null);
                 this.UpdateTitle();
             }
@@ -781,7 +792,7 @@ MISCELLANEOUS
         ////
         private void homeButtonLeftDown (object home_button, RoutedEventArgs e) {
             this.Game.GotoStart();
-            MainWindowAux.RestoreAdornments(this.stonesGrid, this.Game.SetupAdornments);
+            MainWinPgAux.RestoreAdornments(this.stonesGrid, this.Game.SetupAdornments);
             this.UpdateTitle();
             this.UpdateTreeView(null);
             this.FocusOnStones();
@@ -839,15 +850,15 @@ MISCELLANEOUS
         public void AddNextStoneNoCurrent (Move move) {
             if (! move.IsPass)
                 //add_stone(main_win.FindName("stonesGrid"), m.row, m.column, m.color)
-                MainWindowAux.AddStone(this.stonesGrid, move.Row, move.Column, move.Color);
+                MainWinPgAux.AddStone(this.stonesGrid, move.Row, move.Column, move.Color);
             // Must remove current adornment before adding it elsewhere.
             if (move.Previous != null) {
                 if (move.Previous.Adornments.Contains(Adornments.CurrentMoveAdornment))
-                    MainWindowAux.RemoveCurrentStoneAdornment(this.stonesGrid, move.Previous);
-                MainWindowAux.RemoveAdornments(this.stonesGrid, move.Previous.Adornments);
+                    MainWinPgAux.RemoveCurrentStoneAdornment(this.stonesGrid, move.Previous);
+                MainWinPgAux.RemoveAdornments(this.stonesGrid, move.Previous.Adornments);
             }
             else
-                MainWindowAux.RemoveAdornments(this.stonesGrid, this.Game.SetupAdornments);
+                MainWinPgAux.RemoveAdornments(this.stonesGrid, this.Game.SetupAdornments);
         }
 
         //// add_current_adornments adds to the stones grid a current move marker
@@ -857,9 +868,9 @@ MISCELLANEOUS
         public void AddCurrentAdornments (Move move) {
             // Must restore adornemnts before adding current, else error adding
             // current twice.
-            MainWindowAux.RestoreAdornments(this.stonesGrid, move.Adornments);
+            MainWinPgAux.RestoreAdornments(this.stonesGrid, move.Adornments);
             if (! move.IsPass)
-                MainWindowAux.AddCurrentStoneAdornment(this.stonesGrid, move);
+                MainWinPgAux.AddCurrentStoneAdornment(this.stonesGrid, move);
         }
 
         //// update_title sets the main window title to display the open
@@ -919,7 +930,10 @@ MISCELLANEOUS
         //// DoOpenGetFile prompts user and returns file to open, or null.
         ////
         private async Task<StorageFile> DoOpenGetFile () {
-            var fp = new FileOpenPicker();
+            // retrieving window handle here:
+            // https://docs.microsoft.com/en-us/windows/apps/develop/ui-input/retrieve-hwnd
+            //var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+            var fp = InitializeWithWindow(new FileOpenPicker(),App.WindowHandle);
             fp.FileTypeFilter.Add(".sgf");
             fp.FileTypeFilter.Add(".txt");
             // This randomly throws HRESULT: 0x80070005 (E_ACCESSDENIED)) UnauthorizedAccessException,
@@ -953,6 +967,12 @@ MISCELLANEOUS
             return sf;
         }
 
+        private static FileOpenPicker InitializeWithWindow(FileOpenPicker obj, IntPtr windowHandle)
+        {
+            WinRT.Interop.InitializeWithWindow.Initialize(obj, windowHandle);
+            return obj;
+        }
+
         //// DoOpenGetFileGame covers the UI so that the user cannot mutate state, and then it
         //// checks for a more recent auto saved file for sf, parsing and creating a game from the
         //// appropriate file.
@@ -960,13 +980,14 @@ MISCELLANEOUS
         private async Task DoOpenGetFileGame (StorageFile sf) {
             if (sf != null) {
                 var curgame = this.Game; // Stash in case we have to undo due to file error.
-                Popup popup = null;
+                //Popup popup = null;
                 try {
                     // Need to cover UI to block user due to all the awaits from parsing and so on.
                     // Don't want user mutating state after saving the last file and processing the new one.
-                    popup = new Popup();
-                    popup.Child = this.GetOpenfileUIDike();
-                    popup.IsOpen = true;
+                    //popup = new Popup();
+                    //popup.Child = this.GetOpenfileUIDike();
+                    //popup.IsOpen = true;
+                    this.IsEnabled = false;
                     // Process file ...
                     this.LastCreatedGame = null;
                     await this.GetFileGameCheckingAutoSave(sf);
@@ -991,8 +1012,9 @@ MISCELLANEOUS
                     // NOTE: because not awaiting Message, the following code executes immediately.
                 }
                 finally {
-                    popup.IsOpen = false;
-                    popup.Child = null;  // Need to explicitly unparent UI tree, or get weird race condition UI bug.
+                    this.IsEnabled = true;
+                    //popup.IsOpen = false;
+                    //popup.Child = null;  // Need to explicitly unparent UI tree, or get weird race condition UI bug.
                 }
             }
         }
@@ -1034,7 +1056,7 @@ MISCELLANEOUS
         public const string UnnamedAutoSaveName = "unnamed-new-game.sgf";
         public string GetAutoSaveName (string file) {
             if (file == null)
-                return MainWindow.UnnamedAutoSaveName;
+                return MainWinPg.UnnamedAutoSaveName;
             else
                 return file.Substring(0, file.Length - 4) + "-autosave.sgf";
         }
@@ -1091,7 +1113,7 @@ MISCELLANEOUS
             tb.Margin = new Thickness(1, 1, 1, 1);
             tb.Background = new SolidColorBrush(Colors.Black);
             tb.Opacity = 0.25;
-            var bounds = Window.Current.Bounds;
+            var bounds = App.Window.Bounds;
             g.Width = bounds.Width;
             g.Height = bounds.Height;
             g.Children.Add(tb);
@@ -1115,7 +1137,7 @@ MISCELLANEOUS
                     sf = g.Storage;
                 }
                 else {
-                    sf = await MainWindowAux.GetSaveFilename();
+                    sf = await MainWinPgAux.GetSaveFilename(this);
                 }
                 if (sf != null)
                     await g.WriteGame(sf);
@@ -1160,8 +1182,9 @@ MISCELLANEOUS
                 this.FocusOnStones();
             };
             popup.Child = newDialog;
+            popup.XamlRoot = this.XamlRoot;
             popup.IsOpen = true;
-            // Put focus into dialog, good for user, but also stops mainwindow from handling kbd events
+            // Put focus into dialog, good for user, but also stops MainWinPg from handling kbd events
             ((NewGameDialog)popup.Child).WhiteTextBox.IsEnabled = true;
             ((NewGameDialog)popup.Child).WhiteTextBox.IsTabStop = true;
             ((NewGameDialog)popup.Child).WhiteTextBox.IsHitTestVisible = true;
@@ -1232,7 +1255,7 @@ MISCELLANEOUS
         //// This is public because Game.cs (controller) needs to call this if previously opened file is no longer good.
         ////
         public async Task SaveAs () {
-            var sf = await MainWindowAux.GetSaveFilename();
+            var sf = await MainWinPgAux.GetSaveFilename(this);
             if (sf != null) {
                 this.Game.SaveCurrentComment(); // Persist UI edits to model.
                 var oldsf = this.Game.Storage;
@@ -1249,7 +1272,7 @@ MISCELLANEOUS
         }
 
         private async Task SaveFlippedFile () {
-            var sf = await MainWindowAux.GetSaveFilename("Save Flipped File");
+            var sf = await MainWinPgAux.GetSaveFilename(this, "Save Flipped File");
             if (sf != null)
                 await this.Game.WriteFlippedGame(sf);
         }
@@ -1274,8 +1297,10 @@ MISCELLANEOUS
         //// IsKeyPressed takes a modifier key and determins if it is down during input handling.
         ////
         private bool IsKeyPressed (VirtualKey key) {
-            var x = (CoreWindow.GetForCurrentThread().GetKeyState(key) & CoreVirtualKeyStates.Down) != 0;
-            return x;
+            var state = InputKeyboardSource.GetKeyStateForCurrentThread(key);
+            return (state & CoreVirtualKeyStates.Down) != 0;
+            //var x = (AppWindow.Create().GetKeyState(key) & CoreVirtualKeyStates.Down) != 0;
+            //return x;
         }
 
         //// mainWin_keydown dispatches arrow keys for rewinding, replaying, and
@@ -1301,9 +1326,9 @@ MISCELLANEOUS
             //    this.AltKeyPressed = true;
             //    return;
             //}
-            MainWindow win;
-            if (sender.GetType() == typeof(MainWindow))
-                win = (MainWindow)sender;
+            MainWinPg win;
+            if (sender.GetType() == typeof(MainWinPg))
+                win = (MainWinPg)sender;
             else
                 win = this;
             // Ensure focus on board where general commands are dispatched.
@@ -1363,14 +1388,14 @@ MISCELLANEOUS
             else if (e.Key == VirtualKey.Down && this.branchCombo.Items.Count > 0 &&
                      this.commentBox.FocusState != FocusState.Keyboard && // Covers tabbing to it
                      this.commentBox.FocusState != FocusState.Pointer) {  // Covers clicking on it
-                MainWindowAux.SetCurrentBranchDown(this.branchCombo, this.Game);
+                MainWinPgAux.SetCurrentBranchDown(this.branchCombo, this.Game);
                 e.Handled = true;
             }
             // Display previous branch
             else if (e.Key == VirtualKey.Up && this.branchCombo.Items.Count > 0 &&
                      this.commentBox.FocusState != FocusState.Keyboard && // Covers tabbing to it
                      this.commentBox.FocusState != FocusState.Pointer) {  // Covers clicking on it
-                MainWindowAux.SetCurrentBranchUp(this.branchCombo, this.Game);
+                MainWinPgAux.SetCurrentBranchUp(this.branchCombo, this.Game);
                 e.Handled = true;
             }
             // Opening a file
@@ -1564,8 +1589,8 @@ MISCELLANEOUS
             // find TreeViewNode model for click locatio on canvas.
             var x = e.GetCurrentPoint(this.gameTreeView).Position.X;
             var y = e.GetCurrentPoint(this.gameTreeView).Position.Y;
-            var elt_x = (int)(x / MainWindowAux.treeViewGridCellSize);
-            var elt_y = (int)(y / MainWindowAux.treeViewGridCellSize);
+            var elt_x = (int)(x / MainWinPgAux.treeViewGridCellSize);
+            var elt_y = (int)(y / MainWinPgAux.treeViewGridCellSize);
             TreeViewNode n = null;
             var found = false;
             foreach (var moveNode in this.treeViewMoveMap) {
@@ -1580,7 +1605,7 @@ MISCELLANEOUS
             var move = n.Node as Move;
             if (this.Game.CurrentMove != null) { // Same as checking game state is not NotStarted.
                 this.Game.GotoStart();
-                MainWindowAux.RestoreAdornments(this.stonesGrid, this.Game.SetupAdornments);
+                MainWinPgAux.RestoreAdornments(this.stonesGrid, this.Game.SetupAdornments);
             }
             else
                 this.Game.SaveCurrentComment();
@@ -1816,8 +1841,9 @@ MISCELLANEOUS
                 this.FocusOnStones();
             };
             popup.Child = newDialog;
+            popup.XamlRoot = this.XamlRoot;
             popup.IsOpen = true;
-            // Put focus into dialog, good for user, but also stops mainwindow from handling kbd events
+            // Put focus into dialog, good for user, but also stops MainWinPg from handling kbd events
             ((GameInfo)popup.Child).PlayerBlackTextBox.IsEnabled = true;
             ((GameInfo)popup.Child).PlayerBlackTextBox.IsTabStop = true;
             ((GameInfo)popup.Child).PlayerBlackTextBox.IsHitTestVisible = true;
@@ -1910,8 +1936,8 @@ MISCELLANEOUS
 
         private void SetTreeViewSize () {
             var canvas = this.gameTreeView;
-            canvas.Width = GameAux.TreeViewGridColumns * MainWindowAux.treeViewGridCellSize;
-            canvas.Height = GameAux.TreeViewGridRows * MainWindowAux.treeViewGridCellSize;
+            canvas.Width = GameAux.TreeViewGridColumns * MainWinPgAux.treeViewGridCellSize;
+            canvas.Height = GameAux.TreeViewGridRows * MainWinPgAux.treeViewGridCellSize;
         }
 
 
@@ -1986,7 +2012,7 @@ MISCELLANEOUS
                     var curModel = treeModel[i, j];
                     if (curModel != null) {
                         if (curModel.Kind != TreeViewNodeKind.LineBend) {
-                            var eltGrid = MainWindowAux.NewTreeViewItemGrid(curModel);
+                            var eltGrid = MainWinPgAux.NewTreeViewItemGrid(curModel);
                             curModel.Cookie = eltGrid;
                             var node = curModel.Node;
                             var pnode = node as ParsedNode;
@@ -1996,8 +2022,8 @@ MISCELLANEOUS
                                 eltGrid.Background = new SolidColorBrush(this.commentNodeHighlightColor);
                             }
                             this.treeViewMoveMap[node] = curModel;
-                            Canvas.SetLeft(eltGrid, curModel.Column * MainWindowAux.treeViewGridCellSize);
-                            Canvas.SetTop(eltGrid, curModel.Row * MainWindowAux.treeViewGridCellSize);
+                            Canvas.SetLeft(eltGrid, curModel.Column * MainWinPgAux.treeViewGridCellSize);
+                            Canvas.SetTop(eltGrid, curModel.Row * MainWinPgAux.treeViewGridCellSize);
                             Canvas.SetZIndex(eltGrid, 1);
                             canvas.Children.Add(eltGrid);
                         }
@@ -2006,7 +2032,7 @@ MISCELLANEOUS
             }
             this.treeViewMoveMap.Remove(treeModel[0, 0].Node);
             this.treeViewMoveMap["start"] = treeModel[0, 0];
-            MainWindowAux.DrawGameTreeLines(canvas, treeModel[0, 0]);
+            MainWinPgAux.DrawGameTreeLines(canvas, treeModel[0, 0]);
             //Grid cookie = (Grid)treeModel[0, 0].Cookie;
             // Set this to something so that UpdateTreeView doesn't deref null.
             this.treeViewSelectedItem = treeModel[0, 0]; // cookie;
@@ -2110,18 +2136,18 @@ MISCELLANEOUS
                     var gheight = g.ActualHeight;
                     // win10 deprecated the win8 ScrollToVertical.., etc.
                     //if (pos.Y < 0 || (pos.Y + gheight) > sv.ViewportHeight)
-                    //    sv.ScrollToVerticalOffset(sv.VerticalOffset + pos.Y - MainWindow.BringIntoViewPadding);
+                    //    sv.ScrollToVerticalOffset(sv.VerticalOffset + pos.Y - MainWinPg.BringIntoViewPadding);
                     //if (pos.X < 0 || (pos.X + gwidth) > sv.ViewportWidth)
-                    //    sv.ScrollToHorizontalOffset(sv.HorizontalOffset + pos.X - MainWindow.BringIntoViewPadding);
+                    //    sv.ScrollToHorizontalOffset(sv.HorizontalOffset + pos.X - MainWinPg.BringIntoViewPadding);
                     //
                     // Win10 code samples show this, and no community solutions to intermittent bug that the
                     // vertical sometimes does not scroll right.  Stepped through several scenarios, same values flow
                     // through here, but sometimes the viewport just does not move back up enough.
                     if (pos.Y < 0 || (pos.Y + gheight) > sv.ViewportHeight)
-                        sv.ChangeView(null, sv.VerticalOffset + pos.Y - MainWindow.BringIntoViewPadding, null);
+                        sv.ChangeView(null, sv.VerticalOffset + pos.Y - MainWinPg.BringIntoViewPadding, null);
                     var gwidth = g.ActualWidth;
                     if (pos.X < 0 || (pos.X + gwidth) > sv.ViewportWidth)
-                        sv.ChangeView(sv.HorizontalOffset + pos.X - MainWindow.BringIntoViewPadding, null, null);
+                        sv.ChangeView(sv.HorizontalOffset + pos.X - MainWinPg.BringIntoViewPadding, null, null);
                     //break;
                 }
             }
@@ -2222,7 +2248,7 @@ MISCELLANEOUS
         //// Handling Multiple Open Games
         ////
 
-        //// AddGame updates game management app globals in MainWindow.  It must be called after SetupBoardDisplay
+        //// AddGame updates game management app globals in MainWinPg.  It must be called after SetupBoardDisplay
         //// when creating new games.  If the current game is a non-dirty default game, then toss it.
         ////
         public void AddGame (Game g) {
@@ -2232,7 +2258,7 @@ MISCELLANEOUS
                 this.Games.Remove(this.Game);
                 this.DefaultGame = null;
             }
-            if (this.Games.Count >= MainWindow.MAX_GAMES) {
+            if (this.Games.Count >= MainWinPg.MAX_GAMES) {
                 var now = DateTime.Now;
                 var max = now - now;
                 Game target = null;
@@ -2357,12 +2383,13 @@ MISCELLANEOUS
                 this.WindowSwitchingDialogDone(gameDialog);
             };
             popup.Child = gameDialog;
+            popup.XamlRoot = this.XamlRoot;
             popup.IsOpen = true;
             var gamesList = ((WindowSwitchingDialog)popup.Child).GamesList;
             foreach (var g in this.Games) {
                 gamesList.Items.Add(g.Filename ?? "No File Association");
             }
-            // Put focus into dialog, good for user, but also stops mainwindow from handling kbd events
+            // Put focus into dialog, good for user, but also stops MainWinPg from handling kbd events
             gamesList.IsEnabled = true;
             ((WindowSwitchingDialog)popup.Child).GamesList.IsTabStop = true;
             ((WindowSwitchingDialog)popup.Child).GamesList.IsHitTestVisible = true;
@@ -2405,7 +2432,7 @@ MISCELLANEOUS
             //g = self.FindName("stonesGrid")
             var g = this.stonesGrid;
             foreach (var m in moves)
-                MainWindowAux.AddStone(g, m.Row, m.Column, m.Color);
+                MainWinPgAux.AddStone(g, m.Row, m.Column, m.Color);
         }
 
         //// remove_stones removes the Ellipses from the stones grid.  Moves must be
@@ -2415,7 +2442,7 @@ MISCELLANEOUS
             //g = self.FindName("stonesGrid") #not needed with wpf.LoadComponent
             var g = this.stonesGrid;
             foreach (var m in moves)
-                MainWindowAux.RemoveStone(g, m);
+                MainWinPgAux.RemoveStone(g, m);
         }
 
         //// reset_to_start resets the board UI back to the start of the game before
@@ -2426,15 +2453,15 @@ MISCELLANEOUS
             var g = this.stonesGrid;
             // Must remove current adornment before other adornments.
             if (! cur_move.IsPass)
-                MainWindowAux.RemoveCurrentStoneAdornment(g, cur_move);
-            MainWindowAux.RemoveAdornments(g, cur_move.Adornments);
+                MainWinPgAux.RemoveCurrentStoneAdornment(g, cur_move);
+            MainWinPgAux.RemoveAdornments(g, cur_move.Adornments);
             var size = this.Game.Board.Size;
             for (var row = 0; row < size; row++)
                 for (var col = 0; col < size; col++) {
-                    var stone = MainWindowAux.stones[row, col];
+                    var stone = MainWinPgAux.stones[row, col];
                     if (stone != null)
                         g.Children.Remove(stone);
-                    MainWindowAux.stones[row, col] = null;
+                    MainWinPgAux.stones[row, col] = null;
                 }
             this.AddInitialStones(this.Game);
             this.commentBox.Text = this.Game.Comments;
@@ -2453,16 +2480,16 @@ MISCELLANEOUS
             if (game.HandicapMoves != null) {
                 foreach (var elt in game.HandicapMoves)
                     if (g == null)
-                        MainWindowAux.AddStone(this.stonesGrid, elt.Row, elt.Column, elt.Color);
+                        MainWinPgAux.AddStone(this.stonesGrid, elt.Row, elt.Column, elt.Color);
                     else
-                        MainWindowAux.AddStoneNoMapping(g, elt.Row, elt.Column, elt.Color);
+                        MainWinPgAux.AddStoneNoMapping(g, elt.Row, elt.Column, elt.Color);
             }
             if (game.AllWhiteMoves != null) {
                 foreach (var elt in game.AllWhiteMoves)
                     if (g == null)
-                        MainWindowAux.AddStone(this.stonesGrid, elt.Row, elt.Column, elt.Color);
+                        MainWinPgAux.AddStone(this.stonesGrid, elt.Row, elt.Column, elt.Color);
                     else
-                        MainWindowAux.AddStoneNoMapping(g, elt.Row, elt.Column, elt.Color);
+                        MainWinPgAux.AddStoneNoMapping(g, elt.Row, elt.Column, elt.Color);
             }
         }
 
@@ -2517,11 +2544,13 @@ MISCELLANEOUS
         //// textbox.
         ////
         private void FocusOnStones () {
-            this.inputFocus.IsEnabled = true;
-            this.inputFocus.IsTabStop = true;
-            this.inputFocus.IsHitTestVisible = true;
-            this.inputFocus.Focus(FocusState.Pointer);
-            this.inputFocus.Focus(FocusState.Keyboard);
+            //this.Focus(FocusState.Pointer);
+            this.Focus(FocusState.Keyboard);
+            //this.inputFocus.IsEnabled = true;
+            //this.inputFocus.IsTabStop = true;
+            //this.inputFocus.IsHitTestVisible = true;
+            //this.inputFocus.Focus(FocusState.Pointer);
+            //this.inputFocus.Focus(FocusState.Keyboard);
         }
 
         //// add_unrendered_adornment setups all the UI objects to render the
@@ -2531,7 +2560,7 @@ MISCELLANEOUS
         //// triggers it gets displayed, the adornment is ready to replay.  Game uses this.
         ////
         public void AddUnrenderedAdornments (Adornments a) {
-            MainWindowAux.AddNewAdornment(this.stonesGrid, a, this.Game, false);
+            MainWinPgAux.AddNewAdornment(this.stonesGrid, a, this.Game, false);
         }
 
 
@@ -2765,15 +2794,16 @@ MISCELLANEOUS
                 this.FocusOnStones();
             };
             settingsDialog.TitleSize = (int)this.Title.FontSize;
-            settingsDialog.IndexesSize = MainWindowAux.indexLabelFontSize;
+            settingsDialog.IndexesSize = MainWinPgAux.indexLabelFontSize;
             settingsDialog.CommentFontsize = (int)this.commentBox.FontSize;
-            settingsDialog.TreeNodeSize = MainWindowAux.treeViewGridCellSize;
-            settingsDialog.TreeNodeFontsize = MainWindowAux.treeViewFontSize;
+            settingsDialog.TreeNodeSize = MainWinPgAux.treeViewGridCellSize;
+            settingsDialog.TreeNodeFontsize = MainWinPgAux.treeViewFontSize;
             settingsDialog.TreeCurrentHighlight = this.currentNodeHighlightColor;
             settingsDialog.TreeCommentsHighlight = this.commentNodeHighlightColor;
             popup.Child = settingsDialog;
+            popup.XamlRoot = this.XamlRoot;
             popup.IsOpen = true;
-            // Put focus into dialog, good for user, but also stops mainwindow from handling kbd events
+            // Put focus into dialog, good for user, but also stops MainWinPg from handling kbd events
             ((SomeSettings)popup.Child).CancelButton.IsEnabled = true;
             ((SomeSettings)popup.Child).CancelButton.IsTabStop = true;
             ((SomeSettings)popup.Child).CancelButton.IsHitTestVisible = true;
@@ -2798,26 +2828,26 @@ MISCELLANEOUS
                         await GameAux.Message("Title font size seems a bit absurd, ignoring it ...");
                     }
                 }
-                if (dlg.IndexesSize != MainWindowAux.indexLabelFontSize || dlg.ResetSettings) {
+                if (dlg.IndexesSize != MainWinPgAux.indexLabelFontSize || dlg.ResetSettings) {
                     if (! SettingsSetIndexesFontSize(dlg.IndexesSize)) {
                         await GameAux.Message("Indexes font size seems a bit absurd, ignoring it ...");
                     }
                 }
                 if (dlg.CommentFontsize != (int)this.commentBox.FontSize || dlg.ResetSettings) {
-                    if (dlg.CommentFontsize > MainWindow.MaxFontSize) {
+                    if (dlg.CommentFontsize > MainWinPg.MaxFontSize) {
                         await GameAux.Message("Comment font size seems a bit absurd, ignoring it ...");
                     }
                     else {
                         this.commentBox.FontSize = dlg.CommentFontsize;
                     }
                 }
-                if (dlg.TreeNodeSize != MainWindowAux.treeViewGridCellSize || dlg.ResetSettings) {
+                if (dlg.TreeNodeSize != MainWinPgAux.treeViewGridCellSize || dlg.ResetSettings) {
                     // Note, this is actually the tree node grid cell size, from which we compute the circle node size.
                     this.SettingsSetTreeNodeSize(dlg.TreeNodeSize);
                     redrawTree = true;
                 }
                 // Must set font size after node size.
-                if (dlg.TreeNodeFontsize != MainWindowAux.treeViewFontSize || dlg.ResetSettings) {
+                if (dlg.TreeNodeFontsize != MainWinPgAux.treeViewFontSize || dlg.ResetSettings) {
                     if (! SettingsSetTreeNodeFontsize(dlg.TreeNodeFontsize, dlg.TreeNodeSize))
                         await GameAux.Message("Tree node font size seems a bit absurd or too big for nodes, ignoring it ...");
                     redrawTree = true;
@@ -2842,7 +2872,7 @@ MISCELLANEOUS
         //// SettingsSetTitleFontSize is used in SettingsDialogDone and SetupBoardDisplay to apply settings.
         ////
         private bool SettingsSetTitleFontSize (int settingsSize) {
-            if (settingsSize > MainWindow.MaxFontSize) {
+            if (settingsSize > MainWinPg.MaxFontSize) {
                 return false;
             }
             else {
@@ -2860,16 +2890,16 @@ MISCELLANEOUS
         //// SettingsSetIndexesFontSize is used in SettingsDialogDone and SetupBoardDisplay to apply settings.
         ////
         private bool SettingsSetIndexesFontSize (int settingsSize) {
-            if (settingsSize > MainWindow.MaxFontSize) {
+            if (settingsSize > MainWinPg.MaxFontSize) {
                 return false;
             }
             else {
-                MainWindowAux.indexLabelFontSize = settingsSize;
+                MainWinPgAux.indexLabelFontSize = settingsSize;
                 foreach (var elt in this.stonesGrid.Children.OfType<UIElement>()
                                         .Where((o) => o is TextBlock).ToList()) {
                     // Only labels in stones grid should be row/col board labels because adornments are inside
                     // Grids (squares and triables) or Viewboxes (letters), and stones are not TextBlocks.
-                    ((TextBlock)elt).FontSize = MainWindowAux.indexLabelFontSize;
+                    ((TextBlock)elt).FontSize = MainWinPgAux.indexLabelFontSize;
                 }
             }
             return true;
@@ -2878,25 +2908,25 @@ MISCELLANEOUS
         //// SettingsSetTreeNodeSize is used in SettingsDialogDone and SetupBoardDisplay to apply settings.
         ////
         private void SettingsSetTreeNodeSize (int settingsSize) {
-            MainWindowAux.treeViewNodeSize =
+            MainWinPgAux.treeViewNodeSize =
                 // This computation with bigger and bigger sizes will make connecting lines appear shorter and 
                 // shorter.  Could try percentage computation for more similar aesthetics to defaults.
-                settingsSize - (MainWindowAux.treeViewGridCellSize - MainWindowAux.treeViewNodeSize);
-            MainWindowAux.treeViewGridCellSize = settingsSize;
+                settingsSize - (MainWinPgAux.treeViewGridCellSize - MainWinPgAux.treeViewNodeSize);
+            MainWinPgAux.treeViewGridCellSize = settingsSize;
         }
 
         //// SettingsSetTreeNodeSize is used in SettingsDialogDone and SetupBoardDisplay to apply settings.
         //// Must call this after calling SettingsSetTreeNodeSize().
         ////
         private bool SettingsSetTreeNodeFontsize (int settingsSize, int treeNodeSize) {
-            if ((settingsSize > MainWindow.MaxFontSize) || (settingsSize > (treeNodeSize * 0.4))) {
+            if ((settingsSize > MainWinPg.MaxFontSize) || (settingsSize > (treeNodeSize * 0.4))) {
                 return false;
             }
             else {
                 // Note, font size is smaller for three digit move numbers.
-                var diff = MainWindowAux.treeViewFontSize - MainWindowAux.treeViewFontSize2;
-                MainWindowAux.treeViewFontSize = settingsSize;
-                MainWindowAux.treeViewFontSize2 = settingsSize - diff;
+                var diff = MainWinPgAux.treeViewFontSize - MainWinPgAux.treeViewFontSize2;
+                MainWinPgAux.treeViewFontSize = settingsSize;
+                MainWinPgAux.treeViewFontSize2 = settingsSize - diff;
             }
             return true;
         }
@@ -2907,10 +2937,10 @@ MISCELLANEOUS
         private void SaveSettings (bool reset) {
             var store = ApplicationData.Current.LocalSettings;
             if (store.Values.ContainsKey("TitleFontSize") && (int)this.Title.FontSize == this._titleSizeDefault &&
-                store.Values.ContainsKey("IndexesFontSize") && MainWindowAux.indexLabelFontSize == this._indexesSizeDefault &&
+                store.Values.ContainsKey("IndexesFontSize") && MainWinPgAux.indexLabelFontSize == this._indexesSizeDefault &&
                 store.Values.ContainsKey("CommentFontSize") && (int)this.commentBox.FontSize == this._commentFontsizeDefault &&
-                store.Values.ContainsKey("TreeNodeSize") && MainWindowAux.treeViewGridCellSize == this._treeNodeSizeDefault &&
-                store.Values.ContainsKey("TreeNodeFontSize") && MainWindowAux.treeViewFontSize == this._treeNodeFontsizeDefault &&
+                store.Values.ContainsKey("TreeNodeSize") && MainWinPgAux.treeViewGridCellSize == this._treeNodeSizeDefault &&
+                store.Values.ContainsKey("TreeNodeFontSize") && MainWinPgAux.treeViewFontSize == this._treeNodeFontsizeDefault &&
                 // Don't need to validate name, wouldn't be stored in class if not validated already.
                 store.Values.ContainsKey("TreeCurrentHighlight") &&
                 this.currentNodeHighlightColor == this._treeCurrentHighlightDefault &&
@@ -2927,13 +2957,13 @@ MISCELLANEOUS
             }
             else {
                 store.Values["TitleFontSize"] = (int)this.Title.FontSize;
-                store.Values["IndexesFontSize"] = MainWindowAux.indexLabelFontSize;
+                store.Values["IndexesFontSize"] = MainWinPgAux.indexLabelFontSize;
                 store.Values["CommentFontSize"] = (int)this.commentBox.FontSize;
-                store.Values["TreeNodeSize"] = MainWindowAux.treeViewGridCellSize;
-                store.Values["TreeNodeFontSize"] = MainWindowAux.treeViewFontSize;
+                store.Values["TreeNodeSize"] = MainWinPgAux.treeViewGridCellSize;
+                store.Values["TreeNodeFontSize"] = MainWinPgAux.treeViewFontSize;
                 // Don't need to validate name, wouldn't be stored in class if not validated already.
-                store.Values["TreeCurrentHighlight"] = ColorsConverter.GetColorName(this.currentNodeHighlightColor);
-                store.Values["TreeCommentHIghlight"] = ColorsConverter.GetColorName(this.commentNodeHighlightColor);
+                store.Values["TreeCurrentHighlight"] = ColorHelper.ToDisplayName(this.currentNodeHighlightColor);
+                store.Values["TreeCommentHIghlight"] = ColorHelper.ToDisplayName(this.commentNodeHighlightColor);
             }
         }
 
@@ -2950,14 +2980,14 @@ MISCELLANEOUS
             dlg.TreeCommentsHighlight = this._treeCommentsHighlightDefault;
         }
 
-    } // class MainWindow
+    } // class MainWinPg
 
 
 
-    //// MainWindowAux provides "stateless" helpers for MainWindow.  This class is internal, but
-    //// only MainWindow uses it.
+    //// MainWinPgAux provides "stateless" helpers for MainWinPg.  This class is internal, but
+    //// only MainWinPg uses it.
     ////
-    internal static class MainWindowAux {
+    internal static class MainWinPgAux {
 
         ////
         //// Setup Lines Grid Utilities
@@ -3110,13 +3140,13 @@ MISCELLANEOUS
                 var chr_txt = GoBoardAux.ModelCoordinateToDisplayLetter(i);
                 var num_label_y = size - (i - 1);
                 // Place labels
-                MainWindowAux.SetupIndexLabel(g, i.ToString(), 0, num_label_y,
+                MainWinPgAux.SetupIndexLabel(g, i.ToString(), 0, num_label_y,
                                               HorizontalAlignment.Left, VerticalAlignment.Center);
-                MainWindowAux.SetupIndexLabel(g, i.ToString(), 20, num_label_y,
+                MainWinPgAux.SetupIndexLabel(g, i.ToString(), 20, num_label_y,
                                               HorizontalAlignment.Right, VerticalAlignment.Center);
-                MainWindowAux.SetupIndexLabel(g, chr_txt.ToString(), i, 0,
+                MainWinPgAux.SetupIndexLabel(g, chr_txt.ToString(), i, 0,
                                    HorizontalAlignment.Center, VerticalAlignment.Top);
-                MainWindowAux.SetupIndexLabel(g, chr_txt.ToString(), i, 20,
+                MainWinPgAux.SetupIndexLabel(g, chr_txt.ToString(), i, 20,
                                               HorizontalAlignment.Center, VerticalAlignment.Bottom);
             }
         }
@@ -3129,7 +3159,7 @@ MISCELLANEOUS
             Grid.SetRow(label, y);
             Grid.SetColumn(label, x);
             label.FontWeight = FontWeights.Bold;
-            label.FontSize = MainWindowAux.indexLabelFontSize;
+            label.FontSize = MainWinPgAux.indexLabelFontSize;
             label.Foreground = new SolidColorBrush(Colors.Black);
             label.HorizontalAlignment = h_alignment;
             if (h_alignment == HorizontalAlignment.Right)
@@ -3245,7 +3275,7 @@ MISCELLANEOUS
                 stones_grid.Children.Add(current_stone_adornment_grid);
             }
             else {
-                var inner_grid = MainWindowAux.AddAdornmentGrid(stones_grid, move.Row, move.Column, true, true);
+                var inner_grid = MainWinPgAux.AddAdornmentGrid(stones_grid, move.Row, move.Column, true, true);
                 current_stone_adornment_grid = inner_grid;
                 //
                 // Create mark
@@ -3334,7 +3364,7 @@ MISCELLANEOUS
         //// this location or an empty board location to set the adornment color.
         ////
         private static Grid MakeSquareAdornment (Grid stones_grid, int row, int col, Game game_inst, bool render) {
-            var grid = MainWindowAux.AddAdornmentGrid(stones_grid, row, col, render);
+            var grid = MainWinPgAux.AddAdornmentGrid(stones_grid, row, col, render);
             var sq = new Rectangle();
             Grid.SetRow(sq, 1);
             Grid.SetColumn(sq, 1);
@@ -3361,7 +3391,7 @@ MISCELLANEOUS
         //// location or an empty board location to set the adornment color.
         ////
         private static Grid MakeTriangleAdornment (Grid stones_grid, int row, int col, Game game_inst, bool render) {
-            var grid = MainWindowAux.AddAdornmentGrid(stones_grid, row, col, render);
+            var grid = MainWinPgAux.AddAdornmentGrid(stones_grid, row, col, render);
             //grid.ShowGridLines = True
             var vwbox = new Viewbox();
             Grid.SetRow(vwbox, 1);
@@ -3407,7 +3437,7 @@ MISCELLANEOUS
             var label = new TextBlock();
             label.Text = letter;
             // Win8: Fontsize has no effect on TextBlock, but setting a margin will reduce the size.
-            label.FontSize = MainWindowAux.letterAdornmentFontSize;
+            label.FontSize = MainWinPgAux.letterAdornmentFontSize;
             label.Margin = new Thickness(2, 2, 2, 2);
             Grid.SetRow(label, 1);
             Grid.SetColumn(label, 1);
@@ -3458,12 +3488,12 @@ MISCELLANEOUS
             inner_grid.VerticalAlignment = VerticalAlignment.Stretch;
             //inner_grid.Name = "adornmentGrid"
             var middleSize = smaller ? 2 : 3;
-            inner_grid.ColumnDefinitions.Add(MainWindowAux.def_col(1));
-            inner_grid.ColumnDefinitions.Add(MainWindowAux.def_col(middleSize));
-            inner_grid.ColumnDefinitions.Add(MainWindowAux.def_col(1));
-            inner_grid.RowDefinitions.Add(MainWindowAux.def_row(1));
-            inner_grid.RowDefinitions.Add(MainWindowAux.def_row(middleSize));
-            inner_grid.RowDefinitions.Add(MainWindowAux.def_row(1));
+            inner_grid.ColumnDefinitions.Add(MainWinPgAux.def_col(1));
+            inner_grid.ColumnDefinitions.Add(MainWinPgAux.def_col(middleSize));
+            inner_grid.ColumnDefinitions.Add(MainWinPgAux.def_col(1));
+            inner_grid.RowDefinitions.Add(MainWinPgAux.def_row(1));
+            inner_grid.RowDefinitions.Add(MainWinPgAux.def_row(middleSize));
+            inner_grid.RowDefinitions.Add(MainWinPgAux.def_row(1));
             if (render)
                 stones_grid.Children.Add(inner_grid);
             return inner_grid;
@@ -3509,12 +3539,12 @@ MISCELLANEOUS
                 return;
             if (node.Branches != null)
                 foreach (var n in node.Branches) {
-                    MainWindowAux.DrawGameTreeLine(canvas, node, n);
-                    MainWindowAux.DrawGameTreeLines(canvas, n);
+                    MainWinPgAux.DrawGameTreeLine(canvas, node, n);
+                    MainWinPgAux.DrawGameTreeLines(canvas, n);
                 }
             else {
-                MainWindowAux.DrawGameTreeLine(canvas, node, node.Next);
-                MainWindowAux.DrawGameTreeLines(canvas, node.Next);
+                MainWinPgAux.DrawGameTreeLine(canvas, node, node.Next);
+                MainWinPgAux.DrawGameTreeLines(canvas, node.Next);
             }
         }
 
@@ -3522,10 +3552,10 @@ MISCELLANEOUS
             var ln = new Line();
             // You'd think you'd divide by 2 to get a line in the middle of a cell area to the middle
             // of another cell area, but the lines all appear too low for some reason, so use 3 instead.
-            ln.X1 = (origin.Column * MainWindowAux.treeViewGridCellSize) + (MainWindowAux.treeViewGridCellSize / 3);
-            ln.Y1 = (origin.Row * MainWindowAux.treeViewGridCellSize) + (MainWindowAux.treeViewGridCellSize / 3);
-            ln.X2 = (dest.Column * MainWindowAux.treeViewGridCellSize) + (MainWindowAux.treeViewGridCellSize / 3);
-            ln.Y2 = (dest.Row * MainWindowAux.treeViewGridCellSize) + (MainWindowAux.treeViewGridCellSize / 3);
+            ln.X1 = (origin.Column * MainWinPgAux.treeViewGridCellSize) + (MainWinPgAux.treeViewGridCellSize / 3);
+            ln.Y1 = (origin.Row * MainWinPgAux.treeViewGridCellSize) + (MainWinPgAux.treeViewGridCellSize / 3);
+            ln.X2 = (dest.Column * MainWinPgAux.treeViewGridCellSize) + (MainWinPgAux.treeViewGridCellSize / 3);
+            ln.Y2 = (dest.Row * MainWinPgAux.treeViewGridCellSize) + (MainWinPgAux.treeViewGridCellSize / 3);
             // Lines appear behind Move circles/nodes.
             Canvas.SetZIndex(ln, 0);
             ln.Stroke = new SolidColorBrush(Colors.Black);
@@ -3545,8 +3575,8 @@ MISCELLANEOUS
             g.HorizontalAlignment = HorizontalAlignment.Stretch;
             g.VerticalAlignment = VerticalAlignment.Stretch;
             g.Background = new SolidColorBrush(Colors.Transparent);
-            g.Height = MainWindowAux.treeViewNodeSize;
-            g.Width = MainWindowAux.treeViewNodeSize;
+            g.Height = MainWinPgAux.treeViewNodeSize;
+            g.Width = MainWinPgAux.treeViewNodeSize;
             g.Margin = new Thickness(0, 2, 0, 2);
             // Get stone image
             if (model.Kind == TreeViewNodeKind.Move) {
@@ -3570,11 +3600,11 @@ MISCELLANEOUS
             // Set font size based on length of integer print representation
             label.FontWeight = FontWeights.Bold;
             if (model.Column.ToString().Length > 2) {
-                label.FontSize = MainWindowAux.treeViewFontSize2;
+                label.FontSize = MainWinPgAux.treeViewFontSize2;
                 label.FontWeight = FontWeights.Normal;
             }
             else
-                label.FontSize = MainWindowAux.treeViewFontSize;
+                label.FontSize = MainWinPgAux.treeViewFontSize;
             label.Foreground = new SolidColorBrush(model.Kind == TreeViewNodeKind.Move ?
                                                     GameAux.OppositeMoveColor(model.Color) :
                                                     Colors.Black);
@@ -3608,8 +3638,16 @@ MISCELLANEOUS
         }
 
 
-        internal static async Task<StorageFile> GetSaveFilename (string title = null) {
-            var fp = new FileSavePicker();
+        //// GetSaveFilename was MainWinPgAux static helper before Microsoft changed APIs to
+        //// require an instance of MainWinPg, so probably should move this method to MainWinPg.
+        //// FOUND new App class has WindowHandle property that's public, so maybe can fix code
+        //// to NOT pass mainwin instance here
+        internal static async Task<StorageFile> GetSaveFilename 
+            (MainWinPg mainwin, string title = null) {
+            // Read more on retrieving window handle here:
+            // https://docs.microsoft.com/en-us/windows/apps/develop/ui-input/retrieve-hwnd
+            //var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(mainwin);
+            var fp = InitializeWithWindow(new FileSavePicker(),App.WindowHandle);
             fp.FileTypeChoices.Add("Text documents (.sgf)", new[] { ".sgf" });
             fp.DefaultFileExtension = ".sgf";
             fp.SuggestedFileName = "game01";
@@ -3617,8 +3655,14 @@ MISCELLANEOUS
             return sf;
         }
 
+        private static FileSavePicker InitializeWithWindow(FileSavePicker obj, IntPtr windowHandle)
+        {
+            WinRT.Interop.InitializeWithWindow.Initialize(obj, windowHandle);
+            return obj;
+        }
 
-    } // class MainWindowAux
+
+    } // class MainWinPgAux
 
 
 } // namespace

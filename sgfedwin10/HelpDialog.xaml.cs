@@ -1,8 +1,8 @@
 ﻿using System;
 using Windows.System; // VirtualKey
-using Windows.UI.Xaml;
-using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Input; // KeyRoutedEventArgs
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input; // KeyRoutedEventArgs
 
 // The Blank Page item template is documented at http://go.microsoft.com/fwlink/?LinkId=234238
 
@@ -16,7 +16,7 @@ namespace SgfEdwin10 {
         public HelpDialog () {
             this.InitializeComponent();
             // Ensure dialog overlays entire main window so that it cannot handle input.
-            var bounds = Window.Current.Bounds;
+            var bounds = App.Window.Bounds;
             this.HelpDlgGrid.Width = bounds.Width;
             this.HelpDlgGrid.Height = bounds.Height;
         }

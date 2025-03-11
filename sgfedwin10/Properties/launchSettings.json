@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "sgfedwin10 (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "sgfedwin10 (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
