@@ -16,7 +16,6 @@ using Windows.ApplicationModel;
 //using Microsoft.ApplicationModel.Activation;
 using Microsoft.Foundation;
 //using Microsoft.Foundation.Collections;
-using sgfedwin10;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.

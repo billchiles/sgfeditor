@@ -568,20 +568,20 @@ MISCELLANEOUS
         //// quit working too since this somehow runs first, puts focus on stones, then button never
         //// gets click event.
         ////
-        //private ScrollViewer hiddenRootScroller = null;
+        private ScrollViewer hiddenRootScroller = null;
         protected override void OnLostFocus (RoutedEventArgs e) {
-            //if (hiddenRootScroller == null) {
-            //    var d = FocusManager.GetFocusedElement() as DependencyObject;
-            //    // When new game dialog gets shown, d is null;
-            //    if (d == null) return;
-            //    while (d.GetType() != typeof(ScrollViewer)) {
-            //        d = VisualTreeHelper.GetParent(d);
-            //        if (d == null) return;
-            //    }
-            //    hiddenRootScroller = d as ScrollViewer;
-            //}
-            //if (FocusManager.GetFocusedElement() == hiddenRootScroller)
-            //    this.FocusOnStones();
+            if (this.hiddenRootScroller == null) {
+                var d = FocusManager.GetFocusedElement() as DependencyObject;
+                // When new game dialog gets shown, d is null;
+                if (d == null) return;
+                while (d.GetType() != typeof(ScrollViewer)) {
+                    d = VisualTreeHelper.GetParent(d);
+                    if (d == null) return;
+                }
+                hiddenRootScroller = d as ScrollViewer;
+            }
+            if (FocusManager.GetFocusedElement() == (object)this.hiddenRootScroller)
+                this.FocusOnStones();
 
             // Diagnostic output that helped show FocusOnStones wasn't working because something
             // deep in winRT was stealing focus to a hidden root ScrollViewer, which mean mainwin_keydown
@@ -698,7 +698,7 @@ MISCELLANEOUS
         //// mainwin_keydown calls this to handle c-p.
         ////
         private async void passButton_left_down (object sender, RoutedEventArgs e) {
-            this.theAppBar.IsOpen = false;
+            //this.theAppBar.IsOpen = false; app.bottomappbar gone, if add menu can re-use this
             var move = await this.Game.MakeMove(GoBoardAux.NoIndex, GoBoardAux.NoIndex);
             MyDbg.Assert(move != null);
             this.AdvanceToStone(move);
@@ -1196,9 +1196,9 @@ MISCELLANEOUS
         //// appropriate action.
         ////
         private async void NewGameDialogDone (NewGameDialog dlg) {
-            if (this.theAppBar.IsOpen)
-                // If launched from appbar, and it remained open, close it.
-                this.theAppBar.IsOpen = false;
+            //if (this.theAppBar.IsOpen)  app.bottomappbar gone, if add menu can re-use this
+            //    // If launched from appbar, and it remained open, close it.
+            //    this.theAppBar.IsOpen = false;
             if (dlg.NewGameConfirmed) {
                 var white = dlg.WhiteText;
                 var black = dlg.BlackText;
@@ -1447,7 +1447,7 @@ MISCELLANEOUS
                                            new List<string>() { "Yes", "No" }, 1, 1) ==
                          GameAux.YesMessage) {
                 win.Game.CutMove();
-                this.appBarPasteButton.IsEnabled = true;
+                //this.appBarPasteButton.IsEnabled = true;  app.bottomappbar gone, if add menu can re-use this
                 e.Handled = true;
             }
             // Pasting a sub tree
@@ -1466,7 +1466,7 @@ MISCELLANEOUS
                 }
                 else if (win.Game.CanPaste()) {
                     await win.Game.PasteMove();
-                    this.appBarPasteButton.IsEnabled = false;
+                    //this.appBarPasteButton.IsEnabled = false;app.bottomappbar gone, if add menu can re-use this
                 }
                 else
                     await GameAux.Message("No cut move to paste at this time.");
@@ -1855,16 +1855,16 @@ MISCELLANEOUS
         //// appropriate action.
         ////
         private void GameInfoDialogDone (GameInfo dlg) {
-            if (this.theAppBar.IsOpen)
-                // If launched from appbar, and it remained open, close it.
-                this.theAppBar.IsOpen = false;
+            //if (this.theAppBar.IsOpen)  app.bottomappbar gone, if add menu can re-use this
+            //    // If launched from appbar, and it remained open, close it.
+            //    this.theAppBar.IsOpen = false;
             if (dlg.GameInfoConfirmed) {
                 if (this.Game.CurrentMove == null && dlg.CommentChanged)
                     this.commentBox.Text = this.Game.Comments;
                 // Update title in case dirty flag changed.
                 this.UpdateTitle();
             }
-            this.theAppBar.IsOpen = false;
+            //this.theAppBar.IsOpen = false;app.bottomappbar gone, if add menu can re-use this
             this.FocusOnStones();
         }
 
@@ -1897,7 +1897,7 @@ MISCELLANEOUS
                                           "Confirm cutting move", new List<string>() { "Yes", "No" }) ==
                               GameAux.YesMessage) {
                 this.Game.CutMove();
-                this.appBarPasteButton.IsEnabled = true;
+                //this.appBarPasteButton.IsEnabled = true;app.bottomappbar gone, if add menu can re-use this
             }
         }
 
@@ -1907,7 +1907,7 @@ MISCELLANEOUS
                 await this.Game.PasteMove();
             //else
             //    await GameAux.Message("No cut move to paste at this time.");
-            this.appBarPasteButton.IsEnabled = false;
+            //this.appBarPasteButton.IsEnabled = false;app.bottomappbar gone, if add menu can re-use this
             this.FocusOnStones();
         }
 
@@ -2400,9 +2400,9 @@ MISCELLANEOUS
         //// It checks the result of the dialog and takes appropriate action.
         ////
         private async void WindowSwitchingDialogDone (WindowSwitchingDialog dlg) {
-            if (this.theAppBar.IsOpen)
-                // If launched from appbar, and it remained open, close it.
-                this.theAppBar.IsOpen = false;
+            //if (this.theAppBar.IsOpen)app.bottomappbar gone, if add menu can re-use this
+            //    // If launched from appbar, and it remained open, close it.
+            //    this.theAppBar.IsOpen = false;
             // If nothing selected, use first one because it looks selected, and user has chance to save
             // Do not search for filename because 1) "No File Name" and 2) always finds first if two have same name
             //var gindex = GameAux.ListFind(gfile, this.Games, (fname, game) => ((string)fname) == ((Game)game).Filename);
@@ -2544,8 +2544,16 @@ MISCELLANEOUS
         //// textbox.
         ////
         private void FocusOnStones () {
-            //this.Focus(FocusState.Pointer);
+            //this.mainLandscapeView.Focus(FocusState.Keyboard);
+            //this.mainLandscapeView.IsTabStop = true;
+            //this.mainLandscapeView.IsHitTestVisible = true;
+
             this.Focus(FocusState.Keyboard);
+            this.IsEnabled = true;
+            this.IsTabStop = true;
+            this.IsHitTestVisible = true;
+            this.Visibility = Visibility.Visible;
+
             //this.inputFocus.IsEnabled = true;
             //this.inputFocus.IsTabStop = true;
             //this.inputFocus.IsHitTestVisible = true;

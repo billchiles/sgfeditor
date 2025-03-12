@@ -8,15 +8,7 @@
     mc:Ignorable="d"
     Background="#C7419082"
     KeyDown="mainWin_keydown" >
-    <!--
-    SizeChanged="Page_SizeChanged" >
--->
-    
-    <!-- This is what blank app had as file contents after header
-    <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
 
-    </Grid>
-    -->
 
 
     <!-- Define the main UI Grid: buttons upper right, edit box below, go board down the left side ... -->
@@ -212,87 +204,8 @@
 
 
     <!-- App Bar for touch screens and moving less frequent commands out of command panel -->
-    <Page.BottomAppBar>
-        <AppBar x:Name="theAppBar" Background="DarkSlateGray" Foreground="White">
-            <AppBar.Resources>
-                <ResourceDictionary>
-                    <ResourceDictionary.ThemeDictionaries>
-                        <!--
-                        <ResourceDictionary x:Key="Dark">
-                            <SolidColorBrush x:Key="ButtonForegroundPointerOver" Color="Red"/>
-                            <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="Black"/>
-                        </ResourceDictionary> -->
-                        <ResourceDictionary x:Key="Light">
-                            <SolidColorBrush x:Key="ButtonForegroundPointerOver" Color="Black"/>
-                            <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="LightGray"/>
-                        </ResourceDictionary>
-                    </ResourceDictionary.ThemeDictionaries>
-                </ResourceDictionary>
-            </AppBar.Resources>
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition/>
-                    <RowDefinition/>
-                </Grid.RowDefinitions>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition/>
-                    <ColumnDefinition/>
-                    <ColumnDefinition/>
-                    <ColumnDefinition/>
-                </Grid.ColumnDefinitions>
-                <!-- Game info, goto game, new, open, pass -->
-                <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal">
-                    <Button IsEnabled="True" BorderThickness="1" Click="AppBarGameInfoClick"
-                            BorderBrush="White" Foreground="White">Game Info ...</Button>
-                    <Button IsEnabled="True" BorderThickness="1" Margin="60,0,0,0"  Click="AppBarGotoGame"
-                            BorderBrush="White" Foreground="White">Goto Game ...</Button>
-                </StackPanel>
-                <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal"  >
-                    <Button Margin="0,0,10,0" Name="newButton" Click="newButton_left_down" 
-                            BorderThickness="1" BorderBrush="White" Foreground="White">New</Button>
-                    <Button Margin="0,0,50,0" Name="openButton" Click="openButton_left_down" 
-                            BorderThickness="1" BorderBrush="White" Foreground="White">Open</Button>
-                    <Button Name="passButton" Click="passButton_left_down"
-                            BorderThickness="1" BorderBrush="White" Foreground="White">Pass</Button>
-                </StackPanel>
 
-                <!-- Save As and Save Flipped ... -->
-                <TextBlock Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2" Foreground="White"
-                           FontSize="14" Margin="20,20">Saving files:</TextBlock>
-                <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Margin="35,0,0,10" >
-                    <Button IsEnabled="True" BorderThickness="1" Click="AppBarSaveAsClick"
-                            x:Name="appBarSaveAsButton"
-                            BorderBrush="White" Foreground="White">Save As ...</Button>
-                    <Button IsEnabled="True" BorderThickness="1" Click="AppBarSaveFlippedClick"
-                            x:Name="appBarSaveFlippedButton" 
-                            BorderBrush="White" Foreground="White">Save Flipped ...</Button>
-                </StackPanel>
-                <!-- Move Branches up or down ... -->
-                <TextBlock Grid.Row="0" Grid.Column="2" Grid.ColumnSpan="2" Foreground="White"
-                           FontSize="14" Margin="5,20">Move branch higher or lower:</TextBlock>
-                <StackPanel Grid.Row="1" Grid.Column="2" Orientation="Horizontal" Margin="20,0,0,10" >
-                    <Button IsEnabled="True" BorderThickness="1" Click="AppBarMoveUpClick"
-                            x:Name="appBarMoveUpButton"
-                            BorderBrush="White" Foreground="White">Move Up</Button>
-                    <Button IsEnabled="True" BorderThickness="1" Click="AppBarMoveDownClick"
-                            x:Name="appBarMoveDownButton"
-                            BorderBrush="White" Foreground="White">Move Down</Button>
-                </StackPanel>
-                <!-- Cut or Paste a sub tree of moves ... -->
-                <TextBlock Grid.Row="0" Grid.Column="3" Grid.ColumnSpan="2" 
-                           FontSize="14" Margin="5,20">Cut or Paste a sub tree of moves:</TextBlock>
-                <StackPanel Grid.Row="1" Grid.Column="3" Orientation="Horizontal" Margin="20,0,0,10" >
-                    <Button IsEnabled="True" BorderThickness="1" Click="AppBarCutClick"
-                            x:Name="appBarCutButton"
-                            BorderBrush="White" Foreground="White">Cut</Button>
-                    <Button IsEnabled="False" BorderThickness="1" Click="AppBarPasteClick"
-                            x:Name="appBarPasteButton"
-                            BorderBrush="White" Foreground="White">Paste</Button>
-                </StackPanel>
-            </Grid>
-        </AppBar>
-
-    </Page.BottomAppBar>
+   <!-- had to delete becasue comments don't nest WTF -->
 
 
 </Page>
