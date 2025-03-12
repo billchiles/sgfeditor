@@ -570,6 +570,7 @@ MISCELLANEOUS
         ////
         private ScrollViewer hiddenRootScroller = null;
         protected override void OnLostFocus (RoutedEventArgs e) {
+            //this.FocusOnStones(); calling all the time makes keys work but no buttons or editbox work
             if (this.hiddenRootScroller == null) {
                 var d = FocusManager.GetFocusedElement() as DependencyObject;
                 // When new game dialog gets shown, d is null;
@@ -2544,21 +2545,22 @@ MISCELLANEOUS
         //// textbox.
         ////
         private void FocusOnStones () {
+
+            //this.Focus(FocusState.Keyboard);
+            //this.IsEnabled = true;
+            //this.IsTabStop = true;
+            //this.IsHitTestVisible = true;
+            //this.Visibility = Visibility.Visible;
+
+            this.inputFocus.IsEnabled = true;
+            this.inputFocus.IsTabStop = true;
+            this.inputFocus.IsHitTestVisible = true;
+            this.inputFocus.Focus(FocusState.Pointer);
+            this.inputFocus.Focus(FocusState.Keyboard);
+
             //this.mainLandscapeView.Focus(FocusState.Keyboard);
             //this.mainLandscapeView.IsTabStop = true;
             //this.mainLandscapeView.IsHitTestVisible = true;
-
-            this.Focus(FocusState.Keyboard);
-            this.IsEnabled = true;
-            this.IsTabStop = true;
-            this.IsHitTestVisible = true;
-            this.Visibility = Visibility.Visible;
-
-            //this.inputFocus.IsEnabled = true;
-            //this.inputFocus.IsTabStop = true;
-            //this.inputFocus.IsHitTestVisible = true;
-            //this.inputFocus.Focus(FocusState.Pointer);
-            //this.inputFocus.Focus(FocusState.Keyboard);
         }
 
         //// add_unrendered_adornment setups all the UI objects to render the
