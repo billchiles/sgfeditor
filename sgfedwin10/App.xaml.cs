@@ -75,9 +75,6 @@ namespace SgfEdwin10
             Window = new MainWindow();
             Window.Activate();
             WindowHandle = WinRT.Interop.WindowNative.GetWindowHandle(Window);
-
-            //var frame = (Frame)Window.Current.Content; Never works in winui 3 desktop
-            //var page = (MainWinPg)frame.Content;
         }
 
 
@@ -88,7 +85,7 @@ namespace SgfEdwin10
 
         }
 
-        //// MIGRATION TOOL generated, so this is their new MainWinow.
+        /// MIGRATION TOOL generated, so this is their new MainWinow.
         public static MainWindow Window { get; private set; }
 
         public static IntPtr WindowHandle { get; private set; }

@@ -8,7 +8,7 @@
     mc:Ignorable="d">
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="48"/>
+            <RowDefinition Height="32"/> <!-- was 48 -->
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
         <Grid x:Name="AppTitleBar" Height="40" Grid.Row="0">
@@ -30,10 +30,11 @@
             </AppBarButton>
             <TextBlock x:Name="TitleTextBlock" 
                Text="SGFEditor" 
+               FontSize="16"
                Style="{StaticResource CaptionTextBlockStyle}"
                Grid.Column="2"
-               VerticalAlignment="Center"
-               Margin="4,0,0,0"/>
+               VerticalAlignment="Top"
+               Margin="4,4,0,0"/>
         </Grid>
         <!-- Your pages will be loaded in this Frame -->
         <Frame Grid.Row="1" Height="Auto" x:Name="PageFrame" />

@@ -26,12 +26,12 @@ namespace SgfEdwin10 {
             //this.SizeChanged += FocusableInputControl_SizeChanged;
         }
 
-        //// FocusableInputControl_SizeChanged was incorrect attempt to square the Go Board as window resized,
-        //// otherwise it would stretch in funny distorted ways.  Clearly it isn't right to set the focused input
-        //// control's dimensions to hard values when we want the input protection to stretch to the bounds of the 
-        //// grid cell.  This is also wrong to handle this the same for all uses (though we use it one time) since
-        //// the handler should be per instance where this is used in the UI.
-        ////
+        /// FocusableInputControl_SizeChanged was incorrect attempt to square the Go Board as window esized,
+        /// otherwise it would stretch in funny distorted ways.  Clearly it isn't right to set the ocused input
+        /// control's dimensions to hard values when we want the input protection to stretch to the ounds of the 
+        /// grid cell.  This is also wrong to handle this the same for all uses (though we use it one ime) since
+        /// the handler should be per instance where this is used in the UI.
+        ///
         void FocusableInputControl_SizeChanged (object sender, SizeChangedEventArgs e) {
             //var width = this.ActualWidth;
             //var height = this.ActualHeight;

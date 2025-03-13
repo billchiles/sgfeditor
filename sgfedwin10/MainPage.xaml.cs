@@ -10,8 +10,9 @@ using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Navigation;
+using SizeInt32 = Windows.Graphics.SizeInt32;
 
-using System.Reflection; // bogus need for page onloaded setting up event tracing, not needed normally
+//using System.Reflection; // bogus need for page onloaded setting up event tracing, not needed normally
 
 
 using Microsoft.UI.Xaml.Shapes; // Rectangle
@@ -48,7 +49,7 @@ namespace SgfEdwin10 {
     /// </summary>
     public sealed partial class MainWinPg : Page {
 
-    private const string HelpString = @"
+        private const string HelpString = @"
 SGFEditor can read and write .sgf files, edit game trees, etc.
 
 The following describes command and key bindings, but you can use commands
@@ -159,10 +160,15 @@ MISCELLANEOUS
 
         public MainWinPg () {
             this.InitializeComponent();
-            // Calling FocusOnStones in the CreateDefaultGame call here seems too early in UI setup,
-            // do put this post loaded event handler to pull focus out of comment box.
+            // Call FocusOnStones() after loaded event to pull focus out of comment box.
             this.Loaded += (object sender, RoutedEventArgs e) => {
-                SetUITracing(this.mainLandscapeView);
+                //SetUITracing(this.mainLandscapeView);
+                // Hack to get first launch window with square Go board.
+                var windowId = Win32Interop.GetWindowIdFromWindow(App.WindowHandle);
+                AppWindow appWindow = AppWindow.GetFromWindowId(windowId);
+                var curSize = appWindow.ClientSize;
+                appWindow.Resize(new SizeInt32(curSize.Width, curSize.Height + 16));
+                // Make sure keybindings work
                 this.FocusOnStones();
             };
             this.prevSetupSize = 0;
@@ -177,70 +183,54 @@ MISCELLANEOUS
             this.CreateDefaultGame();
         }
 
+        /// SetUITracing descends all UIElement's children to hook their focus events and keydown.
+        /// We needed to find where the focus was being stolen to and thwarting app logic.  This has
+        /// been a bug since win8, so winRT/win10/UWP/WinUI3 all have this bug with forum posts and
+        /// github bug, but msft never fixes it or provides workaround.
+        ///
+        //private void SetUITracing (UIElement elt) {
+        //    int count = VisualTreeHelper.GetChildrenCount(elt);
+        //    for (int i = 0; i < count; i++) {
+        //        DependencyObject current = VisualTreeHelper.GetChild(elt, i);
+        //        if ((current.GetType()).Equals(typeof(UIElement)) ||
+        //            (current.GetType().GetTypeInfo().IsSubclassOf(typeof(UIElement)))) {
+        //            var child = (UIElement)current;
+        //            child.KeyDown += this.tracing_keydown;
+        //            child.GotFocus += this.tracing_gotfocus;
+        //            child.LostFocus += this.tracing_lostfocus;
+        //            var fe = child as FrameworkElement;
+        //            if (fe != null)
+        //                Debug.WriteLine("Set up tracing for FE {0}", fe.Name);
+        //            else
+        //                Debug.WriteLine("Set up tracing for child {0}", child);
+        //            SetUITracing(child);
+        //        }
+        //    }
+        //}
 
-        private void SetUITracing (UIElement elt) {
-            int count = VisualTreeHelper.GetChildrenCount(elt);
-            for (int i = 0; i < count; i++) {
-                DependencyObject current = VisualTreeHelper.GetChild(elt, i);
-                if ((current.GetType()).Equals(typeof(UIElement)) ||
-                    (current.GetType().GetTypeInfo().IsSubclassOf(typeof(UIElement)))) {
-                    var child = (UIElement)current;
-                    child.KeyDown += this.tracing_keydown;
-                    child.GotFocus += this.tracing_gotfocus;
-                    child.LostFocus += this.tracing_lostfocus;
-                    var fe = child as FrameworkElement;
-                    if (fe != null)
-                        Debug.WriteLine("Set up tracing for FE {0}", fe.Name);
-                    else
-                        Debug.WriteLine("Set up tracing for child {0}", child);
-                    SetUITracing(child);
-                }
-            }
-        }
+        //private async void tracing_keydown (object sender, KeyRoutedEventArgs e) {
+        //    var fe = sender as FrameworkElement;
+        //    if (fe != null)
+        //        Debug.WriteLine("Tracing Keydown FE -- {0}", fe.Name);
+        //    else
+        //        Debug.WriteLine("Tracing Keydown S -- {0}", sender);
+        //}
 
-        private async void tracing_keydown (object sender, KeyRoutedEventArgs e) {
-            var fe = sender as FrameworkElement;
-            if (fe != null)
-                Debug.WriteLine("Tracing Keydown FE -- {0}", fe.Name);
-            else
-                Debug.WriteLine("Tracing Keydown S -- {0}", sender);
-        }
+        //private void tracing_gotfocus (object sender, RoutedEventArgs e) {
+        //    var fe = sender as FrameworkElement;
+        //    if (fe != null)
+        //        Debug.WriteLine("Tracing GotFocus FE -- {0}", fe.Name);
+        //    else
+        //        Debug.WriteLine("Tracing GotFocus S -- {0}", sender);
+        //}
 
-        private void tracing_gotfocus (object sender, RoutedEventArgs e) {
-            var fe = sender as FrameworkElement;
-            if (fe != null)
-                Debug.WriteLine("Tracing GotFocus FE -- {0}", fe.Name);
-            else
-                Debug.WriteLine("Tracing GotFocus S -- {0}", sender);
-        }
-
-        private void tracing_lostfocus (object sender, RoutedEventArgs e) {
-            var fe = sender as FrameworkElement;
-            if (fe != null)
-                Debug.WriteLine("Tracing LostFocus FE -- {0}", fe.Name);
-            else
-                Debug.WriteLine("Tracing LostFocus S -- {0}", sender);
-        }
-
-
-
-        /// FindChildren is an example from 
-        /// https://learn.microsoft.com/en-us/uwp/api/windows.ui.xaml.media.visualtreehelper?view=winrt-22000
-        /// 
-        internal static void FindChildren<T> (List<T> results,
-                                              DependencyObject startNode)
-                             where T : DependencyObject {
-            int count = VisualTreeHelper.GetChildrenCount(startNode);
-            for (int i = 0; i < count; i++) {
-                DependencyObject current = VisualTreeHelper.GetChild(startNode, i);
-                if ((current.GetType()).Equals(typeof(T)) || (current.GetType().GetTypeInfo().IsSubclassOf(typeof(T)))) {
-                    T asType = (T)current;
-                    results.Add(asType);
-                }
-                FindChildren<T>(results, current);
-            }
-        }
-
+        //private void tracing_lostfocus (object sender, RoutedEventArgs e) {
+        //    var fe = sender as FrameworkElement;
+        //    if (fe != null)
+        //        Debug.WriteLine("Tracing LostFocus FE -- {0}", fe.Name);
+        //    else
+        //        Debug.WriteLine("Tracing LostFocus S -- {0}", sender);
+        //}
 
 
         private void CreateDefaultGame () {
@@ -255,9 +245,9 @@ MISCELLANEOUS
         //// Ensuring board is square and checking for auto saved file
         //// 
 
-        //// OnNavigatedTo adds SizeChanged handler to ensure board is square.  It also checks for the
-        //// unnamed auto saved file. Docs say this runs before UI is ready.
-        //// 
+        /// OnNavigatedTo adds SizeChanged handler to ensure board is square.  It also checks for the
+        /// unnamed auto saved file. Docs say this runs before UI is ready.
+        /// 
         protected override void OnNavigatedTo (NavigationEventArgs e) {
             // Examples use e.Parameter here, but this e.Parameter has a string or other weird types.
             // MainWinPg mainWin = e.Parameter as MainWinPg;
@@ -588,105 +578,44 @@ MISCELLANEOUS
         //// Input Handling
         //// 
 
-        // Attempted hack around winRT's internals stealing focus to hidden root ScrollViewer.
-        //
-        //protected override void OnNavigatedTo (NavigationEventArgs e) {
-        //    MainWinPg mainWin = e.Parameter as MainWinPg;
-        //    // These don't work because mainwin's frame is always null (here and in constructor)
-        //    //mainWin.Frame.KeyDown += this.mainWin_keydown;
-        //    //mainWin.Frame.AddHandler(UIElement.KeyDownEvent, (KeyEventHandler)this.mainWin_keydown, true);
-        //}
-
-        // Another attempted hack around for winRT stealing focus to hidden root ScrollViewer ...
-        // OnLostFocus installed this handler on the ScrollViewer at the top of the UI tree to try to
-        // keep focus down on the user control so that mainwin_keydown gets called.
-        //
-        // This doesn't work because an infinite loop occurs with the scrollviewer getting focus,
-        // then the sf_GotFocus handler putting it back on stones, then scrollviewer getting focus again.
-        //
-        //void sv_GotFocus (object sender, RoutedEventArgs e) {
-        //    this.FocusOnStones();
-        //}
-        //private bool hackDone = false;
-
-        // This is what OnLostFocus printed when focus was appropriately down in my UI elements,
-        // specifically when hitting esc with focus in the comment box.
-        //
-        //Lost focus. source: Windows.UI.Xaml.Controls.TextBox, new focus: SgfEdWin8.FocusableInputControl
-        //SgfEdWin8.FocusableInputControl
-        // => Windows.UI.Xaml.Controls.Grid
-        // => SgfEdWin8.MainWinPg
-        // => Windows.UI.Xaml.Controls.ContentPresenter
-        // => Windows.UI.Xaml.Controls.Border
-        // => Windows.UI.Xaml.Controls.Frame
-        // => Windows.UI.Xaml.Controls.Border
-        // => Windows.UI.Xaml.Controls.ScrollContentPresenter
-        // => Windows.UI.Xaml.Controls.Grid
-        // => Windows.UI.Xaml.Controls.Border
-        // => Windows.UI.Xaml.Controls.ScrollViewer
-        //
-        // This is what OnLostFocus printed when focus was snatched by internal winRT code.
-        // Focus is all the way on hidden root UI element, so winmain_keydown never gets called,
-        // even if installed manually with AddHandler to always get invoked, even for handled input.
-        //
-        //Lost focus. source: SgfEdWin8.FocusableInputControl, new focus: Windows.UI.Xaml.Controls.ScrollViewer
-        //Windows.UI.Xaml.Controls.ScrollViewer
-
-        //// OnLostFocus works around winRT bug that steals focus to a hidden root ScrollViewer,
-        //// disabling MainWinPg's mainwin_keydown handler.  Can't just call FocusOnStones because
-        //// if commentBox gets focus, want it to be there, and it turns out all the command buttons
-        //// quit working too since this somehow runs first, puts focus on stones, then button never
-        //// gets click event.
+        //// OnLostFocus works around winRT/Win10/UWP/WinUI3 bug that steals focus to a hidden root
+        //// ScrollViewer, disabling MainWinPg's mainwin_keydown handler.  Can't just call
+        //// FocusOnStones because then commentBox and all the command buttons quit working.
+        //// The commented out code is tracing telemetry to discover bug and verify fix.
         ////
         private ScrollViewer hiddenRootScroller = null;
         protected override void OnLostFocus (RoutedEventArgs e) {
-            //this.FocusOnStones(); calling all the time makes keys work but no buttons or editbox work
+            //Debug.WriteLine("Tracing Page lost focus ...");
+            var xmalroot = this.mainLandscapeView.XamlRoot; // Must pass xmalroot in winUI3
+            var fo = FocusManager.GetFocusedElement(xmalroot);
+            //var fe = fo as FrameworkElement;
+            //Debug.WriteLine("   tracing focused element is {0} with name {1}",
+            //                fo != null ? fo.ToString() : "null", fe != null ? fe.Name : "<no-name>");
             if (this.hiddenRootScroller == null) {
-                var fo = FocusManager.GetFocusedElement();
-                var d = FocusManager.GetFocusedElement() as DependencyObject;
+                var d = fo as DependencyObject;
                 // When new game dialog gets shown, d is null;
                 if (d == null) return;
                 while (d.GetType() != typeof(ScrollViewer)) {
                     d = VisualTreeHelper.GetParent(d);
                     if (d == null) return;
+                    //fe = d as FrameworkElement;
+                    //Debug.WriteLine("   tracing parent is {0} with name {1}",
+                    //                d.ToString(), fe != null ? fe.Name : "<no-name>");
                 }
                 hiddenRootScroller = d as ScrollViewer;
+                //while (d != null) {
+                //    fe = d as FrameworkElement;
+                //    Debug.WriteLine("   more tracing parent is {0} with name {1}",
+                //                    d.ToString(), fe != null ? fe.Name : "<no-name>");
+                //    d = VisualTreeHelper.GetParent(d);
+                //}
+
             }
-            if (FocusManager.GetFocusedElement() == (object)this.hiddenRootScroller)
+            if (fo == (object)this.hiddenRootScroller) {
+                //Debug.WriteLine("   tracing same scrollviewer");
                 this.FocusOnStones();
-
-            // Diagnostic output that helped show FocusOnStones wasn't working because something
-            // deep in winRT was stealing focus to a hidden root ScrollViewer, which mean mainwin_keydown
-            // was never called.
-            //
-            //System.Diagnostics.Debug.WriteLine(string.Format("\n\nLost focus. source: {0}, new focus: {1}", e.OriginalSource,
-            //                                                 FocusManager.GetFocusedElement()));
-            //base.OnLostFocus(e);
-            //DependencyObject d = FocusManager.GetFocusedElement() as DependencyObject;
-            //string output = string.Empty;
-            //while (d != null) {
-            //    if (output.Length > 0) {
-            //        output = string.Concat(output, "\n => ");
-            //    }
-            //    output += d.ToString();
-            //    d = VisualTreeHelper.GetParent(d);
-            //}
-            //System.Diagnostics.Debug.WriteLine(output);
-
-            // This was a hack around attempt to put focus handler on the root ScrollViewer that put focus on stones.
-            // This doesn't work because an infinite loop occurs with the scrollviewer getting focus,
-            // then the sf_GotFocus handler putting it back on stones, then scrollviewer getting focus again.
-            //
-            //if (! hackDone) {
-            //    d = FocusManager.GetFocusedElement() as DependencyObject;
-            //    while (d.GetType() != typeof(Windows.UI.Xaml.Controls.ScrollViewer)) {
-            //        d = VisualTreeHelper.GetParent(d);
-            //    }
-            //    var sv = d as Windows.UI.Xaml.Controls.ScrollViewer;
-            //    sv.GotFocus += sv_GotFocus;
-            //    hackDone = true;
-            //}
-        }
+            }
+        } // OnLostFocus
 
 
         private void helpButtonLeftDown (object sender, RoutedEventArgs e) {
@@ -762,8 +691,8 @@ MISCELLANEOUS
                         }
                     }
                 }
-                var fe = sender as FrameworkElement;
-                Debug.WriteLine("Tracing pointer pressed -- {0}", fe != null ? fe.Name : sender);
+                //var fe = sender as FrameworkElement;
+                //Debug.WriteLine("Tracing pointer pressed -- {0}", fe != null ? fe.Name : sender);
                 this.FocusOnStones();
             }
         }
@@ -2618,23 +2547,17 @@ MISCELLANEOUS
         //// textbox.
         ////
         private void FocusOnStones () {
-
             //this.Focus(FocusState.Keyboard);
             //this.IsEnabled = true;
             //this.IsTabStop = true;
             //this.IsHitTestVisible = true;
             //this.Visibility = Visibility.Visible;
-
             this.inputFocus.IsEnabled = true;
             this.inputFocus.IsTabStop = true;
             this.inputFocus.IsHitTestVisible = true;
             this.inputFocus.Focus(FocusState.Pointer);
             this.inputFocus.Focus(FocusState.Keyboard);
-            Debug.WriteLine("Tracing just set focus on inputfocus in FocusOnStones()");
-
-            //this.mainLandscapeView.Focus(FocusState.Keyboard);
-            //this.mainLandscapeView.IsTabStop = true;
-            //this.mainLandscapeView.IsHitTestVisible = true;
+            //Debug.WriteLine("Tracing just set focus on inputfocus in FocusOnStones()");
         }
 
         //// add_unrendered_adornment setups all the UI objects to render the
