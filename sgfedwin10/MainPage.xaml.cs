@@ -11,6 +11,8 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Navigation;
 
+//using System.Reflection; // bogus need for page onloaded setting up event tracers, not needed normally
+
 
 using Microsoft.UI.Xaml.Shapes; // Rectangle
 using Microsoft.UI; // Color
@@ -159,9 +161,11 @@ MISCELLANEOUS
             this.InitializeComponent();
             // Calling FocusOnStones in the CreateDefaultGame call here seems too early in UI setup,
             // do put this post loaded event handler to pull focus out of comment box.
-            this.Loaded += (object sender, RoutedEventArgs e) => this.FocusOnStones();
+            this.Loaded += (object sender, RoutedEventArgs e) => {
+                //SetUITracing(this.mainLandscapeView);
+                this.FocusOnStones();
+            };
             this.prevSetupSize = 0;
-
             this._titleSizeDefault = (int)this.Title.FontSize; // 18
             this._indexesSizeDefault = MainWinPgAux.indexLabelFontSize; // 18
             this._commentFontsizeDefault = (int)this.commentBox.FontSize; // 20
@@ -172,6 +176,72 @@ MISCELLANEOUS
 
             this.CreateDefaultGame();
         }
+
+
+        //private void SetUITracing (UIElement elt) {
+        //    int count = VisualTreeHelper.GetChildrenCount(elt);
+        //    for (int i = 0; i < count; i++) {
+        //        DependencyObject current = VisualTreeHelper.GetChild(elt, i);
+        //        if ((current.GetType()).Equals(typeof(UIElement)) ||
+        //            (current.GetType().GetTypeInfo().IsSubclassOf(typeof(UIElement)))) {
+        //            var child = (UIElement)current;
+        //            child.KeyDown += this.tracing_keydown;
+        //            child.GotFocus += this.tracing_gotfocus;
+        //            child.LostFocus += this.tracing_lostfocus;
+        //            var fe = child as FrameworkElement;
+        //            if (fe != null)
+        //                Debug.WriteLine("Set up tracing for FE {0}", fe.Name);
+        //            else
+        //                Debug.WriteLine("Set up tracing for child {0}", child);
+        //            SetUITracing(child);
+        //        }
+        //    }
+        //}
+
+        //private async void tracing_keydown (object sender, KeyRoutedEventArgs e) {
+        //    var fe = sender as FrameworkElement;
+        //    if (fe != null)
+        //        Debug.WriteLine("Tracing Keydown FE -- {0}", fe.Name);
+        //    else
+        //        Debug.WriteLine("Tracing Keydown S -- {0}", sender);
+        //}
+
+        //private  void tracing_gotfocus (object sender, RoutedEventArgs e) {
+        //    var fe = sender as FrameworkElement;
+        //    if (fe != null)
+        //        Debug.WriteLine("Tracing GotFocus FE -- {0}", fe.Name);
+        //    else
+        //        Debug.WriteLine("Tracing GotFocus S -- {0}", sender);
+        //}
+
+        //private  void tracing_lostfocus (object sender, RoutedEventArgs e) {
+        //    var fe = sender as FrameworkElement;
+        //    if (fe != null)
+        //        Debug.WriteLine("Tracing LostFocus FE -- {0}", fe.Name);
+        //    else
+        //        Debug.WriteLine("Tracing LostFocus S -- {0}", sender);
+        //}
+
+
+
+        /// FindChildren is an example from 
+        /// https://learn.microsoft.com/en-us/uwp/api/windows.ui.xaml.media.visualtreehelper?view=winrt-22000
+        /// 
+        internal static void FindChildren<T> (List<T> results,
+                                              DependencyObject startNode)
+                             where T : DependencyObject {
+            int count = VisualTreeHelper.GetChildrenCount(startNode);
+            for (int i = 0; i < count; i++) {
+                DependencyObject current = VisualTreeHelper.GetChild(startNode, i);
+                if ((current.GetType()).Equals(typeof(T)) || (current.GetType().GetTypeInfo().IsSubclassOf(typeof(T)))) {
+                    T asType = (T)current;
+                    results.Add(asType);
+                }
+                FindChildren<T>(results, current);
+            }
+        }
+
+
 
         private void CreateDefaultGame () {
             this.Game = GameAux.CreateDefaultGame(this);
@@ -186,7 +256,7 @@ MISCELLANEOUS
         //// 
 
         //// OnNavigatedTo adds SizeChanged handler to ensure board is square.  It also checks for the
-        //// unnamed auto saved file.
+        //// unnamed auto saved file. Docs say this runs before UI is ready.
         //// 
         protected override void OnNavigatedTo (NavigationEventArgs e) {
             // Examples use e.Parameter here, but this e.Parameter has a string or other weird types.
@@ -572,6 +642,7 @@ MISCELLANEOUS
         protected override void OnLostFocus (RoutedEventArgs e) {
             //this.FocusOnStones(); calling all the time makes keys work but no buttons or editbox work
             if (this.hiddenRootScroller == null) {
+                var fo = FocusManager.GetFocusedElement();
                 var d = FocusManager.GetFocusedElement() as DependencyObject;
                 // When new game dialog gets shown, d is null;
                 if (d == null) return;

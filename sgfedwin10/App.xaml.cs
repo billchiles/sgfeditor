@@ -15,6 +15,7 @@ using System.Runtime.InteropServices.WindowsRuntime;
 using Windows.ApplicationModel;
 //using Microsoft.ApplicationModel.Activation;
 using Microsoft.Foundation;
+//using System.Reflection;
 //using Microsoft.Foundation.Collections;
 
 // To learn more about WinUI, the WinUI project structure,
@@ -74,7 +75,11 @@ namespace SgfEdwin10
             Window = new MainWindow();
             Window.Activate();
             WindowHandle = WinRT.Interop.WindowNative.GetWindowHandle(Window);
+
+            //var frame = (Frame)Window.Current.Content; Never works in winui 3 desktop
+            //var page = (MainWinPg)frame.Content;
         }
+
 
         // TODO This is an example method for the case when app is activated through a file.
         // Feel free to remove this if you do not need this.
