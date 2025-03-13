@@ -11,7 +11,7 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Navigation;
 
-//using System.Reflection; // bogus need for page onloaded setting up event tracers, not needed normally
+using System.Reflection; // bogus need for page onloaded setting up event tracing, not needed normally
 
 
 using Microsoft.UI.Xaml.Shapes; // Rectangle
@@ -162,7 +162,7 @@ MISCELLANEOUS
             // Calling FocusOnStones in the CreateDefaultGame call here seems too early in UI setup,
             // do put this post loaded event handler to pull focus out of comment box.
             this.Loaded += (object sender, RoutedEventArgs e) => {
-                //SetUITracing(this.mainLandscapeView);
+                SetUITracing(this.mainLandscapeView);
                 this.FocusOnStones();
             };
             this.prevSetupSize = 0;
@@ -178,49 +178,49 @@ MISCELLANEOUS
         }
 
 
-        //private void SetUITracing (UIElement elt) {
-        //    int count = VisualTreeHelper.GetChildrenCount(elt);
-        //    for (int i = 0; i < count; i++) {
-        //        DependencyObject current = VisualTreeHelper.GetChild(elt, i);
-        //        if ((current.GetType()).Equals(typeof(UIElement)) ||
-        //            (current.GetType().GetTypeInfo().IsSubclassOf(typeof(UIElement)))) {
-        //            var child = (UIElement)current;
-        //            child.KeyDown += this.tracing_keydown;
-        //            child.GotFocus += this.tracing_gotfocus;
-        //            child.LostFocus += this.tracing_lostfocus;
-        //            var fe = child as FrameworkElement;
-        //            if (fe != null)
-        //                Debug.WriteLine("Set up tracing for FE {0}", fe.Name);
-        //            else
-        //                Debug.WriteLine("Set up tracing for child {0}", child);
-        //            SetUITracing(child);
-        //        }
-        //    }
-        //}
+        private void SetUITracing (UIElement elt) {
+            int count = VisualTreeHelper.GetChildrenCount(elt);
+            for (int i = 0; i < count; i++) {
+                DependencyObject current = VisualTreeHelper.GetChild(elt, i);
+                if ((current.GetType()).Equals(typeof(UIElement)) ||
+                    (current.GetType().GetTypeInfo().IsSubclassOf(typeof(UIElement)))) {
+                    var child = (UIElement)current;
+                    child.KeyDown += this.tracing_keydown;
+                    child.GotFocus += this.tracing_gotfocus;
+                    child.LostFocus += this.tracing_lostfocus;
+                    var fe = child as FrameworkElement;
+                    if (fe != null)
+                        Debug.WriteLine("Set up tracing for FE {0}", fe.Name);
+                    else
+                        Debug.WriteLine("Set up tracing for child {0}", child);
+                    SetUITracing(child);
+                }
+            }
+        }
 
-        //private async void tracing_keydown (object sender, KeyRoutedEventArgs e) {
-        //    var fe = sender as FrameworkElement;
-        //    if (fe != null)
-        //        Debug.WriteLine("Tracing Keydown FE -- {0}", fe.Name);
-        //    else
-        //        Debug.WriteLine("Tracing Keydown S -- {0}", sender);
-        //}
+        private async void tracing_keydown (object sender, KeyRoutedEventArgs e) {
+            var fe = sender as FrameworkElement;
+            if (fe != null)
+                Debug.WriteLine("Tracing Keydown FE -- {0}", fe.Name);
+            else
+                Debug.WriteLine("Tracing Keydown S -- {0}", sender);
+        }
 
-        //private  void tracing_gotfocus (object sender, RoutedEventArgs e) {
-        //    var fe = sender as FrameworkElement;
-        //    if (fe != null)
-        //        Debug.WriteLine("Tracing GotFocus FE -- {0}", fe.Name);
-        //    else
-        //        Debug.WriteLine("Tracing GotFocus S -- {0}", sender);
-        //}
+        private void tracing_gotfocus (object sender, RoutedEventArgs e) {
+            var fe = sender as FrameworkElement;
+            if (fe != null)
+                Debug.WriteLine("Tracing GotFocus FE -- {0}", fe.Name);
+            else
+                Debug.WriteLine("Tracing GotFocus S -- {0}", sender);
+        }
 
-        //private  void tracing_lostfocus (object sender, RoutedEventArgs e) {
-        //    var fe = sender as FrameworkElement;
-        //    if (fe != null)
-        //        Debug.WriteLine("Tracing LostFocus FE -- {0}", fe.Name);
-        //    else
-        //        Debug.WriteLine("Tracing LostFocus S -- {0}", sender);
-        //}
+        private void tracing_lostfocus (object sender, RoutedEventArgs e) {
+            var fe = sender as FrameworkElement;
+            if (fe != null)
+                Debug.WriteLine("Tracing LostFocus FE -- {0}", fe.Name);
+            else
+                Debug.WriteLine("Tracing LostFocus S -- {0}", sender);
+        }
 
 
 
@@ -762,6 +762,8 @@ MISCELLANEOUS
                         }
                     }
                 }
+                var fe = sender as FrameworkElement;
+                Debug.WriteLine("Tracing pointer pressed -- {0}", fe != null ? fe.Name : sender);
                 this.FocusOnStones();
             }
         }
@@ -2628,6 +2630,7 @@ MISCELLANEOUS
             this.inputFocus.IsHitTestVisible = true;
             this.inputFocus.Focus(FocusState.Pointer);
             this.inputFocus.Focus(FocusState.Keyboard);
+            Debug.WriteLine("Tracing just set focus on inputfocus in FocusOnStones()");
 
             //this.mainLandscapeView.Focus(FocusState.Keyboard);
             //this.mainLandscapeView.IsTabStop = true;
