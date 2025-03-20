@@ -63,7 +63,6 @@ namespace SgfEdwin10
         private void AppTitleBar_Loaded(object sender, RoutedEventArgs e)
         {
             SetTitleBar(AppTitleBar);
-            // TODO Raname MainPage in case your app Main Page has a different name
             PageFrame.Navigate(typeof(MainWinPg));
             if (AppWindowTitleBar.IsCustomizationSupported())
             {

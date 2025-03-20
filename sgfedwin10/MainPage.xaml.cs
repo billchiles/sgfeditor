@@ -171,6 +171,7 @@ MISCELLANEOUS
                 // Make sure keybindings work
                 this.FocusOnStones();
             };
+            App.MainWinPgInst = this; // Stash here for App.OnLaunched to do file open handling
             this.prevSetupSize = 0;
             this._titleSizeDefault = (int)this.Title.FontSize; // 18
             this._indexesSizeDefault = MainWinPgAux.indexLabelFontSize; // 18
@@ -1931,7 +1932,7 @@ MISCELLANEOUS
         ////
         private void InitializeTreeView () {
             var canvas = this.gameTreeView;
-            canvas.Children.Clear(); //.RemoveRange(0, canvas.Children.Count);
+            canvas.Children.Clear(); 
             this.treeViewMoveMap.Clear();
             this.SetTreeViewSize();
             this.UpdateTreeClearBranchHighlight();
