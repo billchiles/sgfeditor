@@ -157,18 +157,27 @@ MISCELLANEOUS
         private Color _treeCurrentHighlightDefault; // = this.currentNodeHighlightColor;
         private Color _treeCommentsHighlightDefault; // = this.commentNodeHighlightColor;
 
+        /// ColdFileLaunch is a WINUI3 HACK to get around App.OnLaunch requiring a Task.Delay(3000)
+        /// to get MainWinPg instantiated before calling OnFileLaunch.
+        internal static StorageFile ColdFileLaunch { get; set; }
 
         public MainWinPg () {
             this.InitializeComponent();
             // Call FocusOnStones() after loaded event to pull focus out of comment box.
-            this.Loaded += (object sender, RoutedEventArgs e) => {
+            this.Loaded += async (object sender, RoutedEventArgs e) => {
                 //SetUITracing(this.mainLandscapeView);
                 // Hack to get first launch window with square Go board.
                 var windowId = Win32Interop.GetWindowIdFromWindow(App.WindowHandle);
                 AppWindow appWindow = AppWindow.GetFromWindowId(windowId);
                 var curSize = appWindow.ClientSize;
                 appWindow.Resize(new SizeInt32(curSize.Width, curSize.Height + 16));
-                // Make sure keybindings work
+                // Check cold file launched flag because page not instantiated in time in OnLaunch
+                if (MainWinPg.ColdFileLaunch != null) {
+                    var cur = App.Current as App;
+                    await cur.OnFileActivated(null, MainWinPg.ColdFileLaunch);
+                    // Make sure keybindings work
+                    MainWinPg.ColdFileLaunch = null; // clear this StorageFile pointer
+                }
                 this.FocusOnStones();
             };
             App.MainWinPgInst = this; // Stash here for App.OnLaunched to do file open handling
@@ -2546,8 +2555,8 @@ MISCELLANEOUS
         //// the main window, and the main window is focusable, but we have to set
         //// focus to the stones grid to yank it away from the branches combo and
         //// textbox.
-        ////
-        private void FocusOnStones () {
+        //// Had to make internal in WINUI3 so that App.OnFileLaunch could call this, was private
+        internal void FocusOnStones () {
             //this.Focus(FocusState.Keyboard);
             //this.IsEnabled = true;
             //this.IsTabStop = true;

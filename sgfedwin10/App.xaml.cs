@@ -50,6 +50,7 @@ namespace SgfEdwin10
             // here https://docs.microsoft.com/en-us/windows/apps/windows-app-sdk/migrate-to-windows-app-sdk/guides/applifecycle#single-instancing-in-applicationonlaunched
             //
             // Register as "main" if first launch or retrieve the first instance.
+            //await Task.Delay(30000); // Give time to attach debugger for cold file launch
             var mainInstance = Microsoft.Windows.AppLifecycle.AppInstance.FindOrRegisterForKey("main");
             // Get real launched args because framework can't do it and pass them.
             var activatedEventArgs = Microsoft.Windows.AppLifecycle.AppInstance.
@@ -61,20 +62,36 @@ namespace SgfEdwin10
                 System.Diagnostics.Process.GetCurrentProcess().Kill();
                 return;
             }
-            mainInstance.Activated += (object? sender, AppActivationArguments arg) => {
-                if (arg.Kind == ExtendedActivationKind.File)
-                    App.MainWinPgInst.DispatcherQueue.TryEnqueue(
-                        async () => await OnFileActivated(arg, false));
+            mainInstance.Activated += async (object? sender, AppActivationArguments arg) => {
+                if (arg.Kind == ExtendedActivationKind.File) {
+                    var inst = App.MainWinPgInst;
+                    if (!(inst == null))
+                        App.MainWinPgInst.DispatcherQueue.TryEnqueue(
+                            async () => await OnFileActivated(arg));
+                    else {
+                        // WINUI3 BUG THIS IS TOTALLY WRONG, just testing MainWinPg never instantiated
+                        await OnFileActivated(arg, null); // Random line of code to set bkpt on
+                    }
+                }
             };
-            // Now handle file activation in current app instance.
-            // https://docs.microsoft.com/en-us/windows/apps/windows-app-sdk/migrate-to-windows-app-sdk/guides/applifecycle#file-type-association
-            if (activatedEventArgs.Kind == ExtendedActivationKind.File) {
-                await OnFileActivated(activatedEventArgs, true);
-            }
             // Initialize MainWindow here.  THIS IS MIGRATION TOOL GEN, so NOT my MainWinPg : Page
             Window = new MainWindow();
             Window.Activate();
             WindowHandle = WinRT.Interop.WindowNative.GetWindowHandle(Window);
+            // Now handle file activation in current app instance.
+            // https://docs.microsoft.com/en-us/windows/apps/windows-app-sdk/migrate-to-windows-app-sdk/guides/applifecycle#file-type-association
+            // WINUI3 BUG I had to re-order the generated code to get cold file launch working
+            if (activatedEventArgs.Kind == ExtendedActivationKind.File) {
+                //MainWinPg mainwinpg = App.MainWinPgInst; // this is null here
+                //await Task.Delay(3000); // HACK: give time for WINUI3 to instantiate MainWinPg
+                var argdata = activatedEventArgs.Data as IFileActivatedEventArgs;
+                // We only handle one file for now ...
+                MainWinPg.ColdFileLaunch = argdata.Files[0] as StorageFile;
+                // WINUI3 BUG can't call this here, generated code is bogus
+                //await OnFileActivated(activatedEventArgs, true);  
+            }
+            else {
+            }
         }
 
 
@@ -83,14 +100,18 @@ namespace SgfEdwin10
         /// report already running, always report file launch.  Need flag to check if already have
         /// file open or need to prompt to save a dirty game.
         ///
-        public async Task OnFileActivated(AppActivationArguments args, bool first) {
+        public async Task OnFileActivated(AppActivationArguments args, StorageFile file = null) {
             MainWinPg mainwinpg = App.MainWinPgInst;
-            var argdata = args.Data as IFileActivatedEventArgs;
-            // We only handle one file for now ...
-            var sf = argdata.Files[0] as StorageFile;
-            //var si = argdata.Files[0] as IStorageItem;
+            StorageFile sf = null;
+            if (file != null)
+                sf = file;
+            else {
+                var argdata = args.Data as IFileActivatedEventArgs;
+                // We only handle one file for now ...
+                sf = argdata.Files[0] as StorageFile;
+            }
             // Check dirty save if running already
-            if (! first) {
+            if (file == null) {
                 //argdata.PreviousExecutionState == ApplicationExecutionState.Running ||
                 //    argdata.PreviousExecutionState == ApplicationExecutionState.Suspended) {
                 mainwinpg = App.MainWinPgInst;
@@ -107,6 +128,7 @@ namespace SgfEdwin10
             var game = mainwinpg.Game;
             try {
                 mainwinpg.LastCreatedGame = null;
+                //mainwinpg.CurrentComment = mainwinpg.CurrentComment + " really opening ...";
                 await mainwinpg.GetFileGameCheckingAutoSave(sf);
             }
             catch (IOException err) {
@@ -123,6 +145,7 @@ namespace SgfEdwin10
                 GameAux.Message(err.Message + err.StackTrace);
             }
             mainwinpg.DrawGameTree();
+            mainwinpg.FocusOnStones(); // NOthing seems to enable kbd after file open
         }
 
 
