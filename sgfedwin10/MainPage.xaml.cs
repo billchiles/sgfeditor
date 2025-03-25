@@ -164,13 +164,17 @@ MISCELLANEOUS
         public MainWinPg () {
             this.InitializeComponent();
             // Call FocusOnStones() after loaded event to pull focus out of comment box.
+            // Sometimes works, sometimes doesn't, haven't found secret sauce yet.
             this.Loaded += async (object sender, RoutedEventArgs e) => {
                 //SetUITracing(this.mainLandscapeView);
                 // Hack to get first launch window with square Go board.
                 var windowId = Win32Interop.GetWindowIdFromWindow(App.WindowHandle);
                 AppWindow appWindow = AppWindow.GetFromWindowId(windowId);
-                var curSize = appWindow.ClientSize;
-                appWindow.Resize(new SizeInt32(curSize.Width, curSize.Height + 16));
+                //var curSize = appWindow.ClientSize;
+                //appWindow.Resize(new SizeInt32(curSize.Width, curSize.Height + 16));
+                // Used to bump height a bit for square board, but WINUI3 doesn't remember widow
+                // size like UWP.  Now hard code good size for dialogs and seeing go boad.
+                appWindow.Resize(new SizeInt32(1574, 940));
                 // Check cold file launched flag because page not instantiated in time in OnLaunch
                 if (MainWinPg.ColdFileLaunch != null) {
                     var cur = App.Current as App;

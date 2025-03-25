@@ -7,13 +7,20 @@
     mc:Ignorable="d"
     Background="#C7419082"
     KeyDown="GameInfoKeydown">
-
-    <Grid Background="#C7419082" x:Name="gameInfoGrid">
+    
+    <!--
+    <ScrollViewer HorizontalScrollBarVisibility="Visible" VerticalScrollBarVisibility="Visible">
+    -->
+        <!-- Scrollviewer doesn't work anywhere I try it in here -->
+        <Grid Background="#C7419082" x:Name="gameInfoGrid">
+              <!-- ScrollViewer.HorizontalScrollBarVisibility="Visible" doesn't work-->
+              <!-- ScrollViewer.VerticalScrollBarVisibility="Visible"> doesn't work -->
         <!-- Need inner grid so that outer grid overlays app, disabling it, while inner grid
              gets big margins to have dialog appear reasonably sized. -->
         <Grid Margin="100,100,100,50">
-
-            <Grid.ColumnDefinitions>
+                <!-- ScrollViewer.HorizontalScrollBarVisibility="Visible" doesn't work-->
+                <!-- ScrollViewer.VerticalScrollBarVisibility="Visible"> doesn't work -->
+                <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
@@ -177,4 +184,5 @@
 
         </Grid>
     </Grid>
+    <!-- </ScrollViewer> -->
 </Page>

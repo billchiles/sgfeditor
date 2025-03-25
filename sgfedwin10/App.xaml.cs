@@ -69,8 +69,12 @@ namespace SgfEdwin10
                         App.MainWinPgInst.DispatcherQueue.TryEnqueue(
                             async () => await OnFileActivated(arg));
                     else {
-                        // WINUI3 BUG THIS IS TOTALLY WRONG, just testing MainWinPg never instantiated
-                        await OnFileActivated(arg, null); // Random line of code to set bkpt on
+                        // WINUI3 BUG we have arrived here and inst is null, but not sure if that was
+                        // a fluke.  Sometimes a zombie process get left lying around that can never
+                        // handle file activations, but if we kill it, then file activation works.
+                        // So, this is a total hack and guess, maybe can kill it here if file started.
+                        System.Diagnostics.Process.GetCurrentProcess().Kill();
+                        return;
                     }
                 }
             };
