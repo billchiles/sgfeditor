@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+//using System.Diagnostics; // Debug.WriteLine for tracing
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -313,6 +314,7 @@ namespace SgfEdwin10 {
 
         private void GameInfoKeydown (object sender, KeyRoutedEventArgs e) {
             GameInfo win;
+            //Debug.WriteLine("inside game info keydown ... " + e.Key.ToString()); //tracing events
             if (sender.GetType() == typeof(GameInfo))
                 win = (GameInfo)sender;
             else

@@ -73,6 +73,7 @@ namespace SgfEdwin10
                         // a fluke.  Sometimes a zombie process get left lying around that can never
                         // handle file activations, but if we kill it, then file activation works.
                         // So, this is a total hack and guess, maybe can kill it here if file started.
+                        await GameAux.Message("Reacivate main app inst, but MainWinPg inst is null");
                         System.Diagnostics.Process.GetCurrentProcess().Kill();
                         return;
                     }

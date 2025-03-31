@@ -7,20 +7,17 @@
     mc:Ignorable="d"
     Background="#C7419082"
     KeyDown="GameInfoKeydown">
+
     
     <!--
-    <ScrollViewer HorizontalScrollBarVisibility="Visible" VerticalScrollBarVisibility="Visible">
+    <ScrollViewer HorizontalScrollBarVisibility="Visible" VerticalScrollBarVisibility="Visible"
+                  Background="#C7419082" x:Name="gameInfoGrid">
     -->
-        <!-- Scrollviewer doesn't work anywhere I try it in here -->
-        <Grid Background="#C7419082" x:Name="gameInfoGrid">
-              <!-- ScrollViewer.HorizontalScrollBarVisibility="Visible" doesn't work-->
-              <!-- ScrollViewer.VerticalScrollBarVisibility="Visible"> doesn't work -->
+    <Grid Background="#C7419082" x:Name="gameInfoGrid">
         <!-- Need inner grid so that outer grid overlays app, disabling it, while inner grid
-             gets big margins to have dialog appear reasonably sized. -->
-        <Grid Margin="100,100,100,50">
-                <!-- ScrollViewer.HorizontalScrollBarVisibility="Visible" doesn't work-->
-                <!-- ScrollViewer.VerticalScrollBarVisibility="Visible"> doesn't work -->
-                <Grid.ColumnDefinitions>
+            gets big margins to have dialog appear reasonably sized. -->
+        <Grid Margin="100,100,100,50" MinWidth="800" MinHeight="1000">
+            <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
@@ -84,8 +81,7 @@
             </TextBox>
 
             <!-- Rules -->
-            <TextBlock FontWeight="Bold" Grid.Column="0" Grid.Row="4"
-                       >Rules:</TextBlock>
+            <TextBlock FontWeight="Bold" Grid.Column="0" Grid.Row="4">Rules:</TextBlock>
             <TextBox Name="gameInfoRU" Grid.Column="1" Grid.Row="4" BorderThickness="1" BorderBrush="Black">
             </TextBox>
 
@@ -100,8 +96,7 @@
             </TextBox>
 
             <!-- Time allotted for game -->
-            <TextBlock FontWeight="Bold" Grid.Column="2" Grid.Row="5" Margin="10"
-                       >Time (seconds):</TextBlock>
+            <TextBlock FontWeight="Bold" Grid.Column="2" Grid.Row="5" Margin="10">Time (seconds):</TextBlock>
             <TextBox Name="gameInfoTM" Grid.Column="3" Grid.Row="5" BorderThickness="1" BorderBrush="Black">
             </TextBox>
 
@@ -117,8 +112,7 @@
 
             <!-- Round number -->
             <TextBlock FontWeight="Bold" Grid.Column="0" Grid.Row="7">Round:</TextBlock>
-            <TextBox Name="gameInfoRO" Grid.Column="1" Grid.Row="7" BorderThickness="1" BorderBrush="Black" 
-                     >
+            <TextBox Name="gameInfoRO" Grid.Column="1" Grid.Row="7" BorderThickness="1" BorderBrush="Black">
             </TextBox>
 
             <!-- Source (book, journal) -->
@@ -184,5 +178,5 @@
 
         </Grid>
     </Grid>
-    <!-- </ScrollViewer> -->
+    <!-- or </ScrollViewer>-->
 </Page>

@@ -197,53 +197,64 @@ MISCELLANEOUS
             this.CreateDefaultGame();
         }
 
+
+        //private List<UIElement> tracingUIElts = new List<UIElement>();
+
         /// SetUITracing descends all UIElement's children to hook their focus events and keydown.
         /// We needed to find where the focus was being stolen to and thwarting app logic.  This has
         /// been a bug since win8, so winRT/win10/UWP/WinUI3 all have this bug with forum posts and
         /// github bug, but msft never fixes it or provides workaround.
         ///
         //private void SetUITracing (UIElement elt) {
+        //    // If calling on a couple of "roots", make sure we don't double trace
+        //    if (this.tracingUIElts.Contains(elt)) {
+        //        Debug.WriteLine("Already enountered and traced " + elt.ToString());
+        //        return;
+        //    }
+        //    // Add tracing ...
+        //    elt.KeyDown += this.tracing_keydown;
+        //    elt.GotFocus += this.tracing_gotfocus;
+        //    elt.LostFocus += this.tracing_lostfocus;
+        //    var fe = elt as FrameworkElement;
+        //    if (fe != null)
+        //        Debug.WriteLine("Set up tracing for FE " + fe.Name);
+        //    else
+        //        Debug.WriteLine("Set up tracing for child " + elt.ToString());
+        //    this.tracingUIElts.Add(elt);
+        //    // Recurse through children
         //    int count = VisualTreeHelper.GetChildrenCount(elt);
         //    for (int i = 0; i < count; i++) {
-        //        DependencyObject current = VisualTreeHelper.GetChild(elt, i);
-        //        if ((current.GetType()).Equals(typeof(UIElement)) ||
-        //            (current.GetType().GetTypeInfo().IsSubclassOf(typeof(UIElement)))) {
-        //            var child = (UIElement)current;
-        //            child.KeyDown += this.tracing_keydown;
-        //            child.GotFocus += this.tracing_gotfocus;
-        //            child.LostFocus += this.tracing_lostfocus;
-        //            var fe = child as FrameworkElement;
-        //            if (fe != null)
-        //                Debug.WriteLine("Set up tracing for FE {0}", fe.Name);
-        //            else
-        //                Debug.WriteLine("Set up tracing for child {0}", child);
-        //            SetUITracing(child);
+        //        DependencyObject child = VisualTreeHelper.GetChild(elt, i);
+        //        if ((child.GetType()).Equals(typeof(UIElement)) ||
+        //            (child.GetType().GetTypeInfo().IsSubclassOf(typeof(UIElement)))) {
+        //            var uichild = (UIElement)child;
+        //            SetUITracing(uichild);
         //        }
         //    }
         //}
 
-        //private async void tracing_keydown (object sender, KeyRoutedEventArgs e) {
+        //private void tracing_keydown (object sender, KeyRoutedEventArgs e) {
         //    var fe = sender as FrameworkElement;
         //    if (fe != null)
-        //        Debug.WriteLine("Tracing Keydown FE -- {0}", fe.Name);
+        //        Debug.WriteLine("Tracing Keydown FE -- " + fe.Name);
         //    else
-        //        Debug.WriteLine("Tracing Keydown S -- {0}", sender);
+        //        Debug.WriteLine("Tracing Keydown S -- " + sender.ToString());
         //}
 
         //private void tracing_gotfocus (object sender, RoutedEventArgs e) {
         //    var fe = sender as FrameworkElement;
         //    if (fe != null)
-        //        Debug.WriteLine("Tracing GotFocus FE -- {0}", fe.Name);
+        //        Debug.WriteLine("Tracing GotFocus FE -- " + fe.Name);
         //    else
-        //        Debug.WriteLine("Tracing GotFocus S -- {0}", sender);
+        //        Debug.WriteLine("Tracing GotFocus S -- " + sender.ToString());
         //}
 
         //private void tracing_lostfocus (object sender, RoutedEventArgs e) {
         //    var fe = sender as FrameworkElement;
         //    if (fe != null)
-        //        Debug.WriteLine("Tracing LostFocus FE -- {0}", fe.Name);
+        //        Debug.WriteLine("Tracing LostFocus FE -- " + fe.Name);
         //    else
-        //        Debug.WriteLine("Tracing LostFocus S -- {0}", sender);
+        //        Debug.WriteLine("Tracing LostFocus S -- " + sender.ToString());
         //}
 
 
@@ -602,9 +613,10 @@ MISCELLANEOUS
             //Debug.WriteLine("Tracing Page lost focus ...");
             var xmalroot = this.mainLandscapeView.XamlRoot; // Must pass xmalroot in winUI3
             var fo = FocusManager.GetFocusedElement(xmalroot);
+            //var fostr = fo != null ? fo.ToString() : "null";
             //var fe = fo as FrameworkElement;
-            //Debug.WriteLine("   tracing focused element is {0} with name {1}",
-            //                fo != null ? fo.ToString() : "null", fe != null ? fe.Name : "<no-name>");
+            //var festr = fe != null ? fe.Name : " < no - name > ";
+            //Debug.WriteLine($"   tracing focused element is {fostr} with name {festr)");
             if (this.hiddenRootScroller == null) {
                 var d = fo as DependencyObject;
                 // When new game dialog gets shown, d is null;
@@ -613,14 +625,14 @@ MISCELLANEOUS
                     d = VisualTreeHelper.GetParent(d);
                     if (d == null) return;
                     //fe = d as FrameworkElement;
-                    //Debug.WriteLine("   tracing parent is {0} with name {1}",
-                    //                d.ToString(), fe != null ? fe.Name : "<no-name>");
+                    //festr = fe != null ? fe.Name : "<no-name>";
+                    //Debug.WriteLine($"   tracing parent is {d.ToString()} with name {festr}");
                 }
                 hiddenRootScroller = d as ScrollViewer;
                 //while (d != null) {
                 //    fe = d as FrameworkElement;
-                //    Debug.WriteLine("   more tracing parent is {0} with name {1}",
-                //                    d.ToString(), fe != null ? fe.Name : "<no-name>");
+                    //festr = fe != null ? fe.Name : "<no-name>";
+                    //Debug.WriteLine($"   tracing parent is {d.ToString()} with name {festr}");
                 //    d = VisualTreeHelper.GetParent(d);
                 //}
 
@@ -706,7 +718,8 @@ MISCELLANEOUS
                     }
                 }
                 //var fe = sender as FrameworkElement;
-                //Debug.WriteLine("Tracing pointer pressed -- {0}", fe != null ? fe.Name : sender);
+                //var festr = fe != null ? fe.Name : sender.ToString();
+                //Debug.WriteLine($"Tracing pointer pressed -- {fe}");
                 this.FocusOnStones();
             }
         }
@@ -1332,17 +1345,6 @@ MISCELLANEOUS
             // Diagnostics used to figure out winRT's internals were stealing focus to root ScrollViewer.
             //System.Diagnostics.Debug.WriteLine("Keyboard from " + sender + ", source: " + e.OriginalSource);
 
-            // Turns out don't need to manage state of modifier keys.  See IsKeyPressed.
-            //if (e.Key == VirtualKey.Control) {
-            //    this.CtrlKeyPressed = true;
-            //    return;
-            //} else if (e.Key == VirtualKey.Shift) {
-            //    this.ShiftKeyPressed = true;
-            //    return;
-            //} else if (e.Key == VirtualKey.Menu) {
-            //    this.AltKeyPressed = true;
-            //    return;
-            //}
             MainWinPg win;
             if (sender.GetType() == typeof(MainWinPg))
                 win = (MainWinPg)sender;
@@ -1350,6 +1352,7 @@ MISCELLANEOUS
                 win = this;
             // Ensure focus on board where general commands are dispatched.
             if (e.Key == VirtualKey.Escape) {
+                //Debug.WriteLine("tracing got escape char");
                 this.Game.SaveCurrentComment();
                 this.UpdateTitle();
                 win.FocusOnStones();
@@ -1857,10 +1860,17 @@ MISCELLANEOUS
                 this.GameInfoDialogDone(newDialog);
                 this.FocusOnStones();
             };
+            //Debug.WriteLine("Putting up game info dialog and tracing ...");
             popup.Child = newDialog;
-            popup.XamlRoot = this.XamlRoot;
+            popup.XamlRoot = this.XamlRoot; //WINUI3 needs this, UWP didn't
             popup.IsOpen = true;
+            //this.SetUITracing(popup as UIElement);
+            //Debug.WriteLine("Done tracing game info popup");
             // Put focus into dialog, good for user, but also stops MainWinPg from handling kbd events
+            //((GameInfo)popup.Child).gameInfoGrid.IsEnabled = true;
+            //newDialog.IsEnabled = true; //WINUI3 BUG -- esc no longer works
+            // Forget why this code is here vs above line, but the WINUI3 BUG that stops esc from
+            // dismissing the dialog doesn't stop esc if focus is in a textbox in the grid
             ((GameInfo)popup.Child).PlayerBlackTextBox.IsEnabled = true;
             ((GameInfo)popup.Child).PlayerBlackTextBox.IsTabStop = true;
             ((GameInfo)popup.Child).PlayerBlackTextBox.IsHitTestVisible = true;
