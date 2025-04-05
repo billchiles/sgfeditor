@@ -179,12 +179,14 @@ MISCELLANEOUS
                 if (MainWinPg.ColdFileLaunch != null) {
                     var cur = App.Current as App;
                     await cur.OnFileActivated(null, MainWinPg.ColdFileLaunch);
-                    // Make sure keybindings work
                     MainWinPg.ColdFileLaunch = null; // clear this StorageFile pointer
                 }
+                // Make sure keybindings work
                 this.FocusOnStones();
             };
             App.MainWinPgInst = this; // Stash here for App.OnLaunched to do file open handling
+            // Decide if HACK, if keep, cleanup 2-3 helpers that take page, decide if field is tasteful
+            GameAux.mainWinPgInst = this; // Stash here for view model helpers in GameAux
             this.prevSetupSize = 0;
             this._titleSizeDefault = (int)this.Title.FontSize; // 18
             this._indexesSizeDefault = MainWinPgAux.indexLabelFontSize; // 18
@@ -374,9 +376,11 @@ MISCELLANEOUS
             var autoSf = await this.GetAutoSaveFile(MainWinPg.UnnamedAutoSaveName);
             if (autoSf != null) {
                 if ((DateTimeOffset.Now - autoSf.DateCreated).Hours < 12 &&
-                        await GameAux.Message("Found unnamed auto saved file.", "Confirm opening auto saved file",
-                                               new List<string>() {"Open auto saved file",
-                                                                   "Create default new board"})
+                        await GameAux.Message("Found unnamed auto saved file.", 
+                                              "Confirm opening auto saved file",
+                                              new List<string>() {"Open auto saved file",
+                                                                  "Create default new board"},
+                                              true)
                             == "Open auto saved file") {
                     var defaultGame = this.Game;
                     await this.ParseAndCreateGame(autoSf);
@@ -1464,7 +1468,7 @@ MISCELLANEOUS
                      this.commentBox.FocusState != FocusState.Pointer &&  // Covers clicking on it
                      win.Game.CanUnwindMove() && // test not at start empty board
                      await GameAux.Message("Cut current move from game tree?", "Confirm cutting move",
-                                           new List<string>() { "Yes", "No" }, 1, 1) ==
+                                           new List<string>() { "Yes", "No" }, true) ==
                          GameAux.YesMessage) {
                 win.Game.CutMove();
                 //this.appBarPasteButton.IsEnabled = true;  app.bottomappbar gone, if add menu can re-use this

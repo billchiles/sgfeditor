@@ -10,15 +10,17 @@ using Microsoft.UI; // Color, UIElement ?
 using Color = Windows.UI.Color; // Color
 //using System.Windows.Media; // Colors
 using Microsoft.UI.Xaml.Controls; // ViewBox
-using System.Windows; // Label (need to coerce type to fetch label cookie)
+//using System.Windows; // Label (need to coerce type to fetch label cookie)
 //using System.Windows.Controls; // MessageBox
-using Windows.UI.Popups; // MessageDialog
+//using Windows.UI.Popups; // MessageDialog
 using System.IO; // StreamWriter
 using System.Threading.Tasks; // Task<string> for GameAux.Message
 using Windows.Storage; // StorageFile
-using System.Diagnostics; // Debug.Assert
+//using System.Diagnostics; // Debug.Assert
 using Microsoft.UI.Xaml;
-using Windows.Storage.Pickers;
+//using Windows.Storage.Pickers;
+//using Microsoft.UI.Xaml.Input;
+//using Windows.System;
 
 
 
@@ -1846,6 +1848,10 @@ namespace SgfEdwin10 {
     ////
     public static class GameAux {
 
+        // Set in MainWinPg constructor for access here to save having to pass it in to some helpers.
+        // Decide if HACK, if keep, fix up CreateDefaultGame, CreateGame, and CreateParsedGame, Message.
+        internal static MainWinPg mainWinPgInst = null; 
+
         //// User notification and prompting utility.
         ////
         //// Since Game/GameAux is the controller (and view-model) in MVVC, this is the
@@ -1856,37 +1862,85 @@ namespace SgfEdwin10 {
         public static string YesMessage = "Yes";
 
 
-        //// Message is a lot like WPF MessageBox.Show.  It returns the string name of the command selected.
-        //// If cmds is null, there is a simple msgbox with an OK button, which is the default (enter) and the
-        //// cancel default (escape) commands.  If cmds is not null, the dialog shows buttons for the listed
-        //// commands.  The default command is the first element unless defaultIndex is specified.
-        ////
-        public static async Task<string> Message (string msg, string title = null, List<string> cmds = null,
-                                                  uint defaultIndex = 0, uint cancelIndex = 9999) {
+        /// Message is a lot like WPF MessageBox.Show.  It returns the string name of the command selected.
+        /// If cmds is null, there is a simple msgbox with an OK button, which is the default (enter) and the
+        /// cancel default (escape) commands.  If cmds is not null, the dialog shows buttons for the listed
+        /// commands.  The default command is the first element unless defaultIndex is specified.
+        ///
+        public static async Task<string> Message (string msg, string title = null,
+                                                  List<string> cmds = null, bool primarydefault = false) {
             // Create the message dialog and set its content 
-            var msgdlg = new MessageDialog(msg, title ?? "");
+            var msgdlg = new ContentDialog();
+            //msgdlg.PreviewKeyDown += (object s, KeyRoutedEventArgs e) => msgdlg.Hide();
+            //msgdlg.ProcessKeyboardAccelerators +=
+            //    (UIElement sender, ProcessKeyboardAcceleratorEventArgs args) => {
+            //        if (args.Key == VirtualKey.Escape) msgdlg.Hide();
+            //};
+            msgdlg.Content = msg;
+            msgdlg.Title = title ?? "";
             string response = "";
             if (cmds == null) {
-                msgdlg.Commands.Add(new UICommand(GameAux.OkMessage));
-                msgdlg.DefaultCommandIndex = 0;
-                msgdlg.CancelCommandIndex = 0;
+                msgdlg.CloseButtonText = GameAux.OkMessage;
+                msgdlg.DefaultButton = ContentDialogButton.Close;
                 response = GameAux.OkMessage;
             }
             else {
-                foreach (var c in cmds)
-                    msgdlg.Commands.Add(new UICommand(c, new UICommandInvokedHandler((cmd) => response = cmd.Label)));
-                //msgdlg.Commands.Add(new UICommand("Close", new UICommandInvokedHandler(
-                //                                                   GameAux.StonesPtrPressedMsgDlgHandler)));
-                // Set the command that will be invoked by default (enter)
-                msgdlg.DefaultCommandIndex = defaultIndex;
-                // Set the command to be invoked when escape is pressed 
-                msgdlg.CancelCommandIndex = cancelIndex == 9999 ? (uint)(cmds.Count() - 1) : cancelIndex;
+                if (cmds.Count > 2) throw new Exception("GameAux.Message only accepts two commands.");
+                msgdlg.PrimaryButtonText = cmds[0];
+                msgdlg.CloseButtonText = cmds[1];
+                msgdlg.DefaultButton = primarydefault ? ContentDialogButton.Close :
+                                                        ContentDialogButton.Primary;
             }
             // Show the message dialog 
-            WinRT.Interop.InitializeWithWindow.Initialize(msgdlg, App.WindowHandle);
-            await msgdlg.ShowAsync();
+            // TRYING EVERYTHING I CAN ... to get kbd input to work in dialg
+            //msgdlg.Loaded += (object sender, RoutedEventArgs e) => {
+            //    msgdlg.IsTabStop = true;
+            //    msgdlg.IsEnabled = true;
+            //    msgdlg.IsHitTestVisible = true;
+            //    var elt = FocusManager.GetFocusedElement(GameAux.mainWinPgInst.XamlRoot);
+            //    msgdlg.Focus(FocusState.Keyboard);
+            //    elt = FocusManager.GetFocusedElement(GameAux.mainWinPgInst.XamlRoot);
+            //    Debug.WriteLine("foo"); // line for bkpt
+            //};
+            msgdlg.XamlRoot = GameAux.mainWinPgInst.XamlRoot;
+            var res = await msgdlg.ShowAsync();
+            if (cmds != null)
+                response = res == ContentDialogResult.Primary ? cmds[0] : cmds[1];
             return response;
         }
+
+        //private static void Msgdlg_KeyDown (object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e) {
+        //    throw new NotImplementedException();
+        //}
+
+        /// Below is win10 Message impl, above is attempt to use winui3 prescribed method, but winui3
+        /// has a bug for the past 4-5 years msft won't fix where dialogs don't get keydown, making esc
+        /// and enter no-ops, must grab mouse and click.
+
+        //public static async Task<string> Message (string msg, string title = null, List<string> cmds = null,
+        //                                  uint defaultIndex = 0, uint cancelIndex = 9999) {
+        //    // Create the message dialog and set its content 
+        //    var msgdlg = new MessageDialog(msg, title ?? "");
+        //    string response = "";
+        //    if (cmds == null) {
+        //        msgdlg.Commands.Add(new UICommand(GameAux.OkMessage));
+        //        msgdlg.DefaultCommandIndex = 0;
+        //        msgdlg.CancelCommandIndex = 0;
+        //        response = GameAux.OkMessage;
+        //    }
+        //    else {
+        //        foreach (var c in cmds)
+        //            msgdlg.Commands.Add(new UICommand(c, new UICommandInvokedHandler((cmd) => response = cmd.Label)));
+        //        // Set the command that will be invoked by default (enter)
+        //        msgdlg.DefaultCommandIndex = defaultIndex;
+        //        // Set the command to be invoked when escape is pressed 
+        //        msgdlg.CancelCommandIndex = cancelIndex == 9999 ? (uint)(cmds.Count() - 1) : cancelIndex;
+        //    }
+        //    // Show the message dialog 
+        //    WinRT.Interop.InitializeWithWindow.Initialize(msgdlg, App.WindowHandle);
+        //    await msgdlg.ShowAsync();
+        //    return response;
+        //}
 
 
         ////
