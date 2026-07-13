@@ -3,6 +3,10 @@
 
 SGF Editor reads and writes .sgf files, edits game trees, etc.  It has several useful commands for reviewing games, including saving in reverse view to give a copy to your opponent.  You can also just use it as a Go board to play a game.  (For search purposes: goban, baduk, weiqi.)
 
+> **NOTE, I ABANDONED THIS PROJECT though it was highly functional, and I used it dialy to review games.  I abandoned due to Microsoft slowly deteriorating .NET and the UI stack for it.  I followed from win8, to win10, to WPF, to UWP, and finally tried to move to their latest promoted go-forward stack, winui3, but after 3-4 years, they were clearly phoning it in and not fixing basic bugs like file activation and focus bugs.  I never merged that back to master.**
+>
+> **GO FORWARD project and much cleaner and more features (such as random edit nodes in the middle of an SGF branch) is [here](https://github.com/billchiles/sgfeditor-react).  This project is typescript and react and runs in a browser, installed on a PC using Electron and supporting file activation, and installed on a Mac with same functionality.**
+
 _The project has a Python version (IronPython/WPF required for UI), C#/WPF desktop version, and Windows 8 Windows App Store version.  The Python version is the farthest behind (see sgfpy\notes.txt), and the WPF version is behind by a couple of features, also listed in notes.txt).  I use PTVS to hack on the IPy version.  I use Visual Studio for the C#/WPF and C#/WinRT versions._
 
 The Windows 8 app store page is [here](http://apps.microsoft.com/windows/app/sgfeditor/4770d48e-0179-4ada-a7ed-8382c85d949a).
